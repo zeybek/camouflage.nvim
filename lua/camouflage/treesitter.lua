@@ -19,8 +19,25 @@ M.queries = {
 -- Node types that contain actual values (not containers)
 M.value_types = {
   json = { 'string', 'number', 'true', 'false', 'null' },
-  yaml = { 'string_scalar', 'double_quote_scalar', 'single_quote_scalar', 'integer_scalar', 'float_scalar', 'boolean_scalar', 'block_scalar' },
-  toml = { 'string', 'integer', 'float', 'boolean', 'local_date', 'local_time', 'local_date_time', 'offset_date_time' },
+  yaml = {
+    'string_scalar',
+    'double_quote_scalar',
+    'single_quote_scalar',
+    'integer_scalar',
+    'float_scalar',
+    'boolean_scalar',
+    'block_scalar',
+  },
+  toml = {
+    'string',
+    'integer',
+    'float',
+    'boolean',
+    'local_date',
+    'local_time',
+    'local_date_time',
+    'offset_date_time',
+  },
 }
 
 ---Check if TreeSitter parser is available for a language
@@ -132,7 +149,10 @@ function M.parse(bufnr, lang, content)
           -- Adjust positions to exclude quotes
           start_index = start_index + 1
           end_index = end_index - 1
-        elseif lang == 'yaml' and (node_type == 'double_quote_scalar' or node_type == 'single_quote_scalar') then
+        elseif
+          lang == 'yaml'
+          and (node_type == 'double_quote_scalar' or node_type == 'single_quote_scalar')
+        then
           value = value:sub(2, -2)
           start_index = start_index + 1
           end_index = end_index - 1
