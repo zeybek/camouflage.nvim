@@ -4,6 +4,7 @@ Hide sensitive values in configuration files during screen sharing.
 
 A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, and `.properties` files using extmarks - **without modifying the actual file content**.
 
+[![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
 [![Neovim](https://img.shields.io/badge/Neovim-0.9%2B-green?logo=neovim)](https://neovim.io)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

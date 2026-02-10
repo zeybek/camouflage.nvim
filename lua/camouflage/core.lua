@@ -76,11 +76,19 @@ function M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
     return
   end
 
-  local masked_text = styles.generate_hidden_text(cfg.style, #var.value, var.value)
   local start_pos = M.index_to_position(bufnr, var.start_index, lines, line_offsets)
   local end_pos = M.index_to_position(bufnr, var.end_index, lines, line_offsets)
 
-  if start_pos and end_pos then
+  if not start_pos or not end_pos then
+    return
+  end
+
+  -- Handle multiline values: apply extmark per line
+  if var.is_multiline and start_pos.row ~= end_pos.row then
+    M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos)
+  else
+    -- Single line value
+    local masked_text = styles.generate_hidden_text(cfg.style, #var.value, var.value)
     pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, start_pos.row, start_pos.col, {
       end_row = end_pos.row,
       end_col = end_pos.col,
@@ -89,6 +97,55 @@ function M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
       hl_mode = 'combine',
       priority = 100,
     })
+  end
+end
+
+---Apply decorations for multiline values (one extmark per line)
+---@param bufnr number
+---@param var table
+---@param cfg table
+---@param lines string[]
+---@param start_pos {row: number, col: number}
+---@param end_pos {row: number, col: number}
+function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos)
+  for row = start_pos.row, end_pos.row do
+    local line = lines[row + 1] -- lines is 1-indexed
+    if not line then
+      break
+    end
+
+    local col_start, col_end
+    if row == start_pos.row then
+      -- First line: from start_pos.col to end of line
+      col_start = start_pos.col
+      col_end = #line
+    elseif row == end_pos.row then
+      -- Last line: from start of content to end_pos.col
+      col_start = line:match('^(%s*)'):len() -- Start after indentation
+      col_end = end_pos.col
+    else
+      -- Middle lines: mask from indentation to end of line
+      col_start = line:match('^(%s*)'):len()
+      col_end = #line
+    end
+
+    -- Skip empty lines or lines with only whitespace
+    local line_content = line:sub(col_start + 1, col_end)
+    if line_content:match('^%s*$') then
+      goto continue
+    end
+
+    local masked_text = styles.generate_hidden_text(cfg.style, col_end - col_start, line_content)
+    pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, row, col_start, {
+      end_row = row,
+      end_col = col_end,
+      virt_text = { { masked_text, cfg.highlight_group } },
+      virt_text_pos = 'overlay',
+      hl_mode = 'combine',
+      priority = 100,
+    })
+
+    ::continue::
   end
 end
 

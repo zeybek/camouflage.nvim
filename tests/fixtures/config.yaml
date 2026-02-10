@@ -19,3 +19,16 @@ redis:
 app:
   name: TestApp
   debug: true
+
+# Multiline values
+certificates:
+  private_key: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEpAIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy
+    hICJjXrLFKp2xPkzVmJXkPvLcEEiqdWoa+gzX83zQ/f
+    KS7a8WnV5G3CdEFqM2NEj7xqZ6m6wuMDvC7dZsXP9C
+    -----END RSA PRIVATE KEY-----
+  certificate: >
+    This is a folded multiline
+    certificate content that
+    should be masked properly

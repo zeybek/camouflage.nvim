@@ -66,7 +66,8 @@ end
 ---Uses nvim_buf_attach to detect content changes in preview buffer
 local function setup_snacks_integration()
   -- Only setup if snacks.nvim is available
-  if not pcall(require, 'snacks') then
+  local snacks_ok, snacks = pcall(require, 'snacks')
+  if not snacks_ok then
     return
   end
 
@@ -75,25 +76,64 @@ local function setup_snacks_integration()
   local parsers = require('camouflage.parsers')
 
   local attached_buffers = {}
+  local last_decorated = { buf = nil, file = nil }
 
-  ---Extract filename from snacks window title
+  ---Extract filename from snacks picker item or window
   ---@param win number Window handle
   ---@return string|nil filename
-  local function get_filename_from_title(win)
-    local ok, win_config = pcall(vim.api.nvim_win_get_config, win)
-    if not ok or not win_config.title or type(win_config.title) ~= 'table' then
-      return nil
-    end
-
-    -- Snacks title format: { { " ", "hl" }, { "filename", "hl" }, ... }
-    for _, item in ipairs(win_config.title) do
-      if type(item) == 'table' and type(item[1]) == 'string' then
-        local text = item[1]
-        if text:match('%S') and text ~= 'Files' and text ~= 'Explorer' then
-          return text
+  local function get_preview_filename(win)
+    -- Method 1: Try to get from snacks picker's current item
+    -- snacks.picker.get() returns an array of active pickers
+    local pickers_ok, pickers = pcall(function()
+      return snacks.picker.get()
+    end)
+    if pickers_ok and pickers and #pickers > 0 then
+      -- Get the most recent picker (last in array)
+      local picker = pickers[#pickers]
+      if picker and picker.current then
+        local item_ok, item = pcall(function()
+          return picker:current()
+        end)
+        if item_ok and item then
+          -- Item can have 'file', 'path', or 'filename' field
+          local file = item.file or item.path or item.filename
+          if file then
+            -- If it's a relative path, make it absolute using cwd
+            if not file:match('^/') then
+              local cwd = (picker.opts and picker.opts.cwd) or item.cwd or vim.fn.getcwd()
+              file = cwd .. '/' .. file
+            end
+            return file
+          end
         end
       end
     end
+
+    -- Method 2: Try buffer name (sometimes set for preview)
+    local buf = vim.api.nvim_win_get_buf(win)
+    local bufname = vim.api.nvim_buf_get_name(buf)
+    if bufname and bufname ~= '' then
+      return bufname
+    end
+
+    -- Method 3: Extract from window title (last resort)
+    local ok, win_config = pcall(vim.api.nvim_win_get_config, win)
+    if ok and win_config.title and type(win_config.title) == 'table' then
+      for _, title_item in ipairs(win_config.title) do
+        if type(title_item) == 'table' and type(title_item[1]) == 'string' then
+          local text = title_item[1]:match('^%s*(.-)%s*$') -- trim
+          -- Look for file-like patterns (contains . or /)
+          if text:match('[%./]') and not text:match('^%d+/%d+$') then
+            -- If relative, make absolute
+            if not text:match('^/') then
+              text = vim.fn.getcwd() .. '/' .. text
+            end
+            return text
+          end
+        end
+      end
+    end
+
     return nil
   end
 
@@ -119,15 +159,29 @@ local function setup_snacks_integration()
     if not vim.api.nvim_buf_is_valid(buf) then
       return
     end
+    if not vim.api.nvim_win_is_valid(win) then
+      return
+    end
 
-    local filename = get_filename_from_title(win)
-    if not filename or not parsers.is_supported(filename) then
+    local filename = get_preview_filename(win)
+    if not filename then
+      return
+    end
+
+    -- Avoid redundant decoration of same buffer+file
+    if last_decorated.buf == buf and last_decorated.file == filename then
+      return
+    end
+
+    if not parsers.is_supported(filename) then
       return
     end
 
     if vim.api.nvim_buf_line_count(buf) > 1 then
       state.init_buffer(buf)
       core.apply_decorations(buf, filename)
+      last_decorated.buf = buf
+      last_decorated.file = filename
     end
   end
 
@@ -136,12 +190,17 @@ local function setup_snacks_integration()
   ---@param win number Window handle
   local function attach_to_buffer(buf, win)
     if attached_buffers[buf] then
+      -- Already attached, but still try to decorate (file might have changed)
+      decorate_buffer(buf, win)
       return
     end
     attached_buffers[buf] = true
 
     vim.api.nvim_buf_attach(buf, false, {
       on_lines = function(_, bufnr)
+        -- Reset last_decorated to allow re-decoration when content changes
+        last_decorated.buf = nil
+        last_decorated.file = nil
         vim.defer_fn(function()
           local preview_win = find_preview_window()
           if preview_win and vim.api.nvim_win_get_buf(preview_win) == bufnr then
@@ -151,6 +210,10 @@ local function setup_snacks_integration()
       end,
       on_detach = function(_, bufnr)
         attached_buffers[bufnr] = nil
+        if last_decorated.buf == bufnr then
+          last_decorated.buf = nil
+          last_decorated.file = nil
+        end
       end,
     })
 
@@ -158,7 +221,7 @@ local function setup_snacks_integration()
   end
 
   -- Detect snacks picker and attach to preview buffer
-  vim.api.nvim_create_autocmd({ 'WinNew', 'BufWinEnter', 'WinEnter' }, {
+  vim.api.nvim_create_autocmd({ 'WinNew', 'BufWinEnter', 'WinEnter', 'CursorMoved' }, {
     group = state.augroup,
     callback = function()
       vim.defer_fn(function()
