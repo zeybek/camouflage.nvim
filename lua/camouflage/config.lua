@@ -25,6 +25,12 @@ local M = {}
 ---@field telescope boolean
 ---@field cmp CamouflageCmpConfig
 
+---@class CamouflageColorsConfig
+---@field foreground string|nil Foreground color (hex or color name, nil to use highlight_group)
+---@field background string|nil Background color (hex, color name, 'transparent', or nil)
+---@field bold boolean|nil Bold text
+---@field italic boolean|nil Italic text
+
 ---@class CamouflagePatternConfig
 ---@field file_pattern string|string[]
 ---@field parser string
@@ -38,6 +44,7 @@ local M = {}
 ---@field max_lines number|nil
 ---@field hidden_text string
 ---@field highlight_group string
+---@field colors CamouflageColorsConfig|nil
 ---@field patterns CamouflagePatternConfig[]
 ---@field parsers CamouflageParsersConfig
 ---@field integrations CamouflageIntegrationsConfig
@@ -52,6 +59,7 @@ M.defaults = {
   max_lines = 5000,
   hidden_text = '************************',
   highlight_group = 'Comment',
+  colors = nil, -- Custom colors override highlight_group: { foreground = '#808080', background = 'transparent', bold = false, italic = false }
   patterns = {
     { file_pattern = { '.env*', '*.env', '.envrc' }, parser = 'env' },
     { file_pattern = { '*.sh' }, parser = 'env' },

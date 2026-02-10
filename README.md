@@ -62,7 +62,15 @@ require('camouflage').setup({
   mask_char = '*',           -- Character for stars/dotted style
   mask_length = nil,         -- nil = actual length, number = fixed
   hidden_text = '************************',  -- For 'text' style
-  highlight_group = 'Comment',
+  highlight_group = 'Comment', -- Highlight group for masked text
+
+  -- Custom colors (overrides highlight_group when set)
+  colors = {
+    foreground = '#808080',  -- Text color (hex or color name)
+    background = 'transparent', -- Background ('transparent' or hex)
+    bold = false,
+    italic = false,
+  },
 
   -- Parser settings
   parsers = {

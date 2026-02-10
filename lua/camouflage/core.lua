@@ -7,6 +7,17 @@ local config = require('camouflage.config')
 local styles = require('camouflage.styles')
 local parsers = require('camouflage.parsers')
 
+---Get the highlight group to use for masking
+---@param cfg table Configuration
+---@return string highlight group name
+local function get_highlight_group(cfg)
+  -- Use custom CamouflageMask if colors are configured
+  if cfg.colors then
+    return 'CamouflageMask'
+  end
+  return cfg.highlight_group
+end
+
 ---Apply decorations to mask sensitive values in a buffer
 ---@param bufnr number Buffer number
 ---@param override_filename string|nil Optional filename for buffers without names (e.g., snacks preview)
@@ -83,16 +94,18 @@ function M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
     return
   end
 
+  local hl_group = get_highlight_group(cfg)
+
   -- Handle multiline values: apply extmark per line
   if var.is_multiline and start_pos.row ~= end_pos.row then
-    M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos)
+    M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos, hl_group)
   else
     -- Single line value
     local masked_text = styles.generate_hidden_text(cfg.style, #var.value, var.value)
     pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, start_pos.row, start_pos.col, {
       end_row = end_pos.row,
       end_col = end_pos.col,
-      virt_text = { { masked_text, cfg.highlight_group } },
+      virt_text = { { masked_text, hl_group } },
       virt_text_pos = 'overlay',
       hl_mode = 'combine',
       priority = 100,
@@ -107,7 +120,8 @@ end
 ---@param lines string[]
 ---@param start_pos {row: number, col: number}
 ---@param end_pos {row: number, col: number}
-function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos)
+---@param hl_group string Highlight group to use
+function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos, hl_group)
   for row = start_pos.row, end_pos.row do
     local line = lines[row + 1] -- lines is 1-indexed
     if not line then
@@ -139,7 +153,7 @@ function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos
     pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, row, col_start, {
       end_row = row,
       end_col = col_end,
-      virt_text = { { masked_text, cfg.highlight_group } },
+      virt_text = { { masked_text, hl_group } },
       virt_text_pos = 'overlay',
       hl_mode = 'combine',
       priority = 100,

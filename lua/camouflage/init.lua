@@ -250,6 +250,37 @@ local function setup_integrations()
   setup_snacks_integration()
 end
 
+---Setup custom highlight group if colors are configured
+local function setup_highlight()
+  local config = require('camouflage.config').get()
+  if not config.colors then
+    return
+  end
+
+  local hl_opts = {}
+
+  if config.colors.foreground then
+    hl_opts.fg = config.colors.foreground
+  end
+
+  if config.colors.background and config.colors.background ~= 'transparent' then
+    hl_opts.bg = config.colors.background
+  end
+
+  if config.colors.bold then
+    hl_opts.bold = true
+  end
+
+  if config.colors.italic then
+    hl_opts.italic = true
+  end
+
+  -- Only create highlight if any option is set
+  if next(hl_opts) then
+    vim.api.nvim_set_hl(0, 'CamouflageMask', hl_opts)
+  end
+end
+
 ---@param opts CamouflageConfig|nil
 function M.setup(opts)
   if initialized then
@@ -258,6 +289,7 @@ function M.setup(opts)
   end
 
   require('camouflage.config').setup(opts)
+  setup_highlight()
   require('camouflage.parsers').setup()
 
   local autocmds = require('camouflage.autocmds')

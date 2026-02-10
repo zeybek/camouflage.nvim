@@ -82,6 +82,14 @@ Call the setup function with your options: >lua
     hidden_text = '************************',  -- For 'text' style
     highlight_group = 'Comment', -- Highlight group for masked text
 
+    -- Custom colors (overrides highlight_group when set)
+    colors = {
+      foreground = '#808080',    -- Text color (hex or color name)
+      background = 'transparent', -- Background ('transparent' or hex)
+      bold = false,
+      italic = false,
+    },
+
     -- Parser settings
     parsers = {
       include_commented = true,    -- Include commented lines (all parsers)
@@ -141,6 +149,24 @@ hidden_text ~
 highlight_group ~
     Type: `string`, Default: `'Comment'`
     Highlight group applied to masked text.
+
+colors ~
+    Type: `table|nil`, Default: `nil`
+    Custom colors for masked text. Overrides `highlight_group` when set.
+    Fields:
+    - `foreground`: Text color (hex like '#808080' or color name)
+    - `background`: Background color ('transparent' or hex)
+    - `bold`: Boolean for bold text
+    - `italic`: Boolean for italic text
+
+    Example: >lua
+      colors = {
+        foreground = '#ff0000',
+        background = 'transparent',
+        bold = true,
+        italic = false,
+      }
+<
 
 patterns ~
     Type: `table[]`
