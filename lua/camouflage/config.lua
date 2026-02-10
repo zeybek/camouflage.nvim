@@ -35,6 +35,11 @@ local M = {}
 ---@field file_pattern string|string[]
 ---@field parser string
 
+---@class CamouflageHooksConfig
+---@field on_before_decorate? fun(bufnr: number, filename: string): boolean|nil
+---@field on_variable_detected? fun(bufnr: number, var: ParsedVariable): boolean|nil
+---@field on_after_decorate? fun(bufnr: number, variables: ParsedVariable[]): nil
+
 ---@class CamouflageConfig
 ---@field enabled boolean
 ---@field auto_enable boolean
@@ -48,6 +53,7 @@ local M = {}
 ---@field patterns CamouflagePatternConfig[]
 ---@field parsers CamouflageParsersConfig
 ---@field integrations CamouflageIntegrationsConfig
+---@field hooks CamouflageHooksConfig|nil
 
 ---@type CamouflageConfig
 M.defaults = {
@@ -79,6 +85,7 @@ M.defaults = {
     telescope = true,
     cmp = { disable_in_masked = true },
   },
+  hooks = nil,
 }
 
 ---@type CamouflageConfig

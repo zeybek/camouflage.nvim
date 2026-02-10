@@ -6,6 +6,7 @@ local state = require('camouflage.state')
 local config = require('camouflage.config')
 local styles = require('camouflage.styles')
 local parsers = require('camouflage.parsers')
+local hooks = require('camouflage.hooks')
 
 ---Get the highlight group to use for masking
 ---@param cfg table Configuration
@@ -55,17 +56,36 @@ function M.apply_decorations(bufnr, override_filename)
     return
   end
 
+  -- HOOK: before_decorate
+  local should_continue = hooks.emit('before_decorate', bufnr, filename)
+  if should_continue == false then
+    return
+  end
+
   local variables = parsers.parse(filename, content, bufnr, parser, parser_name)
   if #variables == 0 then
     return
   end
 
-  state.set_variables(bufnr, variables)
+  -- HOOK: variable_detected (filter variables)
+  local filtered_variables = {}
+  for _, var in ipairs(variables) do
+    local should_mask = hooks.emit('variable_detected', bufnr, var)
+    if should_mask ~= false then
+      table.insert(filtered_variables, var)
+    end
+  end
+
+  if #filtered_variables == 0 then
+    return
+  end
+
+  state.set_variables(bufnr, filtered_variables)
 
   -- Pre-compute line offsets for O(1) index lookups
   local line_offsets = M.compute_line_offsets(lines)
 
-  for _, var in ipairs(variables) do
+  for _, var in ipairs(filtered_variables) do
     M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
   end
 
@@ -75,6 +95,9 @@ function M.apply_decorations(bufnr, override_filename)
       vim.api.nvim_set_option_value('wrap', false, { win = win })
     end
   end
+
+  -- HOOK: after_decorate
+  hooks.emit('after_decorate', bufnr, filtered_variables)
 end
 
 ---@param bufnr number

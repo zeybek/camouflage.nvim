@@ -290,6 +290,11 @@ function M.setup(opts)
 
   require('camouflage.config').setup(opts)
   setup_highlight()
+
+  -- Setup hooks with config
+  local hooks_config = opts and opts.hooks or nil
+  require('camouflage.hooks').setup(hooks_config)
+
   require('camouflage.parsers').setup()
 
   local autocmds = require('camouflage.autocmds')
@@ -335,5 +340,34 @@ end
 function M.is_enabled()
   return require('camouflage.config').is_enabled()
 end
+
+-- Event System API
+
+---Register an event listener
+---@param event string Event name: 'before_decorate', 'variable_detected', 'after_decorate'
+---@param callback function Callback function
+---@return number id Listener ID for unregistration
+function M.on(event, callback)
+  return require('camouflage.hooks').on(event, callback)
+end
+
+---Register a one-time event listener
+---@param event string Event name
+---@param callback function Callback function
+---@return number id Listener ID
+function M.once(event, callback)
+  return require('camouflage.hooks').once(event, callback)
+end
+
+---Unregister an event listener
+---@param event string Event name
+---@param id number Listener ID returned from on()
+---@return boolean success Whether the listener was found and removed
+function M.off(event, id)
+  return require('camouflage.hooks').off(event, id)
+end
+
+-- Expose hooks module for advanced usage
+M.hooks = require('camouflage.hooks')
 
 return M
