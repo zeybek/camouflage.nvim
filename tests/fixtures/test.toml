@@ -1,0 +1,12 @@
+[database]
+host = "localhost"
+port = 5432
+password = "super_secret_password"
+
+[api]
+key = "sk-1234567890abcdef"
+secret = "api_secret_value"
+
+[settings]
+debug = true
+max_connections = 100

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "bump-minor-pre-major": true,
+      "bump-patch-for-minor-pre-major": true,
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "lua/camouflage/init.lua",
+          "glob": false
+        },
+        {
+          "type": "generic",
+          "path": "doc/camouflage.txt",
+          "glob": false
+        }
+      ]
+    }
+  }
+}

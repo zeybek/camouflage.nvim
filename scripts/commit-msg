@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Conventional Commits validation hook
+# https://www.conventionalcommits.org/
+
+commit_msg=$(cat "$1")
+
+# Skip merge commits
+if [[ "$commit_msg" =~ ^Merge ]]; then
+  exit 0
+fi
+
+# Conventional commit pattern
+# type(scope)?: subject
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_-]+\))?(!)?: .{1,}$'
+
+if ! [[ "$commit_msg" =~ $pattern ]]; then
+  echo ""
+  echo "ERROR: Commit message does not follow Conventional Commits format."
+  echo ""
+  echo "Format: <type>(<scope>)?: <subject>"
+  echo ""
+  echo "Types:"
+  echo "  feat     - A new feature"
+  echo "  fix      - A bug fix"
+  echo "  docs     - Documentation only changes"
+  echo "  style    - Code style changes (formatting, semicolons, etc)"
+  echo "  refactor - Code change that neither fixes a bug nor adds a feature"
+  echo "  perf     - Performance improvement"
+  echo "  test     - Adding or correcting tests"
+  echo "  build    - Changes to build system or dependencies"
+  echo "  ci       - Changes to CI configuration"
+  echo "  chore    - Other changes that don't modify src or test files"
+  echo "  revert   - Reverts a previous commit"
+  echo ""
+  echo "Examples:"
+  echo "  feat: add new masking style"
+  echo "  fix(parser): handle empty values"
+  echo "  docs: update README"
+  echo ""
+  echo "Your message: $commit_msg"
+  echo ""
+  exit 1
+fi
+
+exit 0

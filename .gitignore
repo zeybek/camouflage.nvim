@@ -1,0 +1,34 @@
+# Lua
+*.luac
+luac.out
+
+# Testing
+luacov.stats.out
+luacov.report.out
+.luacov
+
+# Dependencies
+lua_modules/
+.luarocks/
+
+# Build artifacts
+*.rock
+*.zip
+*.tar.gz
+
+# Editor
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local development
+.local/
+.cache/
+.tests/

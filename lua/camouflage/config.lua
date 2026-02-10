@@ -1,0 +1,202 @@
+---@mod camouflage.config Configuration
+
+local M = {}
+
+---@class CamouflageEnvParserConfig
+---@field include_commented boolean
+---@field include_export boolean
+
+---@class CamouflageJsonParserConfig
+---@field max_depth number
+
+---@class CamouflageYamlParserConfig
+---@field max_depth number
+
+---@class CamouflageParsersConfig
+---@field include_commented boolean
+---@field env CamouflageEnvParserConfig
+---@field json CamouflageJsonParserConfig
+---@field yaml CamouflageYamlParserConfig
+
+---@class CamouflageCmpConfig
+---@field disable_in_masked boolean
+
+---@class CamouflageIntegrationsConfig
+---@field telescope boolean
+---@field cmp CamouflageCmpConfig
+
+---@class CamouflagePatternConfig
+---@field file_pattern string|string[]
+---@field parser string
+
+---@class CamouflageConfig
+---@field enabled boolean
+---@field auto_enable boolean
+---@field style string
+---@field mask_char string
+---@field mask_length number|nil
+---@field max_lines number|nil
+---@field hidden_text string
+---@field highlight_group string
+---@field patterns CamouflagePatternConfig[]
+---@field parsers CamouflageParsersConfig
+---@field integrations CamouflageIntegrationsConfig
+
+---@type CamouflageConfig
+M.defaults = {
+  enabled = true,
+  auto_enable = true,
+  style = 'stars',
+  mask_char = '*',
+  mask_length = nil,
+  max_lines = 5000,
+  hidden_text = '************************',
+  highlight_group = 'Comment',
+  patterns = {
+    { file_pattern = { '.env*', '*.env', '.envrc' }, parser = 'env' },
+    { file_pattern = { '*.sh' }, parser = 'env' },
+    { file_pattern = { '*.json' }, parser = 'json' },
+    { file_pattern = { '*.yaml', '*.yml' }, parser = 'yaml' },
+    { file_pattern = { '*.toml' }, parser = 'toml' },
+    { file_pattern = { '*.properties', '*.ini', '*.conf' }, parser = 'properties' },
+  },
+  parsers = {
+    include_commented = true,
+    env = { include_commented = true, include_export = true },
+    json = { max_depth = 10 },
+    yaml = { max_depth = 10 },
+  },
+  integrations = {
+    telescope = true,
+    cmp = { disable_in_masked = true },
+  },
+}
+
+---@type CamouflageConfig
+M.options = {}
+
+---@param opts CamouflageConfig|nil
+---@return CamouflageConfig|nil
+local function validate_config(opts)
+  if not opts then
+    return opts
+  end
+
+  if opts.style then
+    local styles = require('camouflage.styles')
+    if not styles.is_valid_style(opts.style) then
+      vim.notify(
+        '[camouflage] Invalid style "' .. opts.style .. '", using "stars"',
+        vim.log.levels.WARN
+      )
+      opts.style = nil
+    end
+  end
+
+  if opts.max_lines and (type(opts.max_lines) ~= 'number' or opts.max_lines < 1) then
+    vim.notify('[camouflage] Invalid max_lines, using default', vim.log.levels.WARN)
+    opts.max_lines = nil
+  end
+
+  return opts
+end
+
+---@param opts CamouflageConfig|nil
+function M.setup(opts)
+  M.options = vim.tbl_deep_extend('force', {}, M.defaults, validate_config(opts) or {})
+end
+
+---@return CamouflageConfig
+function M.get()
+  return vim.tbl_isempty(M.options) and M.defaults or M.options
+end
+
+---@param key string
+---@param value any
+function M.set(key, value)
+  local keys = vim.split(key, '.', { plain = true })
+  local tbl = M.options
+  for i = 1, #keys - 1 do
+    tbl = tbl[keys[i]]
+    if tbl == nil then
+      return
+    end
+  end
+  if tbl ~= nil then
+    tbl[keys[#keys]] = value
+  end
+end
+
+---@return boolean
+function M.is_enabled()
+  return M.get().enabled
+end
+
+---@return string
+function M.get_style()
+  return M.get().style
+end
+
+---Get effective configuration for a specific buffer, merging buffer-local overrides
+---Buffer variables supported:
+---  vim.b.camouflage_enabled - boolean
+---  vim.b.camouflage_style - string
+---  vim.b.camouflage_mask_char - string
+---  vim.b.camouflage_mask_length - number
+---  vim.b.camouflage_highlight_group - string
+---@param bufnr number|nil Buffer number (nil for current buffer)
+---@return CamouflageConfig
+function M.get_for_buffer(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  local base_config = M.get()
+
+  -- Check if buffer is valid
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return base_config
+  end
+
+  -- Create a copy of the base config
+  local buf_config = vim.tbl_deep_extend('force', {}, base_config)
+
+  -- Override with buffer-local variables if they exist
+  local ok, buf_enabled = pcall(vim.api.nvim_buf_get_var, bufnr, 'camouflage_enabled')
+  if ok and type(buf_enabled) == 'boolean' then
+    buf_config.enabled = buf_enabled
+  end
+
+  local ok_style, buf_style = pcall(vim.api.nvim_buf_get_var, bufnr, 'camouflage_style')
+  if ok_style and type(buf_style) == 'string' then
+    local styles = require('camouflage.styles')
+    if styles.is_valid_style(buf_style) then
+      buf_config.style = buf_style
+    end
+  end
+
+  local ok_char, buf_mask_char = pcall(vim.api.nvim_buf_get_var, bufnr, 'camouflage_mask_char')
+  if ok_char and type(buf_mask_char) == 'string' and #buf_mask_char > 0 then
+    buf_config.mask_char = buf_mask_char
+  end
+
+  local ok_length, buf_mask_length =
+    pcall(vim.api.nvim_buf_get_var, bufnr, 'camouflage_mask_length')
+  if ok_length and type(buf_mask_length) == 'number' and buf_mask_length > 0 then
+    buf_config.mask_length = buf_mask_length
+  end
+
+  local ok_hl, buf_highlight = pcall(vim.api.nvim_buf_get_var, bufnr, 'camouflage_highlight_group')
+  if ok_hl and type(buf_highlight) == 'string' and #buf_highlight > 0 then
+    buf_config.highlight_group = buf_highlight
+  end
+
+  return buf_config
+end
+
+---Check if masking is enabled for a specific buffer
+---Takes into account both global and buffer-local settings
+---@param bufnr number|nil Buffer number (nil for current buffer)
+---@return boolean
+function M.is_enabled_for_buffer(bufnr)
+  return M.get_for_buffer(bufnr).enabled
+end
+
+return M

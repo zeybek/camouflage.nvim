@@ -1,0 +1,89 @@
+name: Bug Report
+description: Report a bug in camouflage.nvim
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Open a file...
+        2. Run command...
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Minimal configuration
+      description: A minimal Neovim configuration to reproduce the issue
+      render: lua
+      placeholder: |
+        require('camouflage').setup({
+          -- your config
+        })
+    validations:
+      required: false
+
+  - type: input
+    id: nvim-version
+    attributes:
+      label: Neovim version
+      description: Output of `nvim --version`
+      placeholder: "NVIM v0.10.0"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Version or commit hash
+      placeholder: "v0.0.1 or abc1234"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows (WSL)
+        - Windows (native)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any other context, screenshots, or error messages.
+    validations:
+      required: false

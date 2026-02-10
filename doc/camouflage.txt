@@ -1,0 +1,551 @@
+*camouflage.txt*  Hide sensitive values in configuration files
+
+Author:   Ahmet Zeybek
+License:  MIT
+Version:  0.0.1 x-release-please-version
+
+==============================================================================
+CONTENTS                                                  *camouflage-contents*
+
+  1. Introduction ............................ |camouflage-introduction|
+  2. Requirements ............................ |camouflage-requirements|
+  3. Installation ............................ |camouflage-installation|
+  4. Configuration ........................... |camouflage-configuration|
+  5. Commands ................................ |camouflage-commands|
+  6. API ..................................... |camouflage-api|
+  7. Buffer-local Configuration .............. |camouflage-buffer-local|
+  8. Supported Formats ....................... |camouflage-formats|
+  9. Styles .................................. |camouflage-styles|
+ 10. Integrations ............................ |camouflage-integrations|
+ 11. Troubleshooting ......................... |camouflage-troubleshooting|
+
+==============================================================================
+INTRODUCTION                                          *camouflage-introduction*
+
+Camouflage.nvim is a Neovim plugin that visually masks sensitive values in
+configuration files during screen sharing. It uses extmarks to overlay
+masked text without modifying the actual file content.
+
+Features:
+- Multi-format support: .env, .json, .yaml, .toml, .properties
+- Nested key support for JSON and YAML
+- Multiple masking styles: stars, dotted, text, scramble
+- Buffer-local configuration overrides
+- Telescope preview integration
+- Zero file modification
+
+==============================================================================
+REQUIREMENTS                                          *camouflage-requirements*
+
+- Neovim >= 0.9.0
+- Optional: telescope.nvim (for preview masking)
+- Optional: nvim-cmp (for completion disabling in masked buffers)
+- Optional: lualine.nvim (for status component)
+
+==============================================================================
+INSTALLATION                                          *camouflage-installation*
+
+Using lazy.nvim: >lua
+  {
+    'zeybek/camouflage.nvim',
+    event = { 'BufReadPre', 'BufNewFile' },
+    opts = {},
+    keys = {
+      { '<leader>ct', '<cmd>CamouflageToggle<cr>', desc = 'Toggle Camouflage' },
+    },
+  }
+<
+
+Using packer.nvim: >lua
+  use {
+    'zeybek/camouflage.nvim',
+    config = function()
+      require('camouflage').setup()
+    end
+  }
+<
+
+==============================================================================
+CONFIGURATION                                        *camouflage-configuration*
+
+Call the setup function with your options: >lua
+  require('camouflage').setup({
+    -- General
+    enabled = true,              -- Enable camouflage on startup
+    auto_enable = true,          -- Auto-enable on supported files
+    max_lines = 5000,            -- Skip files larger than this
+
+    -- Appearance
+    style = 'stars',             -- 'text' | 'dotted' | 'stars' | 'scramble'
+    mask_char = '*',             -- Character for stars/dotted style
+    mask_length = nil,           -- nil = actual length, number = fixed
+    hidden_text = '************************',  -- For 'text' style
+    highlight_group = 'Comment', -- Highlight group for masked text
+
+    -- Parser settings
+    parsers = {
+      include_commented = true,    -- Include commented lines (all parsers)
+      env = {
+        include_export = true,     -- Include export KEY=value
+      },
+      json = {
+        max_depth = 10,            -- Maximum nesting depth
+      },
+      yaml = {
+        max_depth = 10,            -- Maximum nesting depth
+      },
+    },
+
+    -- Integrations
+    integrations = {
+      telescope = true,           -- Mask in Telescope previews
+      cmp = {
+        disable_in_masked = true, -- Disable completion in masked buffers
+      },
+    },
+  })
+<
+
+                                                   *camouflage-config-options*
+
+enabled ~
+    Type: `boolean`, Default: `true`
+    Enable or disable masking globally.
+
+auto_enable ~
+    Type: `boolean`, Default: `true`
+    Automatically apply masking when entering a supported buffer.
+
+max_lines ~
+    Type: `number`, Default: `5000`
+    Skip masking for files with more lines than this value.
+    Set to `nil` to disable this check.
+
+                                                            *camouflage-style*
+style ~
+    Type: `string`, Default: `'stars'`
+    The masking style to use. See |camouflage-styles| for details.
+
+mask_char ~
+    Type: `string`, Default: `'*'`
+    Character used for 'stars' and 'dotted' styles.
+
+mask_length ~
+    Type: `number|nil`, Default: `nil`
+    Fixed mask length. `nil` uses actual value length.
+
+hidden_text ~
+    Type: `string`, Default: `'************************'`
+    Text shown for 'text' style.
+
+highlight_group ~
+    Type: `string`, Default: `'Comment'`
+    Highlight group applied to masked text.
+
+patterns ~
+    Type: `table[]`
+    File patterns and their associated parsers.
+    See |camouflage-formats| for default patterns.
+
+==============================================================================
+COMMANDS                                                  *camouflage-commands*
+
+                                                          *:CamouflageToggle*
+:CamouflageToggle
+  Toggle camouflage on/off for all buffers.
+
+                                                         *:CamouflageRefresh*
+:CamouflageRefresh
+  Refresh decorations for all visible buffers.
+
+                                                          *:CamouflageStatus*
+:CamouflageStatus
+  Show camouflage status including:
+  - Global enabled/disabled state
+  - Current buffer mask state
+  - Parser used for current file
+  - Number of masked values
+
+==============================================================================
+API                                                            *camouflage-api*
+
+                                                           *camouflage.setup()*
+camouflage.setup({opts})
+  Initialize the plugin with the given options.
+
+  Parameters: ~
+    {opts}  (optional) Configuration table. See |camouflage-configuration|.
+
+                                                          *camouflage.toggle()*
+camouflage.toggle()
+  Toggle camouflage on/off.
+
+                                                          *camouflage.enable()*
+camouflage.enable()
+  Enable camouflage.
+
+                                                         *camouflage.disable()*
+camouflage.disable()
+  Disable camouflage and clear all decorations.
+
+                                                      *camouflage.is_enabled()*
+camouflage.is_enabled()
+  Returns `true` if camouflage is enabled, `false` otherwise.
+
+                                                         *camouflage.refresh()*
+camouflage.refresh()
+  Refresh decorations for all visible buffers.
+
+                                                         *camouflage.version*
+camouflage.version
+  String containing the current plugin version.
+
+==============================================================================
+BUFFER-LOCAL CONFIGURATION                             *camouflage-buffer-local*
+
+You can override global configuration for specific buffers using buffer
+variables. These settings take precedence over global configuration.
+
+                                                      *b:camouflage_enabled*
+vim.b.camouflage_enabled ~
+    Type: `boolean`
+    Override global enabled state for this buffer.
+>lua
+    vim.b.camouflage_enabled = false  -- Disable for this buffer only
+<
+
+                                                        *b:camouflage_style*
+vim.b.camouflage_style ~
+    Type: `string`
+    Override masking style for this buffer.
+>lua
+    vim.b.camouflage_style = 'dotted'
+<
+
+                                                    *b:camouflage_mask_char*
+vim.b.camouflage_mask_char ~
+    Type: `string`
+    Override mask character for this buffer.
+>lua
+    vim.b.camouflage_mask_char = '#'
+<
+
+                                                  *b:camouflage_mask_length*
+vim.b.camouflage_mask_length ~
+    Type: `number`
+    Override mask length for this buffer.
+>lua
+    vim.b.camouflage_mask_length = 8
+<
+
+                                               *b:camouflage_highlight_group*
+vim.b.camouflage_highlight_group ~
+    Type: `string`
+    Override highlight group for this buffer.
+>lua
+    vim.b.camouflage_highlight_group = 'NonText'
+<
+
+Example: Project-specific settings ~
+
+Use autocommands to apply buffer-local settings for specific projects:
+>lua
+    -- Use scramble style for production env files
+    vim.api.nvim_create_autocmd('BufEnter', {
+      pattern = '*/production/.env*',
+      callback = function()
+        vim.b.camouflage_style = 'scramble'
+        vim.b.camouflage_highlight_group = 'ErrorMsg'
+      end,
+    })
+
+    -- Disable masking for test fixtures
+    vim.api.nvim_create_autocmd('BufEnter', {
+      pattern = '*/tests/fixtures/*',
+      callback = function()
+        vim.b.camouflage_enabled = false
+      end,
+    })
+<
+
+Note: After setting buffer variables, call `:CamouflageRefresh` to apply
+the changes immediately.
+
+==============================================================================
+SUPPORTED FORMATS                                          *camouflage-formats*
+
+Camouflage supports the following file formats:
+
+Format          Extensions                      Nested Keys ~
+Environment     .env, .env.*, .envrc            No
+Shell           .sh                             No
+JSON            .json                           Yes
+YAML            .yaml, .yml                     Yes
+TOML            .toml                           Yes (sections)
+Properties      .properties, .ini, .conf        Yes (sections)
+
+Environment files ~
+  Extensions: .env, .env.*, .envrc, .sh
+  Example: >
+    API_KEY=secret123
+    export DATABASE_URL=postgres://user:pass@localhost/db
+<
+
+JSON files ~
+  Extensions: .json
+  Supports nested keys like `database.connection.password`
+  Example: >json
+    {
+      "database": {
+        "password": "secret123"
+      }
+    }
+<
+
+YAML files ~
+  Extensions: .yaml, .yml
+  Supports nested keys and multi-line strings
+  Example: >yaml
+    database:
+      password: secret123
+      certificate: |
+        -----BEGIN CERTIFICATE-----
+        MIIBkTCB+wIJAKHBfpE...
+        -----END CERTIFICATE-----
+<
+
+TOML files ~
+  Extensions: .toml
+  Supports sections
+  Example: >toml
+    [database]
+    password = "secret123"
+<
+
+Properties files ~
+  Extensions: .properties, .ini, .conf
+  Supports sections
+  Example: >properties
+    [database]
+    password=secret123
+<
+
+                                                     *camouflage-custom-parser*
+Custom Patterns ~
+
+You can add custom file patterns in your configuration:
+>lua
+  require('camouflage').setup({
+    patterns = {
+      { file_pattern = { '.env*', '*.env' }, parser = 'env' },
+      { file_pattern = { '*.secrets' }, parser = 'env' },
+      -- Add your custom patterns here
+    },
+  })
+<
+
+==============================================================================
+STYLES                                                      *camouflage-styles*
+
+Camouflage provides four masking styles:
+
+                                                       *camouflage-style-stars*
+stars ~
+  Replaces values with asterisks.
+  Example: `API_KEY=sk-1234` -> `API_KEY=********`
+  The mask character can be customized with `mask_char`.
+
+                                                      *camouflage-style-dotted*
+dotted ~
+  Replaces values with bullet points (U+2022).
+  Example: `API_KEY=sk-1234` -> `API_KEY=........`
+
+                                                        *camouflage-style-text*
+text ~
+  Replaces values with a fixed text string.
+  Example: `API_KEY=sk-1234` -> `API_KEY=************************`
+  The text can be customized with `hidden_text`.
+
+                                                    *camouflage-style-scramble*
+scramble ~
+  Deterministically shuffles characters while preserving first and last.
+  Example: `API_KEY=sk-1234` -> `API_KEY=s1-k324`
+  Same input always produces the same output.
+
+==============================================================================
+INTEGRATIONS                                          *camouflage-integrations*
+
+                                                       *camouflage-telescope*
+Telescope ~
+
+When enabled, camouflage automatically masks values in Telescope preview
+buffers for supported file types.
+>lua
+  require('camouflage').setup({
+    integrations = {
+      telescope = true,  -- default
+    },
+  })
+<
+
+                                                        *camouflage-nvim-cmp*
+nvim-cmp ~
+
+When enabled, camouflage disables completion in masked buffers to prevent
+accidental exposure of sensitive values in completion menu.
+>lua
+  require('camouflage').setup({
+    integrations = {
+      cmp = {
+        disable_in_masked = true,  -- default
+      },
+    },
+  })
+<
+
+                                                         *camouflage-lualine*
+Lualine ~
+
+Camouflage provides a built-in lualine component: >lua
+  require('lualine').setup({
+    sections = {
+      lualine_x = { 'camouflage' },
+    },
+  })
+<
+
+With custom options: >lua
+  require('lualine').setup({
+    sections = {
+      lualine_x = {
+        {
+          'camouflage',
+          icon_enabled = '',    -- Icon when enabled (default)
+          icon_disabled = '',   -- Icon when disabled
+          show_disabled = false, -- Show icon when disabled
+          show_count = false,    -- Show masked values count
+        },
+      },
+    },
+  })
+<
+
+Example with count: ` 12` - Showing 12 masked values
+
+==============================================================================
+TROUBLESHOOTING                                     *camouflage-troubleshooting*
+
+This section covers common issues and their solutions.
+
+Masking not working ~
+                                                 *camouflage-not-working*
+1. Check if the plugin is enabled:
+   `:CamouflageStatus`
+
+2. Verify the file type is supported:
+   `:echo expand('%:e')`
+
+3. Check if file exceeds max_lines:
+   `:echo line('$')`
+
+4. Ensure setup() was called:
+>lua
+   :lua print(require('camouflage').is_enabled())
+<
+
+Values not being detected ~
+                                              *camouflage-values-not-detected*
+1. Check parser configuration:
+>lua
+   :lua print(vim.inspect(require('camouflage.config').get().parsers))
+<
+
+2. For env files, ensure proper format:
+   `KEY=value` or `export KEY=value`
+
+3. For YAML/JSON, check nesting depth isn't exceeded (default: 10)
+
+4. Ensure values are not empty
+
+Performance issues ~
+                                              *camouflage-performance-issues*
+1. Reduce max_lines for large files:
+>lua
+   require('camouflage').setup({ max_lines = 1000 })
+<
+
+2. Disable auto_enable and toggle manually:
+>lua
+   require('camouflage').setup({ auto_enable = false })
+<
+
+3. For very large files, consider disabling specific buffers:
+>lua
+   vim.b.camouflage_enabled = false
+<
+
+Telescope preview not masked ~
+                                                *camouflage-telescope-preview*
+1. Ensure telescope integration is enabled (default):
+>lua
+   require('camouflage').setup({
+     integrations = { telescope = true },
+   })
+<
+
+2. Check if telescope.nvim is installed and loaded before camouflage
+
+Buffer-local settings not applying ~
+                                              *camouflage-buffer-local-issues*
+1. Ensure buffer variables are set before entering the buffer or
+   call `:CamouflageRefresh` after setting them.
+
+2. Check variable names are correct:
+   `vim.b.camouflage_enabled` (not `vim.b.camouflage.enabled`)
+
+3. Verify the variable is set:
+>lua
+   :lua print(vim.b.camouflage_enabled)
+<
+
+Extmarks conflicting with other plugins ~
+                                                *camouflage-extmark-conflicts*
+Camouflage uses its own namespace. If you see conflicts:
+
+1. Check if other plugins are clearing all extmarks in the buffer
+
+2. Try refreshing camouflage after the other plugin:
+>lua
+   vim.schedule(function()
+     require('camouflage').refresh()
+   end)
+<
+
+3. Report issues at:
+   https://github.com/zeybek/camouflage.nvim/issues
+
+Debug mode ~
+                                                         *camouflage-debug*
+To see parsed variables for debugging:
+>lua
+   :lua print(vim.inspect(require('camouflage.state').get_variables(0)))
+<
+
+To check buffer state:
+>lua
+   :lua print(vim.inspect(require('camouflage.state').get_buffer(0)))
+<
+
+To see current configuration:
+>lua
+   :lua print(vim.inspect(require('camouflage.config').get()))
+<
+
+Getting help ~
+                                                          *camouflage-help*
+- GitHub Issues: https://github.com/zeybek/camouflage.nvim/issues
+- Check existing issues before creating new ones
+- Include `:CamouflageStatus` output in bug reports
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:

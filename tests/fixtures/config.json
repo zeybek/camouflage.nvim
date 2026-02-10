@@ -1,0 +1,18 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "connection": {
+      "username": "admin",
+      "password": "db_secret_123"
+    }
+  },
+  "api": {
+    "key": "api-key-value-here",
+    "secret": "api-secret-value"
+  },
+  "app": {
+    "name": "MyApp",
+    "version": "1.0.0"
+  }
+}

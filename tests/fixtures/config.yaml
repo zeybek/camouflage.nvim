@@ -1,0 +1,21 @@
+# Test YAML configuration
+
+database:
+  host: localhost
+  port: 5432
+  credentials:
+    username: admin
+    password: yaml_secret_password
+
+api:
+  endpoint: https://api.example.com
+  key: my-api-key-12345
+  token: bearer-token-secret
+
+redis:
+  url: redis://localhost:6379
+  password: redis_password_here
+
+app:
+  name: TestApp
+  debug: true
