@@ -370,4 +370,7 @@ end
 -- Expose hooks module for advanced usage
 M.hooks = require('camouflage.hooks')
 
+-- Yank API
+M.yank = require('camouflage.yank')
+
 return M

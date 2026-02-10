@@ -32,6 +32,8 @@ M.EVENTS = {
   BEFORE_DECORATE = 'before_decorate',
   VARIABLE_DETECTED = 'variable_detected',
   AFTER_DECORATE = 'after_decorate',
+  BEFORE_YANK = 'before_yank',
+  AFTER_YANK = 'after_yank',
 }
 
 -- Autocmd event names (for User events)

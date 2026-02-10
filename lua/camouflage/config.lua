@@ -40,6 +40,13 @@ local M = {}
 ---@field on_variable_detected? fun(bufnr: number, var: ParsedVariable): boolean|nil
 ---@field on_after_decorate? fun(bufnr: number, variables: ParsedVariable[]): nil
 
+---@class CamouflageYankConfig
+---@field default_register string Default register ('+' for system clipboard)
+---@field notify boolean Show notification after copy
+---@field auto_clear_seconds number|nil Seconds before auto-clearing clipboard (nil = disabled)
+---@field confirm boolean Require confirmation before copying
+---@field confirm_message string Confirmation message format
+
 ---@class CamouflageConfig
 ---@field enabled boolean
 ---@field auto_enable boolean
@@ -54,6 +61,7 @@ local M = {}
 ---@field parsers CamouflageParsersConfig
 ---@field integrations CamouflageIntegrationsConfig
 ---@field hooks CamouflageHooksConfig|nil
+---@field yank CamouflageYankConfig|nil Yank configuration
 
 ---@type CamouflageConfig
 M.defaults = {
@@ -86,6 +94,13 @@ M.defaults = {
     cmp = { disable_in_masked = true },
   },
   hooks = nil,
+  yank = {
+    default_register = '+',
+    notify = true,
+    auto_clear_seconds = 30,
+    confirm = true,
+    confirm_message = 'Copy value of "%s" to clipboard?',
+  },
 }
 
 ---@type CamouflageConfig

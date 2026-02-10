@@ -35,6 +35,18 @@ function M.setup()
     }
     vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
   end, { desc = 'Show Camouflage status' })
+
+  vim.api.nvim_create_user_command('CamouflageYank', function(opts)
+    local yank = require('camouflage.yank')
+    yank.yank({
+      force_picker = opts.bang,
+      register = opts.args ~= '' and opts.args or nil,
+    })
+  end, {
+    desc = 'Copy unmasked value to clipboard',
+    bang = true,
+    nargs = '?',
+  })
 end
 
 return M
