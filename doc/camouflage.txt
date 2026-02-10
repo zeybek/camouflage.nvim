@@ -1,4 +1,4 @@
-*camouflage.txt*  Hide sensitive values in configuration files
+*camouflage.txt* *camouflage* *camouflage.nvim*  Hide sensitive values in configuration files
 
 Author:   Ahmet Zeybek
 License:  MIT
