@@ -2,7 +2,7 @@
 
 Hide sensitive values in configuration files during screen sharing.
 
-A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, and `.properties` files using extmarks - **without modifying the actual file content**.
+A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, `.properties`, and `.netrc` files using extmarks - **without modifying the actual file content**.
 
 [![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
@@ -15,7 +15,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 
 ## Features
 
-- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`
+- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`
 - **Nested key support**: Handles `database.connection.password` in JSON/YAML
 - **All value types**: Masks strings, numbers, and booleans
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
@@ -121,6 +121,7 @@ vim.keymap.set('n', '<leader>ct', '<cmd>CamouflageToggle<cr>', { desc = 'Toggle 
 | YAML        | `.yaml`, `.yml`                   | Yes            |
 | TOML        | `.toml`                           | Yes (sections) |
 | Properties  | `.properties`, `.ini`, `.conf`    | Yes (sections) |
+| Netrc       | `.netrc`, `_netrc`                | No             |
 
 ## API
 

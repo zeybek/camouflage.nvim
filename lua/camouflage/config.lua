@@ -67,6 +67,7 @@ M.defaults = {
     { file_pattern = { '*.yaml', '*.yml' }, parser = 'yaml' },
     { file_pattern = { '*.toml' }, parser = 'toml' },
     { file_pattern = { '*.properties', '*.ini', '*.conf' }, parser = 'properties' },
+    { file_pattern = { '.netrc', '_netrc' }, parser = 'netrc' },
   },
   parsers = {
     include_commented = true,

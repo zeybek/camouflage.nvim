@@ -27,7 +27,7 @@ configuration files during screen sharing. It uses extmarks to overlay
 masked text without modifying the actual file content.
 
 Features:
-- Multi-format support: .env, .json, .yaml, .toml, .properties
+- Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc
 - Nested key support for JSON and YAML
 - Multiple masking styles: stars, dotted, text, scramble
 - Buffer-local configuration overrides
@@ -309,6 +309,7 @@ JSON            .json                           Yes
 YAML            .yaml, .yml                     Yes
 TOML            .toml                           Yes (sections)
 Properties      .properties, .ini, .conf        Yes (sections)
+Netrc           .netrc, _netrc                  No
 
 Environment files ~
   Extensions: .env, .env.*, .envrc, .sh
@@ -354,6 +355,17 @@ Properties files ~
   Example: >properties
     [database]
     password=secret123
+<
+
+Netrc files ~
+  Extensions: .netrc, _netrc
+  Masks login, password, and account values
+  Example: >
+    machine github.com
+    login myusername
+    password ghp_xxxxxxxxxxxx
+
+    machine gitlab.com login oauth2 password glpat-xxxxx
 <
 
                                                      *camouflage-custom-parser*
