@@ -47,6 +47,46 @@ describe('camouflage.config', function()
       config.set('integrations.telescope', false)
       assert.is_false(config.get().integrations.telescope)
     end)
+
+    it('should call refresh_all when value changes (hot reload)', function()
+      config.setup({ style = 'stars' })
+
+      local core = require('camouflage.core')
+      local refresh_called = false
+      local original_refresh = core.refresh_all
+      core.refresh_all = function()
+        refresh_called = true
+      end
+
+      config.set('style', 'dotted')
+
+      vim.wait(100, function()
+        return refresh_called
+      end)
+
+      assert.is_true(refresh_called)
+      core.refresh_all = original_refresh
+    end)
+
+    it('should NOT call refresh_all when value is same', function()
+      config.setup({ style = 'stars' })
+
+      local core = require('camouflage.core')
+      local refresh_called = false
+      local original_refresh = core.refresh_all
+      core.refresh_all = function()
+        refresh_called = true
+      end
+
+      config.set('style', 'stars') -- Same value
+
+      vim.wait(50, function()
+        return refresh_called
+      end)
+
+      assert.is_false(refresh_called)
+      core.refresh_all = original_refresh
+    end)
   end)
 
   describe('get_style', function()

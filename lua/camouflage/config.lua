@@ -132,7 +132,22 @@ function M.set(key, value)
     end
   end
   if tbl ~= nil then
-    tbl[keys[#keys]] = value
+    local last_key = keys[#keys]
+    local old_value = tbl[last_key]
+
+    -- Only update and refresh if value actually changed
+    if old_value ~= value then
+      tbl[last_key] = value
+
+      -- Hot reload: refresh all buffers when config changes
+      -- Use vim.schedule to avoid issues during startup
+      vim.schedule(function()
+        local ok, core = pcall(require, 'camouflage.core')
+        if ok and core.refresh_all then
+          core.refresh_all()
+        end
+      end)
+    end
   end
 end
 
