@@ -137,7 +137,7 @@ password mixedsecret
     end)
 
     it('should handle tabs as separators', function()
-      local content = "machine\tserver.com\tlogin\tuser\tpassword\tsecret"
+      local content = 'machine\tserver.com\tlogin\tuser\tpassword\tsecret'
       local result = netrc_parser.parse(content)
 
       assert.equals(2, #result)
