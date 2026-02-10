@@ -3,9 +3,26 @@
 local M = {}
 
 ---@param content string
+---@param bufnr number|nil Buffer number for TreeSitter parsing
+---@return ParsedVariable[]
+function M.parse(content, bufnr)
+  -- Try TreeSitter first if buffer is provided
+  if bufnr then
+    local ts = require('camouflage.treesitter')
+    local variables = ts.parse(bufnr, 'toml', content)
+    if variables then
+      return variables
+    end
+  end
+
+  -- Fallback to regex-based parsing
+  return M.parse_regex(content)
+end
+
+---@param content string
 ---@param lines? string[] Optional pre-split lines
 ---@return ParsedVariable[]
-function M.parse(content, lines)
+function M.parse_regex(content, lines)
   local variables = {}
   local config = require('camouflage.config').get()
   local include_commented = config.parsers.include_commented

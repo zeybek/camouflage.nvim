@@ -3,14 +3,14 @@
 local M = {}
 
 ---@param content string
----@param lines? string[] Optional pre-split lines
+---@param _bufnr number|nil Buffer number (unused, no TreeSitter support for .properties)
 ---@return ParsedVariable[]
-function M.parse(content, lines)
+function M.parse(content, _bufnr)
   local variables = {}
   local config = require('camouflage.config').get()
   local include_commented = config.parsers.include_commented
 
-  lines = lines or vim.split(content, '\n', { plain = true })
+  local lines = vim.split(content, '\n', { plain = true })
   local current_section = ''
   local current_index = 0
 

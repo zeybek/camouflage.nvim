@@ -55,7 +55,7 @@ function M.apply_decorations(bufnr, override_filename)
     return
   end
 
-  local variables = parsers.parse(filename, content, lines, parser, parser_name)
+  local variables = parsers.parse(filename, content, bufnr, parser, parser_name)
   if #variables == 0 then
     return
   end

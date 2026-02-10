@@ -28,9 +28,9 @@ local function parse_quoted(str)
 end
 
 ---@param content string
----@param _ string[]|nil Optional pre-split lines (unused, for API compatibility)
+---@param _bufnr number|nil Buffer number (unused, no TreeSitter support for .netrc)
 ---@return ParsedVariable[]
-function M.parse(content, _)
+function M.parse(content, _bufnr)
   local variables = {}
 
   -- Track position in content

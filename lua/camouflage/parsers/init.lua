@@ -94,11 +94,11 @@ end
 
 ---@param filename string
 ---@param content string
----@param lines string[]|nil Pre-split lines to avoid re-splitting in parsers
+---@param bufnr number|nil Buffer number for TreeSitter parsing
 ---@param parser table|nil Pre-resolved parser to skip lookup
 ---@param parser_name string|nil Parser name for error messages
 ---@return ParsedVariable[]
-function M.parse(filename, content, lines, parser, parser_name)
+function M.parse(filename, content, bufnr, parser, parser_name)
   -- If parser not provided, look it up (backward compatibility)
   if not parser then
     parser, parser_name = M.find_parser_for_file(filename)
@@ -107,13 +107,8 @@ function M.parse(filename, content, lines, parser, parser_name)
     end
   end
 
-  -- Call parser with lines if it supports them, otherwise just content
-  local ok, result
-  if parser.parse_with_lines then
-    ok, result = pcall(parser.parse_with_lines, content, lines)
-  else
-    ok, result = pcall(parser.parse, content, lines)
-  end
+  -- Call parser with bufnr for TreeSitter support
+  local ok, result = pcall(parser.parse, content, bufnr)
 
   if not ok then
     vim.notify(

@@ -6,8 +6,25 @@ local M = {}
 local islist = vim.islist or vim.tbl_islist
 
 ---@param content string
+---@param bufnr number|nil Buffer number for TreeSitter parsing
 ---@return ParsedVariable[]
-function M.parse(content)
+function M.parse(content, bufnr)
+  -- Try TreeSitter first if buffer is provided
+  if bufnr then
+    local ts = require('camouflage.treesitter')
+    local variables = ts.parse(bufnr, 'json', content)
+    if variables then
+      return variables
+    end
+  end
+
+  -- Fallback to regex-based parsing
+  return M.parse_regex(content)
+end
+
+---@param content string
+---@return ParsedVariable[]
+function M.parse_regex(content)
   local variables = {}
   local max_depth = require('camouflage.config').get().parsers.json.max_depth
 
@@ -17,7 +34,7 @@ function M.parse(content)
     local key_positions = {}
     M.extract_variables(parsed, content, '', 0, max_depth, variables, key_positions)
   else
-    M.parse_with_regex(content, variables)
+    M.parse_with_pattern(content, variables)
   end
 
   return variables
@@ -144,7 +161,7 @@ end
 
 ---@param content string
 ---@param variables ParsedVariable[]
-function M.parse_with_regex(content, variables)
+function M.parse_with_pattern(content, variables)
   local current_pos = 1
 
   while current_pos <= #content do

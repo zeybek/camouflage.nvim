@@ -3,12 +3,12 @@
 local M = {}
 
 ---@param content string
----@param lines? string[] Optional pre-split lines
+---@param _bufnr number|nil Buffer number (unused, no TreeSitter support for .env)
 ---@return ParsedVariable[]
-function M.parse(content, lines)
+function M.parse(content, _bufnr)
   local variables = {}
   local parser_config = require('camouflage.config').get().parsers.env
-  lines = lines or vim.split(content, '\n', { plain = true })
+  local lines = vim.split(content, '\n', { plain = true })
   local current_index = 0
 
   for line_num, line in ipairs(lines) do
