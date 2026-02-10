@@ -29,7 +29,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 ```lua
 {
   'zeybek/camouflage.nvim',
-  event = { 'BufReadPre', 'BufNewFile' },
+  event = 'VeryLazy',
   opts = {},
   keys = {
     { '<leader>ct', '<cmd>CamouflageToggle<cr>', desc = 'Toggle Camouflage' },
