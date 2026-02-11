@@ -56,6 +56,19 @@ local M = {}
 ---@field notify? boolean Show notification on reveal/hide
 ---@field follow_cursor? boolean Auto-reveal current line as cursor moves (default: false)
 
+---@class CamouflagePwnedConfig
+---@field enabled? boolean Feature toggle (default: true)
+---@field auto_check? boolean Check on BufEnter (default: false)
+---@field check_on_save? boolean Check on BufWritePost (default: false)
+---@field show_sign? boolean Show sign column indicator (default: true)
+---@field show_virtual_text? boolean Show virtual text (default: true)
+---@field show_line_highlight? boolean Highlight the line (default: true)
+---@field sign_text? string Sign icon (default: "⚠")
+---@field sign_hl? string Sign highlight group (default: "DiagnosticWarn")
+---@field virtual_text_format? string Virtual text format (default: "PWNED (%s)")
+---@field virtual_text_hl? string Virtual text highlight (default: "DiagnosticWarn")
+---@field line_hl? string Line highlight group (default: "CamouflagePwned")
+
 ---@class CamouflageConfig
 ---@field enabled? boolean
 ---@field debug? boolean Enable debug logging (default: false)
@@ -73,6 +86,7 @@ local M = {}
 ---@field hooks? CamouflageHooksConfig|nil
 ---@field yank? CamouflageYankConfig|nil Yank configuration
 ---@field reveal? CamouflageRevealConfig|nil Reveal configuration
+---@field pwned? CamouflagePwnedConfig Pwned passwords check configuration
 
 ---@type CamouflageConfig
 M.defaults = {
@@ -118,6 +132,19 @@ M.defaults = {
     highlight_group = 'CamouflageRevealed',
     notify = false,
     follow_cursor = false,
+  },
+  pwned = {
+    enabled = true,
+    auto_check = false,
+    check_on_save = false,
+    show_sign = true,
+    show_virtual_text = true,
+    show_line_highlight = true,
+    sign_text = '⚠',
+    sign_hl = 'DiagnosticWarn',
+    virtual_text_format = 'PWNED (%s)',
+    virtual_text_hl = 'DiagnosticWarn',
+    line_hl = 'CamouflagePwned',
   },
 }
 

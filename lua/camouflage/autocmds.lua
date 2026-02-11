@@ -82,6 +82,44 @@ function M.setup()
       core.refresh_all()
     end,
   })
+
+  -- Pwned auto-check on BufEnter
+  local cfg = config.get()
+  local pwned_cfg = cfg.pwned or {}
+  if pwned_cfg.enabled and pwned_cfg.auto_check then
+    vim.api.nvim_create_autocmd('BufEnter', {
+      group = group,
+      pattern = all_patterns,
+      callback = function(args)
+        if vim.api.nvim_buf_is_valid(args.buf) then
+          vim.schedule(function()
+            local pwned = require('camouflage.pwned')
+            if pwned.is_available() then
+              pwned.on_buf_enter(args.buf)
+            end
+          end)
+        end
+      end,
+    })
+  end
+
+  -- Pwned check on save
+  if pwned_cfg.enabled and pwned_cfg.check_on_save then
+    vim.api.nvim_create_autocmd('BufWritePost', {
+      group = group,
+      pattern = all_patterns,
+      callback = function(args)
+        if vim.api.nvim_buf_is_valid(args.buf) then
+          vim.schedule(function()
+            local pwned = require('camouflage.pwned')
+            if pwned.is_available() then
+              pwned.on_buf_write(args.buf)
+            end
+          end)
+        end
+      end,
+    })
+  end
 end
 
 ---Disable all camouflage autocommands

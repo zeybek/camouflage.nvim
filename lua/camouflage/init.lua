@@ -321,6 +321,12 @@ function M.setup(opts)
   setup_integrations()
   autocmds.apply_to_loaded_buffers()
 
+  -- Setup pwned feature
+  local pwned_ok, pwned = pcall(require, 'camouflage.pwned')
+  if pwned_ok then
+    pwned.setup()
+  end
+
   initialized = true
 
   -- Auto-start follow cursor mode if configured
@@ -433,6 +439,27 @@ end
 ---@return boolean
 function M.is_follow_cursor_enabled()
   return require('camouflage.reveal').is_follow_cursor_enabled()
+end
+
+-- Pwned password check API
+M.pwned_check = function()
+  return require('camouflage.pwned').check_current()
+end
+
+M.pwned_check_line = function()
+  return require('camouflage.pwned').check_line()
+end
+
+M.pwned_check_buffer = function()
+  return require('camouflage.pwned').check_buffer()
+end
+
+M.pwned_clear = function()
+  return require('camouflage.pwned').clear()
+end
+
+M.pwned_is_available = function()
+  return require('camouflage.pwned').is_available()
 end
 
 return M

@@ -71,6 +71,27 @@ function M.setup()
     desc = 'Toggle follow cursor mode (auto-reveal current line)',
     bang = true,
   })
+
+  -- Pwned password check commands
+  vim.api.nvim_create_user_command('CamouflagePwnedCheck', function()
+    require('camouflage.pwned').check_current()
+  end, { desc = 'Check if value under cursor is pwned' })
+
+  vim.api.nvim_create_user_command('CamouflagePwnedCheckLine', function()
+    require('camouflage.pwned').check_line()
+  end, { desc = 'Check all values on current line' })
+
+  vim.api.nvim_create_user_command('CamouflagePwnedCheckBuffer', function()
+    require('camouflage.pwned').check_buffer()
+  end, { desc = 'Check all values in buffer' })
+
+  vim.api.nvim_create_user_command('CamouflagePwnedClear', function()
+    require('camouflage.pwned').clear()
+  end, { desc = 'Clear pwned indicators from buffer' })
+
+  vim.api.nvim_create_user_command('CamouflagePwnedClearCache', function()
+    require('camouflage.pwned').clear_cache()
+  end, { desc = 'Clear pwned check cache' })
 end
 
 return M
