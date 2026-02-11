@@ -2,12 +2,14 @@
 
 local M = {}
 
+local config = require('camouflage.config')
+
 ---@param content string
 ---@param _bufnr number|nil Buffer number (unused, no TreeSitter support for .env)
 ---@return ParsedVariable[]
 function M.parse(content, _bufnr)
   local variables = {}
-  local parser_config = require('camouflage.config').get().parsers.env
+  local parser_config = config.get().parsers.env
   local lines = vim.split(content, '\n', { plain = true })
   local current_index = 0
 

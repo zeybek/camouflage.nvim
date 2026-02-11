@@ -2,6 +2,8 @@
 
 local M = {}
 
+local config = require('camouflage.config')
+
 -- Compatibility: vim.islist was added in Neovim 0.10, use vim.tbl_islist for 0.9.x
 local islist = vim.islist or vim.tbl_islist
 
@@ -26,7 +28,7 @@ end
 ---@return ParsedVariable[]
 function M.parse_regex(content)
   local variables = {}
-  local max_depth = require('camouflage.config').get().parsers.json.max_depth
+  local max_depth = config.get().parsers.json.max_depth
 
   local ok, parsed = pcall(vim.json.decode, content)
   if ok and parsed then

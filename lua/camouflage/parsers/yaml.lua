@@ -2,6 +2,8 @@
 
 local M = {}
 
+local config = require('camouflage.config')
+
 ---@class MultiLineState
 ---@field key string The full key path for the multi-line value
 ---@field indent number The base indentation for content lines
@@ -33,9 +35,9 @@ end
 ---@return ParsedVariable[]
 function M.parse_regex(content, lines)
   local variables = {}
-  local config = require('camouflage.config').get()
-  local max_depth = config.parsers.yaml.max_depth
-  local include_commented = config.parsers.include_commented
+  local cfg = config.get()
+  local max_depth = cfg.parsers.yaml.max_depth
+  local include_commented = cfg.parsers.include_commented
 
   lines = lines or vim.split(content, '\n', { plain = true })
   local key_stack = {}

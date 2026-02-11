@@ -2,6 +2,8 @@
 
 local M = {}
 
+local config = require('camouflage.config')
+
 ---@class ParsedVariable
 ---@field key string
 ---@field value string
@@ -38,10 +40,10 @@ function M.find_parser_for_file(filename)
     return parser_cache.parser, parser_cache.parser_name
   end
 
-  local config = require('camouflage.config').get()
+  local cfg = config.get()
   local basename = vim.fn.fnamemodify(filename, ':t')
 
-  for _, pattern_config in ipairs(config.patterns) do
+  for _, pattern_config in ipairs(cfg.patterns) do
     local patterns = pattern_config.file_pattern
     if type(patterns) == 'string' then
       patterns = { patterns }

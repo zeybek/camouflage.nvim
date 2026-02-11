@@ -2,6 +2,8 @@
 
 local M = {}
 
+local config = require('camouflage.config')
+
 ---@param content string
 ---@param bufnr number|nil Buffer number for TreeSitter parsing
 ---@return ParsedVariable[]
@@ -24,8 +26,8 @@ end
 ---@return ParsedVariable[]
 function M.parse_regex(content, lines)
   local variables = {}
-  local config = require('camouflage.config').get()
-  local include_commented = config.parsers.include_commented
+  local cfg = config.get()
+  local include_commented = cfg.parsers.include_commented
 
   lines = lines or vim.split(content, '\n', { plain = true })
   local current_section = ''
