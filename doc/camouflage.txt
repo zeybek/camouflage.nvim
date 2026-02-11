@@ -15,10 +15,11 @@ CONTENTS                                                  *camouflage-contents*
   6. API ..................................... |camouflage-api|
   7. Buffer-local Configuration .............. |camouflage-buffer-local|
   8. Supported Formats ....................... |camouflage-formats|
-  9. Styles .................................. |camouflage-styles|
- 10. Integrations ............................ |camouflage-integrations|
- 11. Have I Been Pwned ....................... |camouflage-pwned|
- 12. Troubleshooting ......................... |camouflage-troubleshooting|
+  9. Custom Patterns ......................... |camouflage-custom-patterns|
+ 10. Styles .................................. |camouflage-styles|
+ 11. Integrations ............................ |camouflage-integrations|
+ 12. Have I Been Pwned ....................... |camouflage-pwned|
+ 13. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -28,7 +29,7 @@ configuration files during screen sharing. It uses extmarks to overlay
 masked text without modifying the actual file content.
 
 Features:
-- Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc, .xml
+- Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc, .xml, .http
 - Nested key support for JSON, YAML, and XML
 - Multiple masking styles: stars, dotted, text, scramble
 - Have I Been Pwned integration for password breach checking
@@ -372,6 +373,7 @@ Properties      .properties, .ini, .conf,       Yes (sections)
                 credentials
 Netrc           .netrc, _netrc                  No
 XML             .xml                            Yes
+HTTP            .http                           No
 
 Environment files ~
   Extensions: .env, .env.*, .envrc, .sh
@@ -445,8 +447,22 @@ XML files ~
     </settings>
 <
 
+HTTP files ~
+  Extensions: .http
+  REST client format used by Kulala.nvim and similar tools
+  Masks variable declarations: @variable_name = value
+  Example: >http
+    @api_key = sk-live-abc123xyz789
+    @db_password = SuperSecret123!
+    @base_url = https://api.example.com
+
+    ### Get Users
+    GET {{base_url}}/users
+    Authorization: Bearer {{api_key}}
+<
+
                                                      *camouflage-custom-parser*
-Custom Patterns ~
+Custom File Patterns ~
 
 You can add custom file patterns in your configuration:
 >lua
@@ -458,6 +474,67 @@ You can add custom file patterns in your configuration:
     },
   })
 <
+
+                                                   *camouflage-custom-patterns*
+Custom Patterns API ~
+
+For file types not supported by built-in parsers, you can define custom
+patterns using Lua patterns:
+>lua
+  require('camouflage').setup({
+    custom_patterns = {
+      {
+        file_pattern = { '*.myconfig' },  -- Glob pattern(s) for file matching
+        pattern = '@([%w_]+)%s*=%s*(.+)', -- Lua pattern with capture groups
+        key_capture = 1,                   -- Capture group for key (optional)
+        value_capture = 2,                 -- Capture group for value (required)
+      },
+      {
+        file_pattern = '*.secret',
+        pattern = 'SECRET:%s*(.+)',
+        value_capture = 1,  -- key_capture omitted, auto-generated keys
+      },
+    },
+  })
+<
+
+Configuration options:
+
+file_pattern ~
+    Type: `string|string[]`, Required: Yes
+    Glob pattern(s) for matching files. Examples: `'*.myconfig'`,
+    `{ '*.cfg', '*.conf' }`
+
+pattern ~
+    Type: `string`, Required: Yes
+    Lua pattern with capture groups. The pattern is applied line by line.
+
+key_capture ~
+    Type: `number`, Required: No
+    Capture group number for the key. If omitted, keys will be auto-generated
+    as "custom_1", "custom_2", etc.
+
+value_capture ~
+    Type: `number`, Required: Yes
+    Capture group number for the value to mask.
+
+Example patterns:
+>lua
+  -- @variable = value
+  { pattern = '@([%w_]+)%s*=%s*(.+)', key_capture = 1, value_capture = 2 }
+
+  -- SECRET: value
+  { pattern = 'SECRET:%s*(.+)', value_capture = 1 }
+
+  -- $VAR=value (shell-like)
+  { pattern = '%$([%w_]+)=([^%s]+)', key_capture = 1, value_capture = 2 }
+
+  -- key :: value
+  { pattern = '([%w_]+)%s*::%s*(.+)', key_capture = 1, value_capture = 2 }
+<
+
+Note: Built-in parsers take priority over custom patterns. If a file matches
+a built-in parser (e.g., `.json`, `.env`), the custom pattern will not be used.
 
 ==============================================================================
 STYLES                                                      *camouflage-styles*

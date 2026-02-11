@@ -39,6 +39,12 @@ local M = {}
 ---@field file_pattern string|string[]
 ---@field parser string
 
+---@class CamouflageCustomPatternConfig
+---@field file_pattern string|string[]  File pattern (glob)
+---@field pattern string                 Lua pattern
+---@field key_capture? number            Key capture group (optional)
+---@field value_capture number           Value capture group (required)
+
 ---@class CamouflageHooksConfig
 ---@field on_before_decorate? fun(bufnr: number, filename: string): boolean|nil
 ---@field on_variable_detected? fun(bufnr: number, var: ParsedVariable): boolean|nil
@@ -88,6 +94,7 @@ local M = {}
 ---@field yank? CamouflageYankConfig|nil Yank configuration
 ---@field reveal? CamouflageRevealConfig|nil Reveal configuration
 ---@field pwned? CamouflagePwnedConfig Pwned passwords check configuration
+---@field custom_patterns? CamouflageCustomPatternConfig[] Custom patterns for unsupported file types
 
 ---@type CamouflageConfig
 M.defaults = {
@@ -110,6 +117,7 @@ M.defaults = {
     { file_pattern = { '*.properties', '*.ini', '*.conf', 'credentials' }, parser = 'properties' },
     { file_pattern = { '.netrc', '_netrc' }, parser = 'netrc' },
     { file_pattern = { '*.xml' }, parser = 'xml' },
+    { file_pattern = { '*.http' }, parser = 'http' },
   },
   parsers = {
     include_commented = true,
@@ -148,6 +156,7 @@ M.defaults = {
     virtual_text_hl = 'DiagnosticWarn',
     line_hl = 'CamouflagePwned',
   },
+  custom_patterns = {},
 }
 
 ---@type CamouflageConfig

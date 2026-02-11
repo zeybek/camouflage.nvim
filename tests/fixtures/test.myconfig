@@ -1,0 +1,8 @@
+# ===========================================
+# Custom Config File - @variable = value format
+# ===========================================
+
+@api_key = sk-live-abc123xyz789secret
+@api_secret = super_secret_value_12345
+@db_password = P@ssw0rd!SecretDB#2024
+@jwt_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.secret

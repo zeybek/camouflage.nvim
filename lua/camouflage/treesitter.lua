@@ -34,6 +34,7 @@ M.queries = {
       (Name) @key
       (AttValue) @value)
   ]],
+  http = '(variable_declaration name: (identifier) @key value: (value) @value)',
 }
 
 -- Node types that contain actual values (not containers)
@@ -60,6 +61,7 @@ M.value_types = {
     'offset_date_time',
   },
   xml = { 'CharData', 'AttValue' },
+  http = { 'value' },
 }
 
 ---Check if TreeSitter parser is available for a language

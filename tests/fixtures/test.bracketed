@@ -1,0 +1,14 @@
+# Bracketed config format: [key] = "value" or [key] = 'value'
+
+[api_key] = "sk-live-abc123xyz789"
+[database_password] = "SuperSecret!@#$%"
+[jwt_secret] = 'my-jwt-secret-key-here'
+[oauth_token] = "oauth2-bearer-token-12345"
+[encryption_key] = 'aes-256-key-abcdef'
+
+# Without quotes
+[redis_password] = plain-text-password
+[mongo_secret] = another-plain-secret
+
+# With spaces in value
+[connection_string] = "host=localhost;password=secret123"

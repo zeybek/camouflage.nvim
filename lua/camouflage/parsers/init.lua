@@ -63,6 +63,23 @@ function M.find_parser_for_file(filename)
     end
   end
 
+  -- If no built-in parser found, check custom patterns
+  local custom = require('camouflage.parsers.custom')
+  local custom_pattern = custom.find_matching_pattern(filename)
+  if custom_pattern then
+    -- Create a wrapper parser that calls custom.parse with the pattern config
+    local custom_parser = {
+      parse = function(content, _bufnr)
+        return custom.parse(content, custom_pattern)
+      end,
+    }
+    -- Update cache
+    parser_cache.filename = filename
+    parser_cache.parser = custom_parser
+    parser_cache.parser_name = 'custom'
+    return custom_parser, 'custom'
+  end
+
   -- Cache negative result too
   parser_cache.filename = filename
   parser_cache.parser = nil
@@ -129,9 +146,19 @@ function M.is_supported(filename)
   return M.find_parser_for_file(filename) ~= nil
 end
 
+---Clear parser cache
+---@return nil
+function M.clear_cache()
+  parser_cache.filename = nil
+  parser_cache.parser = nil
+  parser_cache.parser_name = nil
+end
+
 ---Register all built-in parsers
 ---@return nil
 function M.setup()
+  -- Clear cache when setup is called (config may have changed)
+  M.clear_cache()
   M.register('env', require('camouflage.parsers.env'))
   M.register('json', require('camouflage.parsers.json'))
   M.register('yaml', require('camouflage.parsers.yaml'))
@@ -139,6 +166,7 @@ function M.setup()
   M.register('properties', require('camouflage.parsers.properties'))
   M.register('netrc', require('camouflage.parsers.netrc'))
   M.register('xml', require('camouflage.parsers.xml'))
+  M.register('http', require('camouflage.parsers.http'))
 end
 
 return M

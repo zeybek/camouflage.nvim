@@ -1,0 +1,14 @@
+# Arrow-style config: key => value or key -> value
+
+api_key => sk-live-secret-key-123
+db_password => SuperSecretPass!@#
+jwt_token => eyJhbGciOiJIUzI1NiJ9.secret
+
+# Single arrow style
+redis_url -> redis://:password@localhost:6379
+mongo_uri -> mongodb://admin:secret@localhost/db
+aws_secret -> AKIAIOSFODNN7EXAMPLE
+
+# Mixed with spaces
+oauth_secret   =>   oauth-client-secret-value
+webhook_key    ->   whsec_abcdefghijklmnop

@@ -1,0 +1,12 @@
+# Double-colon separated config: key :: value
+
+database_password :: SuperSecretPass!@#
+api_token :: tok_live_1234567890abcdef
+encryption_key :: aes-256-gcm-key-here
+jwt_secret :: my-super-secret-jwt-key
+oauth_client_secret :: oauth2-client-secret-value
+webhook_signing_key :: whsec_abcdefghijklmnopqrstuvwxyz
+
+# With extra spaces
+redis_password   ::   redis-secret-password-123
+mongo_uri        ::   mongodb://user:pass@localhost/db

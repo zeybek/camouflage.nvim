@@ -6,9 +6,7 @@
 
 local M = {}
 
----@class PwnedCacheEntry
----@field pwned boolean Whether the password was found in breaches
----@field count number Number of times found in breaches (0 if not pwned)
+---@alias PwnedCacheEntry PwnedCheckResult
 
 ---@type table<string, PwnedCacheEntry>
 local cache = {}

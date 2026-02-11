@@ -1,0 +1,99 @@
+# ===========================================
+# HTTP File Example for Camouflage.nvim Testing
+# ===========================================
+
+# API Configuration
+@api_key = sk-live-abc123xyz789secret
+@api_secret = super_secret_value_12345
+@base_url = https://api.example.com/v1
+
+# Database credentials
+@db.host = localhost
+@db.port = 5432
+@db.username = admin
+@db.password = P@ssw0rd!SecretDB#2024
+
+# Authentication tokens
+@auth_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U
+@refresh_token = rt_a1b2c3d4e5f6g7h8i9j0_refresh_secret
+@bearer_token = Bearer sk-proj-123456789abcdef
+
+# Third-party service keys
+@stripe_key = sk_live_51ABC123xyz789
+@github_token = ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+@aws_access_key = AKIAIOSFODNN7EXAMPLE
+@aws_secret_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+# Variables with special characters
+@connection_string = postgresql://user:p@ss=word@localhost:5432/mydb?sslmode=require
+@webhook_secret = whsec_abcdefghijklmnopqrstuvwxyz123456
+
+# Variable references (should show as-is, value contains {{...}})
+@full_api_url = {{base_url}}/users/{{user_id}}
+@auth_header = Bearer {{auth_token}}
+
+### ============================================
+### Get Users
+### ============================================
+GET {{base_url}}/users
+Authorization: Bearer {{api_key}}
+Content-Type: application/json
+X-API-Secret: {{api_secret}}
+
+### ============================================
+### Create User
+### ============================================
+POST {{base_url}}/users
+Authorization: Bearer {{api_key}}
+Content-Type: application/json
+
+{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "{{db.password}}"
+}
+
+### ============================================
+### Update User
+### ============================================
+PUT {{base_url}}/users/123
+Authorization: {{auth_header}}
+Content-Type: application/json
+
+{
+    "name": "Jane Doe"
+}
+
+### ============================================
+### Delete User
+### ============================================
+DELETE {{base_url}}/users/123
+Authorization: Bearer {{api_key}}
+
+### ============================================
+### Login (with inline credentials)
+### ============================================
+# @name login
+POST {{base_url}}/auth/login
+Content-Type: application/json
+
+{
+    "username": "{{db.username}}",
+    "password": "{{db.password}}"
+}
+
+### ============================================
+### Stripe Payment
+### ============================================
+POST https://api.stripe.com/v1/charges
+Authorization: Bearer {{stripe_key}}
+Content-Type: application/x-www-form-urlencoded
+
+amount=2000&currency=usd&source=tok_visa
+
+### ============================================
+### AWS S3 Request
+### ============================================
+GET https://s3.amazonaws.com/my-bucket/my-object
+X-Amz-Access-Key: {{aws_access_key}}
+X-Amz-Secret-Key: {{aws_secret_key}}
