@@ -2,7 +2,7 @@
 
 Hide sensitive values in configuration files during screen sharing.
 
-A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, `.properties`, `.netrc`, and `.xml` files using extmarks - **without modifying the actual file content**.
+A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, `.properties`, `.netrc`, `.xml`, and `.http` files using extmarks - **without modifying the actual file content**.
 
 [![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
@@ -15,7 +15,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 
 ## Features
 
-- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`
+- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`
 - **Nested key support**: Handles `database.connection.password` in JSON/YAML/XML
 - **All value types**: Masks strings, numbers, and booleans
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
@@ -24,7 +24,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+)
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
-- **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML
+- **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP
 - **Telescope/Snacks Integration**: Mask values in preview buffers
 - **Zero file modification**: All masking is purely visual
 
@@ -184,6 +184,56 @@ vim.keymap.set('n', '<leader>cf', '<cmd>CamouflageFollowCursor<cr>', { desc = 'F
 | Properties  | `.properties`, `.ini`, `.conf`, `credentials` | Yes (sections) |
 | Netrc       | `.netrc`, `_netrc`                          | No             |
 | XML         | `.xml`                                      | Yes            |
+| HTTP        | `.http`                                     | No             |
+
+## Custom Patterns
+
+For file types not supported by built-in parsers, you can define custom patterns using Lua patterns:
+
+```lua
+require('camouflage').setup({
+  custom_patterns = {
+    {
+      file_pattern = { '*.myconfig' },  -- Glob pattern(s) for file matching
+      pattern = '@([%w_]+)%s*=%s*(.+)', -- Lua pattern with capture groups
+      key_capture = 1,                   -- Capture group for key (optional)
+      value_capture = 2,                 -- Capture group for value (required)
+    },
+    {
+      file_pattern = '*.secret',
+      pattern = 'SECRET:%s*(.+)',
+      value_capture = 1,  -- key_capture omitted, keys will be "custom_1", "custom_2", etc.
+    },
+  },
+})
+```
+
+**Pattern Options:**
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `file_pattern` | `string\|string[]` | Yes | Glob pattern(s) for matching files |
+| `pattern` | `string` | Yes | Lua pattern with capture groups |
+| `key_capture` | `number` | No | Capture group number for key (auto-generated if omitted) |
+| `value_capture` | `number` | Yes | Capture group number for value to mask |
+
+**Example patterns:**
+
+```lua
+-- @variable = value
+{ pattern = '@([%w_]+)%s*=%s*(.+)', key_capture = 1, value_capture = 2 }
+
+-- SECRET: value
+{ pattern = 'SECRET:%s*(.+)', value_capture = 1 }
+
+-- $VAR=value (shell-like)
+{ pattern = '%$([%w_]+)=([^%s]+)', key_capture = 1, value_capture = 2 }
+
+-- key :: value
+{ pattern = '([%w_]+)%s*::%s*(.+)', key_capture = 1, value_capture = 2 }
+```
+
+**Note:** Built-in parsers take priority over custom patterns. If a file matches a built-in parser (e.g., `.json`, `.env`), the custom pattern will not be used.
 
 ## API
 

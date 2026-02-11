@@ -57,13 +57,6 @@ function M.check_value(value, callback)
   end)
 end
 
----@class ParsedVariable
----@field key string Variable name/key
----@field value string Variable value
----@field line_number number 0-indexed line number
----@field start_index number Start byte offset
----@field end_index number End byte offset
-
 ---Check a single variable and update UI
 ---@param bufnr number Buffer number
 ---@param var ParsedVariable Variable to check
