@@ -14,9 +14,38 @@ local M = {}
 
 local config = require('camouflage.config')
 local state = require('camouflage.state')
+local parsers = require('camouflage.parsers')
 local check = require('camouflage.pwned.check')
 local ui = require('camouflage.pwned.ui')
 local cache = require('camouflage.pwned.cache')
+
+---Get variables for pwned checking
+---If camouflage has parsed variables, use those (performance optimization)
+---Otherwise, parse the file ourselves (for when camouflage is disabled)
+---@param bufnr number
+---@return ParsedVariable[]
+local function get_variables_for_pwned(bufnr)
+  -- First try state (camouflage is active and has parsed)
+  local variables = state.get_variables(bufnr)
+  if variables and #variables > 0 then
+    return variables
+  end
+
+  -- Camouflage disabled or hasn't parsed yet - parse ourselves
+  local filename = vim.api.nvim_buf_get_name(bufnr)
+  if not parsers.is_supported(filename) then
+    return {}
+  end
+
+  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
+  if not ok then
+    return {}
+  end
+
+  local content = table.concat(lines, '\n')
+  local parsed = parsers.parse(filename, content, bufnr)
+  return parsed or {}
+end
 
 ---Setup pwned feature
 function M.setup()
@@ -49,8 +78,8 @@ end
 ---@param cursor_col number 0-indexed cursor column
 ---@return ParsedVariable|nil
 local function find_variable_at_cursor(bufnr, cursor_line, cursor_col)
-  local variables = state.get_variables(bufnr)
-  if not variables then
+  local variables = get_variables_for_pwned(bufnr)
+  if #variables == 0 then
     return nil
   end
 
@@ -71,8 +100,8 @@ end
 ---@param line number 0-indexed line number
 ---@return ParsedVariable[]
 local function find_variables_on_line(bufnr, line)
-  local variables = state.get_variables(bufnr)
-  if not variables then
+  local variables = get_variables_for_pwned(bufnr)
+  if #variables == 0 then
     return {}
   end
 
@@ -210,10 +239,10 @@ function M.check_buffer(callback)
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
-  local variables = state.get_variables(bufnr)
+  local variables = get_variables_for_pwned(bufnr)
 
-  if not variables or #variables == 0 then
-    vim.notify('[camouflage] No masked variables in current buffer', vim.log.levels.INFO)
+  if #variables == 0 then
+    vim.notify('[camouflage] No variables found in current buffer', vim.log.levels.INFO)
     if callback then
       callback({})
     end
@@ -277,8 +306,8 @@ function M.on_buf_enter(bufnr)
     return
   end
 
-  local variables = state.get_variables(bufnr)
-  if not variables or #variables == 0 then
+  local variables = get_variables_for_pwned(bufnr)
+  if #variables == 0 then
     return
   end
 
@@ -303,8 +332,8 @@ function M.on_buf_write(bufnr)
   -- Clear existing marks first
   ui.clear_marks(bufnr)
 
-  local variables = state.get_variables(bufnr)
-  if not variables or #variables == 0 then
+  local variables = get_variables_for_pwned(bufnr)
+  if #variables == 0 then
     return
   end
 
