@@ -8,6 +8,9 @@ local core = require('camouflage.core')
 local hooks = require('camouflage.hooks')
 local log = require('camouflage.log')
 
+-- Compatibility: vim.uv exists in Neovim 0.10+, vim.loop in 0.9
+local uv = vim.uv or vim.loop
+
 local clear_timer = nil
 
 ---@class YankOpts
@@ -84,7 +87,7 @@ function M.schedule_auto_clear(register, seconds)
     return
   end
 
-  clear_timer = vim.uv.new_timer()
+  clear_timer = uv.new_timer()
   clear_timer:start(
     seconds * 1000,
     0,
