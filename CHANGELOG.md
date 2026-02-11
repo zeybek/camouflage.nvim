@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/zeybek/camouflage.nvim/compare/v0.2.0...v0.3.0) (2026-02-11)
+
+
+### Features
+
+* add .http file support and custom patterns API ([#7](https://github.com/zeybek/camouflage.nvim/issues/7)) ([62c5ff6](https://github.com/zeybek/camouflage.nvim/commit/62c5ff6419bf58a35aeef7c5045f8497f9b8f6ea))
+
 ## [0.2.0](https://github.com/zeybek/camouflage.nvim/compare/v0.1.0...v0.2.0) (2026-02-11)
 
 
