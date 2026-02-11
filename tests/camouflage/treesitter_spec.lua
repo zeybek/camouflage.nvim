@@ -110,6 +110,7 @@ describe('camouflage.treesitter', function()
   -- Integration tests (only run if TreeSitter is available)
   describe('parse with treesitter (integration)', function()
     local json_parser_available = ts.has_parser('json')
+    local yaml_parser_available = ts.has_parser('yaml')
 
     if json_parser_available then
       it('should parse JSON content', function()
@@ -128,6 +129,85 @@ describe('camouflage.treesitter', function()
           assert.is_table(result)
           assert.equals(1, #result)
           assert.equals('key', result[1].key)
+          assert.equals('value', result[1].value)
+        end
+      end)
+    end
+
+    if yaml_parser_available then
+      it('should parse YAML block style content', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local content = 'api_key: secret123'
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { content })
+        vim.api.nvim_set_option_value('filetype', 'yaml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'yaml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          assert.is_table(result)
+          assert.equals(1, #result)
+          assert.equals('api_key', result[1].key)
+          assert.equals('secret123', result[1].value)
+        end
+      end)
+
+      it('should parse YAML flow style content', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local content = 'config: {secret: hidden123, api_key: sk-999}'
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { content })
+        vim.api.nvim_set_option_value('filetype', 'yaml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'yaml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          assert.is_table(result)
+          -- Should capture flow style values
+          local keys = {}
+          for _, v in ipairs(result) do
+            keys[v.key] = v.value
+          end
+          assert.equals('hidden123', keys['secret'])
+          assert.equals('sk-999', keys['api_key'])
+        end
+      end)
+
+      it('should parse YAML quoted values', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local content = 'message: "Hello World"'
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { content })
+        vim.api.nvim_set_option_value('filetype', 'yaml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'yaml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          assert.is_table(result)
+          assert.equals(1, #result)
+          assert.equals('message', result[1].key)
+          assert.equals('Hello World', result[1].value)
+        end
+      end)
+
+      it('should skip YAML flow mapping containers', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local content = 'outer: {inner: value}'
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { content })
+        vim.api.nvim_set_option_value('filetype', 'yaml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'yaml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          assert.is_table(result)
+          -- Should only capture 'inner', not 'outer' (which has flow_mapping value)
+          assert.equals(1, #result)
+          assert.equals('inner', result[1].key)
           assert.equals('value', result[1].value)
         end
       end)

@@ -14,7 +14,16 @@ local parser_cache = {}
 -- TreeSitter queries for each language
 M.queries = {
   json = '(pair key: (string) @key value: (_) @value)',
-  yaml = '(block_mapping_pair key: (_) @key value: (_) @value)',
+  yaml = [[
+    (block_mapping_pair
+      key: (_) @key
+      value: (flow_node
+        [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value))
+    (flow_pair
+      key: (flow_node) @key
+      value: (flow_node
+        [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value))
+  ]],
   toml = '(pair key: (_) @key value: (_) @value)',
 }
 
@@ -29,6 +38,7 @@ M.value_types = {
     'float_scalar',
     'boolean_scalar',
     'block_scalar',
+    'plain_scalar', -- For flow style and unquoted values
   },
   toml = {
     'string',
