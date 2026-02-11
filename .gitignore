@@ -32,3 +32,7 @@ Thumbs.db
 .local/
 .cache/
 .tests/
+
+# Personal notes & research
+FUTURE_ENHANCEMENTS.md
+reviews/
