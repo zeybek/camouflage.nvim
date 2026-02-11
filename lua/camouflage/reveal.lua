@@ -15,6 +15,12 @@ local revealed_state = {
   hook_id = nil, -- variable_detected hook to skip revealed line
 }
 
+-- Follow cursor state (global)
+local follow_state = {
+  enabled = false,
+  autocmd_id = nil,
+}
+
 ---Get reveal configuration with defaults
 ---@return table
 local function get_reveal_config()
@@ -37,6 +43,21 @@ local function get_var_line(bufnr, var)
   local line_offsets = core.compute_line_offsets(lines)
   local pos = core.index_to_position(bufnr, var.start_index, lines, line_offsets)
   return pos and (pos.row + 1) or nil
+end
+
+---Check if a line has any masked variables
+---@param bufnr number
+---@param line number 1-indexed line number
+---@return boolean
+local function line_has_variables(bufnr, line)
+  local variables = state.get_variables(bufnr)
+  for _, var in ipairs(variables) do
+    local var_line = get_var_line(bufnr, var)
+    if var_line == line then
+      return true
+    end
+  end
+  return false
 end
 
 ---Clear extmarks for a specific line
@@ -99,6 +120,11 @@ end
 ---@param bufnr number
 ---@param revealed_line number 1-indexed
 local function setup_auto_hide(bufnr, revealed_line)
+  -- Skip auto-hide setup in follow cursor mode (follow mode handles its own cursor tracking)
+  if follow_state.enabled then
+    return
+  end
+
   if revealed_state.autocmd_id then
     pcall(vim.api.nvim_del_autocmd, revealed_state.autocmd_id)
   end
@@ -237,6 +263,185 @@ function M.get_revealed()
     return { bufnr = revealed_state.bufnr, line = revealed_state.line }
   end
   return nil
+end
+
+-- ============================================================================
+-- Follow Cursor Mode
+-- ============================================================================
+
+---Check if follow cursor mode is enabled
+---@return boolean
+function M.is_follow_cursor_enabled()
+  return follow_state.enabled
+end
+
+---Internal: Reveal a specific line without notifications (for follow mode)
+---@param bufnr number
+---@param line number 1-indexed
+local function reveal_line_silent(bufnr, line)
+  local line_0 = line - 1
+
+  -- Store state
+  revealed_state.bufnr = bufnr
+  revealed_state.line = line
+
+  -- Setup hook to prevent re-masking
+  setup_reveal_hook()
+
+  -- Clear extmarks on this line
+  clear_line_extmarks(bufnr, line_0)
+
+  -- Apply highlight
+  apply_revealed_highlight(bufnr, line_0)
+end
+
+---Internal: Hide current reveal without notifications (for follow mode)
+local function hide_silent()
+  if not revealed_state.bufnr then
+    return
+  end
+
+  -- Cleanup autocmd (if any)
+  if revealed_state.autocmd_id then
+    pcall(vim.api.nvim_del_autocmd, revealed_state.autocmd_id)
+    revealed_state.autocmd_id = nil
+  end
+
+  -- Cleanup hook
+  cleanup_reveal_hook()
+
+  -- Clear state BEFORE re-applying
+  local was_bufnr = revealed_state.bufnr
+  revealed_state.bufnr = nil
+  revealed_state.line = nil
+
+  -- Re-apply decorations
+  if vim.api.nvim_buf_is_valid(was_bufnr) then
+    core.apply_decorations(was_bufnr)
+  end
+end
+
+---Internal: Handle cursor movement in follow mode
+---@param bufnr number
+local function on_follow_cursor_moved(bufnr)
+  -- Only work on camouflage-enabled buffers
+  if not state.is_buffer_masked(bufnr) then
+    -- If we're in a non-masked buffer, hide any active reveal
+    if revealed_state.bufnr then
+      hide_silent()
+    end
+    return
+  end
+
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local line = cursor[1] -- 1-indexed
+
+  -- Same line, same buffer? Skip
+  if revealed_state.bufnr == bufnr and revealed_state.line == line then
+    return
+  end
+
+  -- Check if this line has any masked variables
+  local has_vars = line_has_variables(bufnr, line)
+
+  -- Hide previous reveal
+  if revealed_state.bufnr then
+    hide_silent()
+  end
+
+  -- Reveal new line if it has variables
+  if has_vars then
+    reveal_line_silent(bufnr, line)
+  end
+end
+
+---Start follow cursor mode
+function M.start_follow_cursor()
+  if follow_state.enabled then
+    return
+  end
+
+  -- HOOK: before_follow_start
+  local should_continue = hooks.emit('before_follow_start')
+  if should_continue == false then
+    return
+  end
+
+  follow_state.enabled = true
+
+  -- Create global autocmd for cursor movement
+  follow_state.autocmd_id = vim.api.nvim_create_autocmd(
+    { 'CursorMoved', 'CursorMovedI' },
+    {
+      group = state.augroup,
+      callback = function(args)
+        on_follow_cursor_moved(args.buf)
+      end,
+      desc = 'Camouflage follow cursor mode',
+    }
+  )
+
+  -- Reveal current line immediately (if applicable)
+  local bufnr = vim.api.nvim_get_current_buf()
+  on_follow_cursor_moved(bufnr)
+
+  -- Notify
+  local cfg = get_reveal_config()
+  if cfg.notify then
+    vim.notify('[camouflage] Follow cursor mode enabled', vim.log.levels.INFO)
+  end
+
+  -- HOOK: after_follow_start
+  hooks.emit('after_follow_start')
+end
+
+---Stop follow cursor mode
+function M.stop_follow_cursor()
+  if not follow_state.enabled then
+    return
+  end
+
+  -- HOOK: before_follow_stop
+  local should_continue = hooks.emit('before_follow_stop')
+  if should_continue == false then
+    return
+  end
+
+  -- Hide any active reveal
+  if revealed_state.bufnr then
+    hide_silent()
+  end
+
+  -- Delete autocmd
+  if follow_state.autocmd_id then
+    pcall(vim.api.nvim_del_autocmd, follow_state.autocmd_id)
+    follow_state.autocmd_id = nil
+  end
+
+  follow_state.enabled = false
+
+  -- Notify
+  local cfg = get_reveal_config()
+  if cfg.notify then
+    vim.notify('[camouflage] Follow cursor mode disabled', vim.log.levels.INFO)
+  end
+
+  -- HOOK: after_follow_stop
+  hooks.emit('after_follow_stop')
+end
+
+---Toggle follow cursor mode
+---@param opts? { force_disable: boolean }
+function M.toggle_follow_cursor(opts)
+  opts = opts or {}
+
+  if opts.force_disable then
+    M.stop_follow_cursor()
+  elseif follow_state.enabled then
+    M.stop_follow_cursor()
+  else
+    M.start_follow_cursor()
+  end
 end
 
 return M

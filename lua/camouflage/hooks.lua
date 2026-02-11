@@ -7,6 +7,10 @@
 ---   - before_decorate: Fired before decorations are applied
 ---   - variable_detected: Fired for each detected variable (can filter)
 ---   - after_decorate: Fired after all decorations are applied
+---   - before_reveal / after_reveal: Fired on line reveal
+---   - before_yank / after_yank: Fired on value yank
+---   - before_follow_start / after_follow_start: Fired when follow cursor mode starts
+---   - before_follow_stop / after_follow_stop: Fired when follow cursor mode stops
 ---
 --- Usage:
 ---   -- Config-based (in setup)
@@ -36,6 +40,10 @@ M.EVENTS = {
   AFTER_YANK = 'after_yank',
   BEFORE_REVEAL = 'before_reveal',
   AFTER_REVEAL = 'after_reveal',
+  BEFORE_FOLLOW_START = 'before_follow_start',
+  AFTER_FOLLOW_START = 'after_follow_start',
+  BEFORE_FOLLOW_STOP = 'before_follow_stop',
+  AFTER_FOLLOW_STOP = 'after_follow_stop',
 }
 
 -- Autocmd event names (for User events)

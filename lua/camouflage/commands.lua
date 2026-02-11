@@ -59,6 +59,16 @@ function M.setup()
     desc = 'Reveal masked values on current line',
     bang = true,
   })
+
+  vim.api.nvim_create_user_command('CamouflageFollowCursor', function(opts)
+    local reveal = require('camouflage.reveal')
+    reveal.toggle_follow_cursor({
+      force_disable = opts.bang,
+    })
+  end, {
+    desc = 'Toggle follow cursor mode (auto-reveal current line)',
+    bang = true,
+  })
 end
 
 return M

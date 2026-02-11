@@ -312,6 +312,14 @@ function M.setup(opts)
   autocmds.apply_to_loaded_buffers()
 
   initialized = true
+
+  -- Auto-start follow cursor mode if configured
+  local reveal_config = opts and opts.reveal or {}
+  if reveal_config.follow_cursor then
+    vim.schedule(function()
+      require('camouflage.reveal').start_follow_cursor()
+    end)
+  end
 end
 
 function M.enable()
@@ -382,5 +390,29 @@ M.yank = require('camouflage.yank')
 
 -- Reveal API
 M.reveal = require('camouflage.reveal')
+
+-- Follow Cursor API (shortcuts)
+
+---Start follow cursor mode
+function M.start_follow_cursor()
+  return require('camouflage.reveal').start_follow_cursor()
+end
+
+---Stop follow cursor mode
+function M.stop_follow_cursor()
+  return require('camouflage.reveal').stop_follow_cursor()
+end
+
+---Toggle follow cursor mode
+---@param opts? { force_disable: boolean }
+function M.toggle_follow_cursor(opts)
+  return require('camouflage.reveal').toggle_follow_cursor(opts)
+end
+
+---Check if follow cursor mode is enabled
+---@return boolean
+function M.is_follow_cursor_enabled()
+  return require('camouflage.reveal').is_follow_cursor_enabled()
+end
 
 return M

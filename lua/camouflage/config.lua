@@ -50,6 +50,7 @@ local M = {}
 ---@class CamouflageRevealConfig
 ---@field highlight_group string Highlight group for revealed values
 ---@field notify boolean Show notification on reveal/hide
+---@field follow_cursor boolean Auto-reveal current line as cursor moves (default: false)
 
 ---@class CamouflageConfig
 ---@field enabled boolean
@@ -109,6 +110,7 @@ M.defaults = {
   reveal = {
     highlight_group = 'CamouflageRevealed',
     notify = false,
+    follow_cursor = false,
   },
 }
 
