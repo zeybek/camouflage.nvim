@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee" version="4.0">
+  <display-name>My Web Application</display-name>
+  
+  <!-- Context parameters with secrets -->
+  <context-param>
+    <param-name>database.password</param-name>
+    <param-value>webapp_db_secret_123</param-value>
+  </context-param>
+  
+  <context-param>
+    <param-name>api.key</param-name>
+    <param-value>sk-webapp-key-456789</param-value>
+  </context-param>
+  
+  <context-param>
+    <param-name>encryption.secret</param-name>
+    <param-value>AES128EncryptionKeyForWebApp</param-value>
+  </context-param>
+  
+  <!-- Servlet with init params -->
+  <servlet>
+    <servlet-name>AuthServlet</servlet-name>
+    <servlet-class>com.example.AuthServlet</servlet-class>
+    <init-param>
+      <param-name>oauth.client.id</param-name>
+      <param-value>client_id_12345</param-value>
+    </init-param>
+    <init-param>
+      <param-name>oauth.client.secret</param-name>
+      <param-value>client_secret_abcxyz</param-value>
+    </init-param>
+  </servlet>
+  
+  <!-- Security constraint -->
+  <security-constraint>
+    <web-resource-collection>
+      <web-resource-name>Protected Area</web-resource-name>
+      <url-pattern>/admin/*</url-pattern>
+    </web-resource-collection>
+  </security-constraint>
+</web-app>

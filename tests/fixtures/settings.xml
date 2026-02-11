@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Maven settings.xml example for testing -->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+  <servers>
+    <server>
+      <id>my-repo</id>
+      <username>admin</username>
+      <password>super_secret_password</password>
+      <privateKey>/home/user/.ssh/id_rsa</privateKey>
+      <passphrase>key_passphrase_123</passphrase>
+    </server>
+    <server>
+      <id>nexus-releases</id>
+      <username>deploy</username>
+      <password>deploy_token_xyz</password>
+    </server>
+  </servers>
+  
+  <proxies>
+    <proxy>
+      <id>corporate-proxy</id>
+      <active>true</active>
+      <protocol>http</protocol>
+      <host>proxy.example.com</host>
+      <port>8080</port>
+      <username>proxyuser</username>
+      <password>proxy_password_456</password>
+      <nonProxyHosts>localhost|*.internal.com</nonProxyHosts>
+    </proxy>
+  </proxies>
+  
+  <mirrors>
+    <mirror>
+      <id>central-mirror</id>
+      <mirrorOf>central</mirrorOf>
+      <url>https://repo.example.com/maven2</url>
+    </mirror>
+  </mirrors>
+  
+  <!-- Database connection with attributes -->
+  <profiles>
+    <profile>
+      <id>dev</id>
+      <properties>
+        <db.url>jdbc:postgresql://localhost:5432/mydb</db.url>
+        <db.username>dbuser</db.username>
+        <db.password>db_secret_789</db.password>
+        <api.key>sk-proj-abcdef123456</api.key>
+      </properties>
+    </profile>
+  </profiles>
+</settings>

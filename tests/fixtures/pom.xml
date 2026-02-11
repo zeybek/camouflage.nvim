@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  
+  <groupId>com.example</groupId>
+  <artifactId>my-app</artifactId>
+  <version>1.0.0</version>
+  
+  <properties>
+    <!-- Database credentials -->
+    <db.password>production_db_password</db.password>
+    <db.username>app_user</db.username>
+    
+    <!-- API Keys -->
+    <api.secret.key>fake-api-key-for-testing</api.secret.key>
+    <stripe.api.key>fake_stripe_key_for_testing</stripe.api.key>
+    
+    <!-- OAuth -->
+    <oauth.client.secret>oauth_secret_xyz789</oauth.client.secret>
+    
+    <!-- Encryption -->
+    <encryption.key>AES256SecretKey12345678901234567890</encryption.key>
+    <jwt.secret>my-super-secret-jwt-key-do-not-share</jwt.secret>
+  </properties>
+  
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>17</source>
+          <target>17</target>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  
+  <repositories>
+    <repository>
+      <id>private-repo</id>
+      <url>https://repo.example.com/maven2</url>
+    </repository>
+  </repositories>
+</project>
