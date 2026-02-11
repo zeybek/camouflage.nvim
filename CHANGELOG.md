@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.2.0](https://github.com/zeybek/camouflage.nvim/compare/v0.1.0...v0.2.0) (2026-02-11)
+
+
+### Features
+
+* add CamouflageReveal command for temporary line reveal ([f58386b](https://github.com/zeybek/camouflage.nvim/commit/f58386b6a208f27e9c84c30a4e3332eac47f60f1))
+* add CamouflageYank command to copy unmasked values ([5b8a262](https://github.com/zeybek/camouflage.nvim/commit/5b8a262ac50851cbd5c29a0cb55eeb1fde0bf8c6))
+* add credentials file pattern for AWS credentials support ([8f0f49e](https://github.com/zeybek/camouflage.nvim/commit/8f0f49e0a3963ae2806dbd85d31fc91dd57fb0cb))
+* add debug mode with logging for pcall errors ([d9188a5](https://github.com/zeybek/camouflage.nvim/commit/d9188a5e3e1a97e5ce3da778552c22b487164d4f))
+* add event system with hooks for extensibility ([7339db6](https://github.com/zeybek/camouflage.nvim/commit/7339db6e23aad0c3ac016ed14e6589ea9916f37b))
+* add Follow Cursor Mode for automatic line reveal ([bb97ed2](https://github.com/zeybek/camouflage.nvim/commit/bb97ed2e7aeb4335d7cd90168b55dd17c64783e6))
+* add hot reload for config changes ([05a845e](https://github.com/zeybek/camouflage.nvim/commit/05a845ea090478fc1c67c194f216fb2add6e310b))
+* add TreeSitter support for JSON, YAML, and TOML parsing ([f1cc6f7](https://github.com/zeybek/camouflage.nvim/commit/f1cc6f7cfde1296f2ad7d06d4fd954aadb7c975c))
+* add XML parser for Maven/Spring config files ([a337e8f](https://github.com/zeybek/camouflage.nvim/commit/a337e8f8f004b5ebcc7243d6be097e9569139174))
+* **pwned:** add check_on_change for real-time password checking ([9f5aa69](https://github.com/zeybek/camouflage.nvim/commit/9f5aa69403f2567a56ce2625ac06a063ef9454de))
+* **pwned:** add Have I Been Pwned integration ([757953e](https://github.com/zeybek/camouflage.nvim/commit/757953ef536ee5cd3f4035499ca8a916f55cf262))
+* **pwned:** enable auto_check and check_on_save by default ([ca736c3](https://github.com/zeybek/camouflage.nvim/commit/ca736c349968ea40511ac451ec2582844ac132aa))
+* **pwned:** make pwned module work independently of camouflage toggle ([91bd2c5](https://github.com/zeybek/camouflage.nvim/commit/91bd2c5e0e8e6c954ae0e8cdea03b39797bdda88))
+* **yaml:** add flow style support via TreeSitter ([eb16ea1](https://github.com/zeybek/camouflage.nvim/commit/eb16ea18e341cfd294c85ed9854608c8064fae3c))
+
+
+### Bug Fixes
+
+* **pwned:** correct field names to match parser output ([ca736c3](https://github.com/zeybek/camouflage.nvim/commit/ca736c349968ea40511ac451ec2582844ac132aa))
+* **xml:** correct TreeSitter capture names for XML parsing ([7f408fe](https://github.com/zeybek/camouflage.nvim/commit/7f408fe8f45ce1b2b60b08aeb40fe8ba35546a9c))
+* **yank:** use vim.uv/vim.loop shim for Neovim 0.9 compatibility ([8a52319](https://github.com/zeybek/camouflage.nvim/commit/8a523190b199fa9a0d700987ae0773f338785d3e))
+
 ## [0.1.0](https://github.com/zeybek/camouflage.nvim/compare/v0.0.3...v0.1.0) (2026-02-10)
 
 
