@@ -2,7 +2,7 @@
 
 Hide sensitive values in configuration files during screen sharing.
 
-A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, `.properties`, and `.netrc` files using extmarks - **without modifying the actual file content**.
+A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, `.properties`, `.netrc`, and `.xml` files using extmarks - **without modifying the actual file content**.
 
 [![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
@@ -15,15 +15,16 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 
 ## Features
 
-- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`
-- **Nested key support**: Handles `database.connection.password` in JSON/YAML
+- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`
+- **Nested key support**: Handles `database.connection.password` in JSON/YAML/XML
 - **All value types**: Masks strings, numbers, and booleans
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
 - **Reveal & Yank**: Temporarily reveal or copy masked values
 - **Follow Cursor Mode**: Auto-reveal current line as you navigate
+- **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+)
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
-- **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML
+- **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML
 - **Telescope/Snacks Integration**: Mask values in preview buffers
 - **Zero file modification**: All masking is purely visual
 
@@ -118,6 +119,21 @@ require('camouflage').setup({
     confirm = true,               -- Require confirmation before copying
   },
 
+  -- Have I Been Pwned integration (requires Neovim 0.10+)
+  pwned = {
+    enabled = true,               -- Enable the feature
+    auto_check = true,            -- Check on BufEnter
+    check_on_save = true,         -- Check on BufWritePost
+    show_sign = true,             -- Show sign column indicator
+    show_virtual_text = true,     -- Show virtual text with breach count
+    show_line_highlight = true,   -- Highlight the line
+    sign_text = '!',              -- Sign icon
+    sign_hl = 'DiagnosticWarn',   -- Sign highlight group
+    virtual_text_format = 'PWNED (%s)',  -- Virtual text format
+    virtual_text_hl = 'DiagnosticWarn',  -- Virtual text highlight
+    line_hl = 'CamouflagePwned',  -- Line highlight group
+  },
+
   -- Event hooks (see Events section)
   hooks = {
     on_before_decorate = function(bufnr, filename) end,
@@ -129,17 +145,22 @@ require('camouflage').setup({
 
 ## Commands
 
-| Command                   | Description                                |
-| ------------------------- | ------------------------------------------ |
-| `:CamouflageToggle`       | Toggle camouflage on/off                   |
-| `:CamouflageRefresh`      | Refresh decorations                        |
-| `:CamouflageStatus`       | Show status and masked count               |
-| `:CamouflageReveal`       | Reveal masked values on current line       |
-| `:CamouflageReveal!`      | Force hide revealed values                 |
-| `:CamouflageYank`         | Copy unmasked value at cursor to clipboard |
-| `:CamouflageYank!`        | Show picker to select value to copy        |
-| `:CamouflageFollowCursor` | Toggle follow cursor mode                  |
-| `:CamouflageFollowCursor!`| Force disable follow cursor mode           |
+| Command                     | Description                                |
+| --------------------------- | ------------------------------------------ |
+| `:CamouflageToggle`         | Toggle camouflage on/off                   |
+| `:CamouflageRefresh`        | Refresh decorations                        |
+| `:CamouflageStatus`         | Show status and masked count               |
+| `:CamouflageReveal`         | Reveal masked values on current line       |
+| `:CamouflageReveal!`        | Force hide revealed values                 |
+| `:CamouflageYank`           | Copy unmasked value at cursor to clipboard |
+| `:CamouflageYank!`          | Show picker to select value to copy        |
+| `:CamouflageFollowCursor`   | Toggle follow cursor mode                  |
+| `:CamouflageFollowCursor!`  | Force disable follow cursor mode           |
+| `:CamouflagePwnedCheck`     | Check if value under cursor is pwned       |
+| `:CamouflagePwnedCheckLine` | Check all values on current line           |
+| `:CamouflagePwnedCheckBuffer` | Check all values in buffer               |
+| `:CamouflagePwnedClear`     | Clear pwned indicators from buffer         |
+| `:CamouflagePwnedClearCache`| Clear pwned check cache                    |
 
 ## Keymaps
 
@@ -154,14 +175,15 @@ vim.keymap.set('n', '<leader>cf', '<cmd>CamouflageFollowCursor<cr>', { desc = 'F
 
 ## Supported File Formats
 
-| Format      | Extensions                        | Nested Keys    |
-| ----------- | --------------------------------- | -------------- |
-| Environment | `.env`, `.env.*`, `.envrc`, `.sh` | No             |
-| JSON        | `.json`                           | Yes            |
-| YAML        | `.yaml`, `.yml`                   | Yes            |
-| TOML        | `.toml`                           | Yes (sections) |
-| Properties  | `.properties`, `.ini`, `.conf`    | Yes (sections) |
-| Netrc       | `.netrc`, `_netrc`                | No             |
+| Format      | Extensions                                  | Nested Keys    |
+| ----------- | ------------------------------------------- | -------------- |
+| Environment | `.env`, `.env.*`, `.envrc`, `.sh`           | No             |
+| JSON        | `.json`                                     | Yes            |
+| YAML        | `.yaml`, `.yml`                             | Yes            |
+| TOML        | `.toml`                                     | Yes (sections) |
+| Properties  | `.properties`, `.ini`, `.conf`, `credentials` | Yes (sections) |
+| Netrc       | `.netrc`, `_netrc`                          | No             |
+| XML         | `.xml`                                      | Yes            |
 
 ## API
 
@@ -197,11 +219,57 @@ camouflage.is_follow_cursor_enabled() -- Check if follow mode is active
 camouflage.yank.yank()               -- Yank value at cursor
 camouflage.yank.yank_with_picker()   -- Show picker to select value
 
+-- Pwned API (requires Neovim 0.10+)
+camouflage.pwned_check()             -- Check value under cursor
+camouflage.pwned_check_line()        -- Check all values on current line
+camouflage.pwned_check_buffer()      -- Check all values in buffer
+camouflage.pwned_clear()             -- Clear pwned indicators
+camouflage.pwned_is_available()      -- Check if feature is available
+
 -- Event System
 camouflage.on('variable_detected', function(bufnr, var)
   -- Return false to skip masking this variable
   return var.key:match('PASSWORD')
 end)
+```
+
+## Have I Been Pwned Integration
+
+Camouflage can check your masked passwords against the [Have I Been Pwned](https://haveibeenpwned.com/) database to warn you if they've been exposed in data breaches.
+
+> **Requires:** Neovim 0.10+, `curl`, and `sha1sum` or `openssl`
+
+### Privacy
+
+Uses **k-anonymity**: only the first 5 characters of the SHA-1 hash are sent to the API. Your actual passwords never leave your machine.
+
+### Usage
+
+```vim
+:CamouflagePwnedCheck        " Check password under cursor
+:CamouflagePwnedCheckLine    " Check all on current line
+:CamouflagePwnedCheckBuffer  " Check all in buffer
+:CamouflagePwnedClear        " Clear indicators
+```
+
+### Visual Indicators
+
+When a password is found in breaches, you'll see:
+- A sign in the sign column (configurable)
+- Virtual text showing breach count: `PWNED (52.3M)`
+- Line highlight (configurable)
+
+### Configuration
+
+```lua
+pwned = {
+  enabled = true,               -- Feature toggle
+  auto_check = true,            -- Check on BufEnter
+  check_on_save = true,         -- Check when saving file
+  show_sign = true,
+  show_virtual_text = true,
+  show_line_highlight = true,
+}
 ```
 
 ## Lualine Integration
@@ -364,6 +432,10 @@ vim.api.nvim_create_autocmd('BufEnter', {
    ```
 
 2. Check if telescope.nvim is installed and loaded
+
+### Snacks.nvim picker
+
+Camouflage automatically masks values in Snacks.nvim picker preview buffers. This integration is always enabled when snacks.nvim is detected.
 
 ### Buffer-local settings not applying
 

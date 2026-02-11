@@ -58,11 +58,11 @@ function M.check_value(value, callback)
 end
 
 ---@class ParsedVariable
----@field name string Variable name
+---@field key string Variable name/key
 ---@field value string Variable value
----@field line number 0-indexed line number
----@field start_col number Start column
----@field end_col number End column
+---@field line_number number 0-indexed line number
+---@field start_index number Start byte offset
+---@field end_index number End byte offset
 
 ---Check a single variable and update UI
 ---@param bufnr number Buffer number
@@ -72,7 +72,7 @@ end
 function M.check_variable(bufnr, var, config, callback)
   M.check_value(var.value, function(result)
     if result and result.pwned then
-      ui.mark_pwned(bufnr, var.line, result.count, config)
+      ui.mark_pwned(bufnr, var.line_number, result.count, config)
     end
     if callback then
       callback(result)
@@ -113,7 +113,7 @@ function M.check_buffer(bufnr, variables, config, callback)
 
     M.check_variable(bufnr, var, config, function(result)
       if result then
-        results[var.name] = result
+        results[var.key] = result
       end
       -- Process next (sequential to avoid API rate limiting)
       process_next()

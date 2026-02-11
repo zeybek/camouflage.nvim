@@ -17,7 +17,8 @@ CONTENTS                                                  *camouflage-contents*
   8. Supported Formats ....................... |camouflage-formats|
   9. Styles .................................. |camouflage-styles|
  10. Integrations ............................ |camouflage-integrations|
- 11. Troubleshooting ......................... |camouflage-troubleshooting|
+ 11. Have I Been Pwned ....................... |camouflage-pwned|
+ 12. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -27,11 +28,12 @@ configuration files during screen sharing. It uses extmarks to overlay
 masked text without modifying the actual file content.
 
 Features:
-- Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc
-- Nested key support for JSON and YAML
+- Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc, .xml
+- Nested key support for JSON, YAML, and XML
 - Multiple masking styles: stars, dotted, text, scramble
+- Have I Been Pwned integration for password breach checking
 - Buffer-local configuration overrides
-- Telescope preview integration
+- Telescope and Snacks.nvim preview integration
 - Zero file modification
 
 ==============================================================================
@@ -39,8 +41,14 @@ REQUIREMENTS                                          *camouflage-requirements*
 
 - Neovim >= 0.9.0
 - Optional: telescope.nvim (for preview masking)
+- Optional: snacks.nvim (for picker preview masking)
 - Optional: nvim-cmp (for completion disabling in masked buffers)
 - Optional: lualine.nvim (for status component)
+
+For Have I Been Pwned feature (|camouflage-pwned|):
+- Neovim >= 0.10.0 (requires `vim.system`)
+- `curl` (for API requests)
+- `sha1sum` or `openssl` (for password hashing)
 
 ==============================================================================
 INSTALLATION                                          *camouflage-installation*
@@ -110,6 +118,16 @@ Call the setup function with your options: >lua
       cmp = {
         disable_in_masked = true, -- Disable completion in masked buffers
       },
+    },
+
+    -- Have I Been Pwned (requires Neovim 0.10+)
+    pwned = {
+      enabled = true,             -- Enable the feature
+      auto_check = true,          -- Check on BufEnter
+      check_on_save = true,       -- Check on BufWritePost
+      show_sign = true,           -- Show sign column indicator
+      show_virtual_text = true,   -- Show virtual text
+      show_line_highlight = true, -- Highlight the line
     },
   })
 <
@@ -192,6 +210,27 @@ COMMANDS                                                  *camouflage-commands*
   - Parser used for current file
   - Number of masked values
 
+                                                      *:CamouflagePwnedCheck*
+:CamouflagePwnedCheck
+  Check if the value under cursor has been found in data breaches
+  using the Have I Been Pwned API. Requires Neovim 0.10+.
+
+                                                  *:CamouflagePwnedCheckLine*
+:CamouflagePwnedCheckLine
+  Check all masked values on the current line for breaches.
+
+                                                *:CamouflagePwnedCheckBuffer*
+:CamouflagePwnedCheckBuffer
+  Check all masked values in the entire buffer for breaches.
+
+                                                      *:CamouflagePwnedClear*
+:CamouflagePwnedClear
+  Clear pwned indicators (signs, virtual text, highlights) from buffer.
+
+                                                 *:CamouflagePwnedClearCache*
+:CamouflagePwnedClearCache
+  Clear the local cache of pwned check results.
+
 ==============================================================================
 API                                                            *camouflage-api*
 
@@ -222,9 +261,30 @@ camouflage.is_enabled()
 camouflage.refresh()
   Refresh decorations for all visible buffers.
 
-                                                         *camouflage.version*
+                                                          *camouflage.version*
 camouflage.version
   String containing the current plugin version.
+
+                                                     *camouflage.pwned_check()*
+camouflage.pwned_check()
+  Check if the value under cursor has been pwned. Requires Neovim 0.10+.
+
+                                                *camouflage.pwned_check_line()*
+camouflage.pwned_check_line()
+  Check all masked values on current line for breaches.
+
+                                              *camouflage.pwned_check_buffer()*
+camouflage.pwned_check_buffer()
+  Check all masked values in the buffer for breaches.
+
+                                                     *camouflage.pwned_clear()*
+camouflage.pwned_clear()
+  Clear pwned indicators from the current buffer.
+
+                                              *camouflage.pwned_is_available()*
+camouflage.pwned_is_available()
+  Returns `true` if the pwned feature is available (Neovim 0.10+ and
+  required CLI tools are installed).
 
 ==============================================================================
 BUFFER-LOCAL CONFIGURATION                             *camouflage-buffer-local*
@@ -308,8 +368,10 @@ Shell           .sh                             No
 JSON            .json                           Yes
 YAML            .yaml, .yml                     Yes
 TOML            .toml                           Yes (sections)
-Properties      .properties, .ini, .conf        Yes (sections)
+Properties      .properties, .ini, .conf,       Yes (sections)
+                credentials
 Netrc           .netrc, _netrc                  No
+XML             .xml                            Yes
 
 Environment files ~
   Extensions: .env, .env.*, .envrc, .sh
@@ -368,6 +430,21 @@ Netrc files ~
     machine gitlab.com login oauth2 password glpat-xxxxx
 <
 
+XML files ~
+  Extensions: .xml
+  Supports element content and attributes
+  Useful for Maven settings.xml, pom.xml, Spring configs
+  Example: >xml
+    <settings>
+      <servers>
+        <server>
+          <id>maven-repo</id>
+          <password>secret123</password>
+        </server>
+      </servers>
+    </settings>
+<
+
                                                      *camouflage-custom-parser*
 Custom Patterns ~
 
@@ -413,7 +490,7 @@ scramble ~
 ==============================================================================
 INTEGRATIONS                                          *camouflage-integrations*
 
-                                                       *camouflage-telescope*
+                                                        *camouflage-telescope*
 Telescope ~
 
 When enabled, camouflage automatically masks values in Telescope preview
@@ -425,6 +502,12 @@ buffers for supported file types.
     },
   })
 <
+
+                                                          *camouflage-snacks*
+Snacks.nvim ~
+
+Camouflage automatically masks values in Snacks.nvim picker preview buffers.
+This integration is always enabled when snacks.nvim is detected.
 
                                                         *camouflage-nvim-cmp*
 nvim-cmp ~
@@ -469,6 +552,77 @@ With custom options: >lua
 <
 
 Example with count: ` 12` - Showing 12 masked values
+
+==============================================================================
+HAVE I BEEN PWNED                                           *camouflage-pwned*
+
+Camouflage can check your masked passwords against the Have I Been Pwned
+(https://haveibeenpwned.com/) database to warn you if they've been exposed
+in data breaches.
+
+Requirements ~
+- Neovim >= 0.10.0 (uses `vim.system`)
+- `curl` for API requests
+- `sha1sum` or `openssl` for password hashing
+
+Privacy ~
+                                                   *camouflage-pwned-privacy*
+The integration uses k-anonymity: only the first 5 characters of the
+SHA-1 hash are sent to the HIBP API. Your actual passwords never leave
+your machine.
+
+How it works:
+1. Password is hashed locally using SHA-1
+2. Only the first 5 characters of the hash are sent to the API
+3. API returns all hash suffixes matching that prefix
+4. Matching is done locally by comparing the remaining 35 characters
+
+Commands ~
+                                                  *camouflage-pwned-commands*
+:CamouflagePwnedCheck         Check value under cursor
+:CamouflagePwnedCheckLine     Check all values on current line
+:CamouflagePwnedCheckBuffer   Check all values in buffer
+:CamouflagePwnedClear         Clear pwned indicators
+:CamouflagePwnedClearCache    Clear the local cache
+
+Configuration ~
+                                                    *camouflage-pwned-config*
+>lua
+  require('camouflage').setup({
+    pwned = {
+      enabled = true,               -- Feature toggle
+      auto_check = true,            -- Check on BufEnter
+      check_on_save = true,         -- Check on BufWritePost
+      show_sign = true,             -- Show sign column indicator
+      show_virtual_text = true,     -- Show virtual text
+      show_line_highlight = true,   -- Highlight the line
+      sign_text = '!',              -- Sign icon
+      sign_hl = 'DiagnosticWarn',   -- Sign highlight group
+      virtual_text_format = 'PWNED (%s)',  -- Virtual text format
+      virtual_text_hl = 'DiagnosticWarn',  -- Virtual text highlight
+      line_hl = 'CamouflagePwned',  -- Line highlight group
+    },
+  })
+<
+
+Visual Indicators ~
+                                                *camouflage-pwned-indicators*
+When a password is found in breaches, you'll see:
+- A sign in the sign column (e.g., `!` or `⚠`)
+- Virtual text showing breach count: `PWNED (52.3M)`
+- Line highlight (reddish background by default)
+
+API ~
+                                                       *camouflage-pwned-api*
+>lua
+  local camouflage = require('camouflage')
+
+  camouflage.pwned_check()          -- Check value under cursor
+  camouflage.pwned_check_line()     -- Check all on current line
+  camouflage.pwned_check_buffer()   -- Check all in buffer
+  camouflage.pwned_clear()          -- Clear indicators
+  camouflage.pwned_is_available()   -- Check if feature is available
+<
 
 ==============================================================================
 TROUBLESHOOTING                                     *camouflage-troubleshooting*

@@ -135,8 +135,8 @@ M.defaults = {
   },
   pwned = {
     enabled = true,
-    auto_check = false,
-    check_on_save = false,
+    auto_check = true,
+    check_on_save = true,
     show_sign = true,
     show_virtual_text = true,
     show_line_highlight = true,

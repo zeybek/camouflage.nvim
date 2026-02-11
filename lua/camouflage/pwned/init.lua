@@ -55,9 +55,9 @@ local function find_variable_at_cursor(bufnr, cursor_line, cursor_col)
   end
 
   for _, var in ipairs(variables) do
-    if var.line == cursor_line then
+    if var.line_number == cursor_line then
       -- Check if cursor is within variable range
-      if cursor_col >= var.start_col and cursor_col <= var.end_col then
+      if cursor_col >= var.start_index and cursor_col <= var.end_index then
         return var
       end
     end
@@ -78,7 +78,7 @@ local function find_variables_on_line(bufnr, line)
 
   local result = {}
   for _, var in ipairs(variables) do
-    if var.line == line then
+    if var.line_number == line then
       table.insert(result, var)
     end
   end
@@ -114,7 +114,7 @@ function M.check_current(callback)
     return
   end
 
-  vim.notify('[camouflage] Checking "' .. var.name .. '" against HIBP...', vim.log.levels.INFO)
+  vim.notify('[camouflage] Checking "' .. var.key .. '" against HIBP...', vim.log.levels.INFO)
 
   check.check_variable(bufnr, var, get_ui_config(), function(result)
     if result then
@@ -122,14 +122,14 @@ function M.check_current(callback)
         vim.notify(
           string.format(
             '[camouflage] "%s" found in %s breaches!',
-            var.name,
+            var.key,
             ui.format_count(result.count)
           ),
           vim.log.levels.WARN
         )
       else
         vim.notify(
-          '[camouflage] "' .. var.name .. '" not found in any breaches',
+          '[camouflage] "' .. var.key .. '" not found in any breaches',
           vim.log.levels.INFO
         )
       end

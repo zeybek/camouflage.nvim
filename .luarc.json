@@ -9,7 +9,8 @@
   "workspace": {
     "library": [
       "${3rd}/luv/library",
-      "${3rd}/busted/library"
+      "${3rd}/busted/library",
+      "$VIMRUNTIME/lua"
     ],
     "checkThirdParty": false
   },

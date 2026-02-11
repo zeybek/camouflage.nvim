@@ -1,3 +1,13 @@
+-- Pwned feature requires Neovim 0.10+ (vim.system)
+if vim.fn.has('nvim-0.10') == 0 then
+  describe('camouflage.pwned.cache (skipped)', function()
+    it('requires Neovim 0.10+', function()
+      pending('Pwned feature requires Neovim 0.10+')
+    end)
+  end)
+  return
+end
+
 describe('camouflage.pwned.cache', function()
   local cache
 
