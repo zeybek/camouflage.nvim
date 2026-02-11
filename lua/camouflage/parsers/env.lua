@@ -9,7 +9,8 @@ local config = require('camouflage.config')
 ---@return ParsedVariable[]
 function M.parse(content, _bufnr)
   local variables = {}
-  local parser_config = config.get().parsers.env
+  local parser_config = config.get().parsers.env or {}
+  ---@cast parser_config CamouflageEnvParserConfig
   local lines = vim.split(content, '\n', { plain = true })
   local current_index = 0
 

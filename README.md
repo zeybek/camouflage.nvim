@@ -62,6 +62,7 @@ use {
 require('camouflage').setup({
   -- General
   enabled = true,
+  debug = false,               -- Enable verbose debug logging
   auto_enable = true,
   max_lines = 5000,            -- Skip files larger than this
 
@@ -369,7 +370,26 @@ vim.api.nvim_create_autocmd('BufEnter', {
 1. Set buffer variables before entering the buffer, or call `:CamouflageRefresh` after setting them
 2. Check variable names: `vim.b.camouflage_enabled` (not `vim.b.camouflage.enabled`)
 
-### Debug
+### Debug Mode
+
+Enable debug logging to see detailed information about plugin operations:
+
+```lua
+require('camouflage').setup({
+  debug = true,  -- Enable verbose logging
+})
+```
+
+View logs with `:messages` command. Log levels:
+- **TRACE/DEBUG/INFO**: Only shown when `debug = true`
+- **WARN/ERROR**: Always shown
+
+Debug logs include:
+- pcall failures (extmarks, buffer operations)
+- TreeSitter parser availability
+- Integration detection errors
+
+### Inspecting State
 
 View parsed variables:
 ```lua
@@ -379,6 +399,11 @@ View parsed variables:
 View buffer state:
 ```lua
 :lua print(vim.inspect(require('camouflage.state').get_buffer(0)))
+```
+
+View current config:
+```lua
+:lua print(vim.inspect(require('camouflage.config').get()))
 ```
 
 For more help, see `:help camouflage` or report issues at [GitHub](https://github.com/zeybek/camouflage.nvim/issues).

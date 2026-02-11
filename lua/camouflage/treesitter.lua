@@ -4,6 +4,8 @@
 --- Falls back to regex parsing when TreeSitter is not available.
 ---@brief ]]
 
+local log = require('camouflage.log')
+
 local M = {}
 
 ---@type table<string, boolean>
@@ -49,7 +51,10 @@ function M.has_parser(lang)
   end
 
   -- Try to get the parser - if it works, we have it
-  local ok = pcall(vim.treesitter.language.inspect, lang)
+  local ok, err = pcall(vim.treesitter.language.inspect, lang)
+  if not ok then
+    log.debug('TreeSitter parser not available for %s: %s', lang, err)
+  end
   parser_cache[lang] = ok
   return ok
 end
@@ -89,6 +94,9 @@ function M.parse(bufnr, lang, content)
   -- Get parser and parse
   local ok, parser = pcall(vim.treesitter.get_parser, bufnr, lang)
   if not ok or not parser then
+    if not ok then
+      log.pcall_error('treesitter.get_parser', parser, { bufnr = bufnr, lang = lang })
+    end
     return nil
   end
 
@@ -102,6 +110,9 @@ function M.parse(bufnr, lang, content)
   -- Parse query
   local query_ok, query = pcall(vim.treesitter.query.parse, lang, query_string)
   if not query_ok or not query then
+    if not query_ok then
+      log.pcall_error('treesitter.query.parse', query, { lang = lang })
+    end
     return nil
   end
 

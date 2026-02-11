@@ -28,7 +28,7 @@ end
 ---@return ParsedVariable[]
 function M.parse_regex(content)
   local variables = {}
-  local max_depth = config.get().parsers.json.max_depth
+  local max_depth = config.get().parsers.json.max_depth or 10
 
   local ok, parsed = pcall(vim.json.decode, content)
   if ok and parsed then

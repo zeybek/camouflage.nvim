@@ -7,6 +7,7 @@ local config = require('camouflage.config')
 local styles = require('camouflage.styles')
 local parsers = require('camouflage.parsers')
 local hooks = require('camouflage.hooks')
+local log = require('camouflage.log')
 
 ---Get the highlight group to use for masking
 ---@param cfg table Configuration
@@ -41,6 +42,7 @@ function M.apply_decorations(bufnr, override_filename)
 
   local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
   if not ok then
+    log.pcall_error('nvim_buf_get_lines', lines, { bufnr = bufnr })
     return
   end
   local content = table.concat(lines, '\n')
@@ -125,14 +127,22 @@ function M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
   else
     -- Single line value
     local masked_text = styles.generate_hidden_text(cfg.style, #var.value, var.value)
-    pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, start_pos.row, start_pos.col, {
-      end_row = end_pos.row,
-      end_col = end_pos.col,
-      virt_text = { { masked_text, hl_group } },
-      virt_text_pos = 'overlay',
-      hl_mode = 'combine',
-      priority = 100,
-    })
+    local ok, err =
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, start_pos.row, start_pos.col, {
+        end_row = end_pos.row,
+        end_col = end_pos.col,
+        virt_text = { { masked_text, hl_group } },
+        virt_text_pos = 'overlay',
+        hl_mode = 'combine',
+        priority = 100,
+      })
+    if not ok then
+      log.pcall_error(
+        'nvim_buf_set_extmark',
+        err,
+        { bufnr = bufnr, row = start_pos.row, col = start_pos.col }
+      )
+    end
   end
 end
 
@@ -173,7 +183,7 @@ function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos
     end
 
     local masked_text = styles.generate_hidden_text(cfg.style, col_end - col_start, line_content)
-    pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, row, col_start, {
+    local ok, err = pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, row, col_start, {
       end_row = row,
       end_col = col_end,
       virt_text = { { masked_text, hl_group } },
@@ -181,6 +191,9 @@ function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos
       hl_mode = 'combine',
       priority = 100,
     })
+    if not ok then
+      log.pcall_error('nvim_buf_set_extmark', err, { bufnr = bufnr, row = row, col = col_start })
+    end
 
     ::continue::
   end
@@ -189,7 +202,10 @@ end
 ---@param bufnr number|nil
 function M.clear_decorations(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  pcall(vim.api.nvim_buf_clear_namespace, bufnr, state.namespace, 0, -1)
+  local ok, err = pcall(vim.api.nvim_buf_clear_namespace, bufnr, state.namespace, 0, -1)
+  if not ok then
+    log.pcall_error('nvim_buf_clear_namespace', err, { bufnr = bufnr })
+  end
 end
 
 ---Compute cumulative line offsets for O(1) index-to-position lookup
@@ -230,11 +246,12 @@ end
 ---@return {row: number, col: number}|nil
 function M.index_to_position(bufnr, index, lines, line_offsets)
   if not lines then
-    local ok
-    ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
+    local ok, result = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
     if not ok then
+      log.pcall_error('nvim_buf_get_lines', result, { bufnr = bufnr })
       return nil
     end
+    lines = result
   end
 
   if #lines == 0 then

@@ -27,7 +27,7 @@ end
 function M.parse_regex(content, lines)
   local variables = {}
   local cfg = config.get()
-  local include_commented = cfg.parsers.include_commented
+  local include_commented = cfg.parsers.include_commented or false
 
   lines = lines or vim.split(content, '\n', { plain = true })
   local current_section = ''

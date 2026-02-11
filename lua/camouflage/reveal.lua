@@ -6,6 +6,7 @@ local state = require('camouflage.state')
 local config = require('camouflage.config')
 local core = require('camouflage.core')
 local hooks = require('camouflage.hooks')
+local log = require('camouflage.log')
 
 -- Reveal state
 local revealed_state = {
@@ -66,7 +67,10 @@ end
 ---@return nil
 local function clear_line_extmarks(bufnr, line)
   -- nvim_buf_clear_namespace: line_end is EXCLUSIVE
-  pcall(vim.api.nvim_buf_clear_namespace, bufnr, state.namespace, line, line + 1)
+  local ok, err = pcall(vim.api.nvim_buf_clear_namespace, bufnr, state.namespace, line, line + 1)
+  if not ok then
+    log.pcall_error('nvim_buf_clear_namespace', err, { bufnr = bufnr, line = line })
+  end
 end
 
 ---Apply revealed highlight to values on a line
@@ -87,12 +91,20 @@ local function apply_revealed_highlight(bufnr, line)
     if var_pos and var_pos.row == line then
       local end_pos = core.index_to_position(bufnr, var.end_index, lines, line_offsets)
       if end_pos then
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, line, var_pos.col, {
-          end_row = end_pos.row,
-          end_col = end_pos.col,
-          hl_group = cfg.highlight_group,
-          priority = 101,
-        })
+        local extmark_ok, extmark_err =
+          pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, line, var_pos.col, {
+            end_row = end_pos.row,
+            end_col = end_pos.col,
+            hl_group = cfg.highlight_group,
+            priority = 101,
+          })
+        if not extmark_ok then
+          log.pcall_error(
+            'nvim_buf_set_extmark',
+            extmark_err,
+            { bufnr = bufnr, line = line, col = var_pos.col }
+          )
+        end
       end
     end
   end
@@ -131,7 +143,10 @@ local function setup_auto_hide(bufnr, revealed_line)
   end
 
   if revealed_state.autocmd_id then
-    pcall(vim.api.nvim_del_autocmd, revealed_state.autocmd_id)
+    local ok, err = pcall(vim.api.nvim_del_autocmd, revealed_state.autocmd_id)
+    if not ok then
+      log.pcall_error('nvim_del_autocmd', err, { autocmd_id = revealed_state.autocmd_id })
+    end
   end
 
   revealed_state.autocmd_id = vim.api.nvim_create_autocmd(
@@ -221,7 +236,10 @@ function M.hide()
 
   -- Cleanup autocmd
   if revealed_state.autocmd_id then
-    pcall(vim.api.nvim_del_autocmd, revealed_state.autocmd_id)
+    local ok, err = pcall(vim.api.nvim_del_autocmd, revealed_state.autocmd_id)
+    if not ok then
+      log.pcall_error('nvim_del_autocmd', err, { autocmd_id = revealed_state.autocmd_id })
+    end
     revealed_state.autocmd_id = nil
   end
 
@@ -234,7 +252,7 @@ function M.hide()
   revealed_state.line = nil
 
   -- Re-apply decorations
-  if vim.api.nvim_buf_is_valid(was_bufnr) then
+  if was_bufnr and vim.api.nvim_buf_is_valid(was_bufnr) then
     core.apply_decorations(was_bufnr)
   end
 
@@ -313,7 +331,10 @@ local function hide_silent()
 
   -- Cleanup autocmd (if any)
   if revealed_state.autocmd_id then
-    pcall(vim.api.nvim_del_autocmd, revealed_state.autocmd_id)
+    local ok, err = pcall(vim.api.nvim_del_autocmd, revealed_state.autocmd_id)
+    if not ok then
+      log.pcall_error('nvim_del_autocmd', err, { autocmd_id = revealed_state.autocmd_id })
+    end
     revealed_state.autocmd_id = nil
   end
 
@@ -326,7 +347,7 @@ local function hide_silent()
   revealed_state.line = nil
 
   -- Re-apply decorations
-  if vim.api.nvim_buf_is_valid(was_bufnr) then
+  if was_bufnr and vim.api.nvim_buf_is_valid(was_bufnr) then
     core.apply_decorations(was_bufnr)
   end
 end
@@ -424,7 +445,10 @@ function M.stop_follow_cursor()
 
   -- Delete autocmd
   if follow_state.autocmd_id then
-    pcall(vim.api.nvim_del_autocmd, follow_state.autocmd_id)
+    local ok, err = pcall(vim.api.nvim_del_autocmd, follow_state.autocmd_id)
+    if not ok then
+      log.pcall_error('nvim_del_autocmd', err, { autocmd_id = follow_state.autocmd_id })
+    end
     follow_state.autocmd_id = nil
   end
 

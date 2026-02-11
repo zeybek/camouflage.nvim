@@ -10,7 +10,7 @@ local config = require('camouflage.config')
 function M.parse(content, _bufnr)
   local variables = {}
   local cfg = config.get()
-  local include_commented = cfg.parsers.include_commented
+  local include_commented = cfg.parsers.include_commented or false
 
   local lines = vim.split(content, '\n', { plain = true })
   local current_section = ''

@@ -3,27 +3,27 @@
 local M = {}
 
 ---@class CamouflageEnvParserConfig
----@field include_commented boolean
----@field include_export boolean
+---@field include_commented? boolean
+---@field include_export? boolean
 
 ---@class CamouflageJsonParserConfig
----@field max_depth number
+---@field max_depth? number
 
 ---@class CamouflageYamlParserConfig
----@field max_depth number
+---@field max_depth? number
 
 ---@class CamouflageParsersConfig
----@field include_commented boolean
----@field env CamouflageEnvParserConfig
----@field json CamouflageJsonParserConfig
----@field yaml CamouflageYamlParserConfig
+---@field include_commented? boolean
+---@field env? CamouflageEnvParserConfig
+---@field json? CamouflageJsonParserConfig
+---@field yaml? CamouflageYamlParserConfig
 
 ---@class CamouflageCmpConfig
----@field disable_in_masked boolean
+---@field disable_in_masked? boolean
 
 ---@class CamouflageIntegrationsConfig
----@field telescope boolean
----@field cmp CamouflageCmpConfig
+---@field telescope? boolean
+---@field cmp? CamouflageCmpConfig
 
 ---@class CamouflageColorsConfig
 ---@field foreground string|nil Foreground color (hex or color name, nil to use highlight_group)
@@ -41,37 +41,39 @@ local M = {}
 ---@field on_after_decorate? fun(bufnr: number, variables: ParsedVariable[]): nil
 
 ---@class CamouflageYankConfig
----@field default_register string Default register ('+' for system clipboard)
----@field notify boolean Show notification after copy
----@field auto_clear_seconds number|nil Seconds before auto-clearing clipboard (nil = disabled)
----@field confirm boolean Require confirmation before copying
----@field confirm_message string Confirmation message format
+---@field default_register? string Default register ('+' for system clipboard)
+---@field notify? boolean Show notification after copy
+---@field auto_clear_seconds? number|nil Seconds before auto-clearing clipboard (nil = disabled)
+---@field confirm? boolean Require confirmation before copying
+---@field confirm_message? string Confirmation message format
 
 ---@class CamouflageRevealConfig
----@field highlight_group string Highlight group for revealed values
----@field notify boolean Show notification on reveal/hide
----@field follow_cursor boolean Auto-reveal current line as cursor moves (default: false)
+---@field highlight_group? string Highlight group for revealed values
+---@field notify? boolean Show notification on reveal/hide
+---@field follow_cursor? boolean Auto-reveal current line as cursor moves (default: false)
 
 ---@class CamouflageConfig
----@field enabled boolean
----@field auto_enable boolean
----@field style string
----@field mask_char string
----@field mask_length number|nil
----@field max_lines number|nil
----@field hidden_text string
----@field highlight_group string
----@field colors CamouflageColorsConfig|nil
----@field patterns CamouflagePatternConfig[]
----@field parsers CamouflageParsersConfig
----@field integrations CamouflageIntegrationsConfig
----@field hooks CamouflageHooksConfig|nil
----@field yank CamouflageYankConfig|nil Yank configuration
----@field reveal CamouflageRevealConfig|nil Reveal configuration
+---@field enabled? boolean
+---@field debug? boolean Enable debug logging (default: false)
+---@field auto_enable? boolean
+---@field style? string
+---@field mask_char? string
+---@field mask_length? number|nil
+---@field max_lines? number|nil
+---@field hidden_text? string
+---@field highlight_group? string
+---@field colors? CamouflageColorsConfig|nil
+---@field patterns? CamouflagePatternConfig[]
+---@field parsers? CamouflageParsersConfig
+---@field integrations? CamouflageIntegrationsConfig
+---@field hooks? CamouflageHooksConfig|nil
+---@field yank? CamouflageYankConfig|nil Yank configuration
+---@field reveal? CamouflageRevealConfig|nil Reveal configuration
 
 ---@type CamouflageConfig
 M.defaults = {
   enabled = true,
+  debug = false,
   auto_enable = true,
   style = 'stars',
   mask_char = '*',

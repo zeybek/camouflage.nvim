@@ -36,8 +36,8 @@ end
 function M.parse_regex(content, lines)
   local variables = {}
   local cfg = config.get()
-  local max_depth = cfg.parsers.yaml.max_depth
-  local include_commented = cfg.parsers.include_commented
+  local max_depth = cfg.parsers.yaml.max_depth or 10
+  local include_commented = cfg.parsers.include_commented or false
 
   lines = lines or vim.split(content, '\n', { plain = true })
   local key_stack = {}

@@ -122,6 +122,9 @@ local function setup_snacks_integration()
 
     -- Method 3: Extract from window title (last resort)
     local ok, win_config = pcall(vim.api.nvim_win_get_config, win)
+    if not ok then
+      require('camouflage.log').debug('nvim_win_get_config failed for win %d: %s', win, win_config)
+    end
     if ok and win_config.title and type(win_config.title) == 'table' then
       for _, title_item in ipairs(win_config.title) do
         if type(title_item) == 'table' and type(title_item[1]) == 'string' then

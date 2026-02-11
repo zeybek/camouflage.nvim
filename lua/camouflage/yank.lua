@@ -6,6 +6,7 @@ local state = require('camouflage.state')
 local config = require('camouflage.config')
 local core = require('camouflage.core')
 local hooks = require('camouflage.hooks')
+local log = require('camouflage.log')
 
 local clear_timer = nil
 
@@ -43,6 +44,7 @@ function M.find_variable_at_cursor(bufnr)
 
   local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
   if not ok then
+    log.pcall_error('nvim_buf_get_lines', lines, { bufnr = bufnr })
     return nil
   end
 
@@ -179,6 +181,7 @@ function M.yank_with_picker(opts)
 
   local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
   if not ok then
+    log.pcall_error('nvim_buf_get_lines', lines, { bufnr = bufnr })
     return
   end
 
