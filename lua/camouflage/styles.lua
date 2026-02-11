@@ -2,6 +2,8 @@
 
 local M = {}
 
+local config = require('camouflage.config')
+
 M.STYLES = {
   TEXT = 'text',
   DOTTED = 'dotted',
@@ -17,7 +19,7 @@ M.STYLES = {
 ---@return string The masked text
 function M.generate_hidden_text(style, length, original_text, cfg)
   -- Use provided config or fall back to global config
-  cfg = cfg or require('camouflage.config').get()
+  cfg = cfg or config.get()
   local target_length = cfg.mask_length or length
 
   if style == M.STYLES.TEXT then
