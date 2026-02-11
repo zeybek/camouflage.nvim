@@ -83,14 +83,18 @@ function M.schedule_auto_clear(register, seconds)
   end
 
   clear_timer = vim.uv.new_timer()
-  clear_timer:start(seconds * 1000, 0, vim.schedule_wrap(function()
-    vim.fn.setreg(register, '')
-    vim.notify('[camouflage] Clipboard cleared', vim.log.levels.INFO)
-    if clear_timer then
-      clear_timer:close()
-      clear_timer = nil
-    end
-  end))
+  clear_timer:start(
+    seconds * 1000,
+    0,
+    vim.schedule_wrap(function()
+      vim.fn.setreg(register, '')
+      vim.notify('[camouflage] Clipboard cleared', vim.log.levels.INFO)
+      if clear_timer then
+        clear_timer:close()
+        clear_timer = nil
+      end
+    end)
+  )
 end
 
 ---Perform the actual yank operation

@@ -370,16 +370,13 @@ function M.start_follow_cursor()
   follow_state.enabled = true
 
   -- Create global autocmd for cursor movement
-  follow_state.autocmd_id = vim.api.nvim_create_autocmd(
-    { 'CursorMoved', 'CursorMovedI' },
-    {
-      group = state.augroup,
-      callback = function(args)
-        on_follow_cursor_moved(args.buf)
-      end,
-      desc = 'Camouflage follow cursor mode',
-    }
-  )
+  follow_state.autocmd_id = vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
+    group = state.augroup,
+    callback = function(args)
+      on_follow_cursor_moved(args.buf)
+    end,
+    desc = 'Camouflage follow cursor mode',
+  })
 
   -- Reveal current line immediately (if applicable)
   local bufnr = vim.api.nvim_get_current_buf()

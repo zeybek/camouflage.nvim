@@ -17,7 +17,8 @@ describe('camouflage.yank', function()
     local bufnr = vim.api.nvim_create_buf(false, true)
     vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(content, '\n'))
     -- Use unique filename to avoid E95 error
-    local unique_name = filename and (filename .. '.' .. test_counter) or ('/tmp/test_' .. test_counter .. '.env')
+    local unique_name = filename and (filename .. '.' .. test_counter)
+      or ('/tmp/test_' .. test_counter .. '.env')
     vim.api.nvim_buf_set_name(bufnr, unique_name)
     vim.api.nvim_set_current_buf(bufnr)
     return bufnr
