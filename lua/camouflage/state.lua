@@ -65,6 +65,8 @@ function M.get_variables(bufnr)
   return buf_state and buf_state.variables or {}
 end
 
+---Clear all buffer state
+---@return nil
 function M.clear()
   M.buffers = {}
 end

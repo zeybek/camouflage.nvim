@@ -181,6 +181,7 @@ function M.parse(bufnr, lang, content)
 end
 
 ---Clear parser cache (useful for testing)
+---@return nil
 function M.clear_cache()
   parser_cache = {}
 end

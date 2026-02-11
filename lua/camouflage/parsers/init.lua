@@ -129,6 +129,8 @@ function M.is_supported(filename)
   return M.find_parser_for_file(filename) ~= nil
 end
 
+---Register all built-in parsers
+---@return nil
 function M.setup()
   M.register('env', require('camouflage.parsers.env'))
   M.register('json', require('camouflage.parsers.json'))

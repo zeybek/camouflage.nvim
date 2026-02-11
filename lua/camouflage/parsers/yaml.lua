@@ -133,7 +133,14 @@ function M.parse_regex(content, lines)
   return variables
 end
 
----@return table|nil
+---Process a single YAML line and determine its type
+---@param line string The line content
+---@param line_num number 1-indexed line number
+---@param line_start number Byte offset where line starts
+---@param key_stack table[] Stack of parent keys with their indentation
+---@param max_depth number Maximum nesting depth to parse
+---@param include_commented boolean Whether to include commented lines
+---@return table|nil Result with type and data, or nil
 function M.process_line(line, line_num, line_start, key_stack, max_depth, include_commented)
   local trimmed = line:match('^%s*(.-)%s*$')
   if trimmed == '' or trimmed == '---' or trimmed == '...' then

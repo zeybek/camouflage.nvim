@@ -51,7 +51,13 @@ function M.parse_regex(content, lines)
   return variables
 end
 
----@return table|nil
+---Process a single TOML line and determine its type
+---@param line string The line content
+---@param line_num number 1-indexed line number
+---@param line_start number Byte offset where line starts
+---@param current_section string Current section name
+---@param include_commented boolean Whether to include commented lines
+---@return table|nil Result with type and data, or nil
 function M.process_line(line, line_num, line_start, current_section, include_commented)
   local trimmed = line:match('^%s*(.-)%s*$')
 

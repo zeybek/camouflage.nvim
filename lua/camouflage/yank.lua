@@ -238,6 +238,7 @@ function M.yank(opts)
 end
 
 ---Cancel auto-clear timer (for testing)
+---@return nil
 function M.cancel_auto_clear()
   if clear_timer then
     clear_timer:stop()

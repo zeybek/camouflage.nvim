@@ -8,6 +8,8 @@ M.version = '0.1.0'
 
 local initialized = false
 
+---Setup nvim-cmp integration to disable completion in masked buffers
+---@return nil
 local function setup_cmp_integration()
   if not pcall(require, 'cmp') then
     return
@@ -28,6 +30,7 @@ local function setup_cmp_integration()
 end
 
 ---Setup Telescope.nvim preview integration
+---@return nil
 local function setup_telescope_integration()
   if not pcall(require, 'telescope') then
     return
@@ -64,6 +67,7 @@ end
 
 ---Setup Snacks.nvim picker preview integration
 ---Uses nvim_buf_attach to detect content changes in preview buffer
+---@return nil
 local function setup_snacks_integration()
   -- Only setup if snacks.nvim is available
   local snacks_ok, snacks = pcall(require, 'snacks')
@@ -234,6 +238,8 @@ local function setup_snacks_integration()
   })
 end
 
+---Setup all plugin integrations based on config
+---@return nil
 local function setup_integrations()
   local config = require('camouflage.config').get()
 
@@ -251,6 +257,7 @@ local function setup_integrations()
 end
 
 ---Setup custom highlight group if colors are configured
+---@return nil
 local function setup_highlight()
   local config = require('camouflage.config').get()
   if not config.colors then
@@ -322,11 +329,15 @@ function M.setup(opts)
   end
 end
 
+---Enable camouflage globally
+---@return nil
 function M.enable()
   require('camouflage.config').set('enabled', true)
   require('camouflage.core').refresh_all()
 end
 
+---Disable camouflage globally and clear all decorations
+---@return nil
 function M.disable()
   require('camouflage.config').set('enabled', false)
   local state = require('camouflage.state')
@@ -339,6 +350,8 @@ function M.disable()
   end
 end
 
+---Toggle camouflage on/off globally
+---@return nil
 function M.toggle()
   if require('camouflage.config').is_enabled() then
     M.disable()
@@ -347,6 +360,8 @@ function M.toggle()
   end
 end
 
+---Refresh decorations in all masked buffers
+---@return nil
 function M.refresh()
   require('camouflage.core').refresh_all()
 end
@@ -394,11 +409,13 @@ M.reveal = require('camouflage.reveal')
 -- Follow Cursor API (shortcuts)
 
 ---Start follow cursor mode
+---@return nil
 function M.start_follow_cursor()
   return require('camouflage.reveal').start_follow_cursor()
 end
 
 ---Stop follow cursor mode
+---@return nil
 function M.stop_follow_cursor()
   return require('camouflage.reveal').stop_follow_cursor()
 end

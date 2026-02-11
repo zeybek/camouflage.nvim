@@ -61,16 +61,18 @@ local function line_has_variables(bufnr, line)
 end
 
 ---Clear extmarks for a specific line
----@param bufnr number
----@param line number 0-indexed
+---@param bufnr number Buffer number
+---@param line number 0-indexed line number
+---@return nil
 local function clear_line_extmarks(bufnr, line)
   -- nvim_buf_clear_namespace: line_end is EXCLUSIVE
   pcall(vim.api.nvim_buf_clear_namespace, bufnr, state.namespace, line, line + 1)
 end
 
 ---Apply revealed highlight to values on a line
----@param bufnr number
----@param line number 0-indexed
+---@param bufnr number Buffer number
+---@param line number 0-indexed line number
+---@return nil
 local function apply_revealed_highlight(bufnr, line)
   local cfg = get_reveal_config()
   local variables = state.get_variables(bufnr)
@@ -97,6 +99,7 @@ local function apply_revealed_highlight(bufnr, line)
 end
 
 ---Setup hook to prevent re-masking revealed line
+---@return nil
 local function setup_reveal_hook()
   revealed_state.hook_id = hooks.on('variable_detected', function(bufnr, var)
     if revealed_state.bufnr == bufnr then
@@ -109,6 +112,7 @@ local function setup_reveal_hook()
 end
 
 ---Cleanup reveal hook
+---@return nil
 local function cleanup_reveal_hook()
   if revealed_state.hook_id then
     hooks.off('variable_detected', revealed_state.hook_id)
@@ -117,8 +121,9 @@ local function cleanup_reveal_hook()
 end
 
 ---Setup autocmd for auto-hide
----@param bufnr number
----@param revealed_line number 1-indexed
+---@param bufnr number Buffer number
+---@param revealed_line number 1-indexed line number
+---@return nil
 local function setup_auto_hide(bufnr, revealed_line)
   -- Skip auto-hide setup in follow cursor mode (follow mode handles its own cursor tracking)
   if follow_state.enabled then
@@ -151,6 +156,7 @@ local function setup_auto_hide(bufnr, revealed_line)
 end
 
 ---Reveal the current line
+---@return nil
 function M.reveal_line()
   local bufnr = vim.api.nvim_get_current_buf()
   local cursor = vim.api.nvim_win_get_cursor(0)
@@ -207,6 +213,7 @@ function M.reveal_line()
 end
 
 ---Hide revealed line
+---@return nil
 function M.hide()
   if not revealed_state.bufnr then
     return
@@ -239,6 +246,7 @@ function M.hide()
 end
 
 ---Toggle reveal on current line
+---@return nil
 function M.toggle()
   local bufnr = vim.api.nvim_get_current_buf()
   local cursor = vim.api.nvim_win_get_cursor(0)
@@ -276,8 +284,9 @@ function M.is_follow_cursor_enabled()
 end
 
 ---Internal: Reveal a specific line without notifications (for follow mode)
----@param bufnr number
----@param line number 1-indexed
+---@param bufnr number Buffer number
+---@param line number 1-indexed line number
+---@return nil
 local function reveal_line_silent(bufnr, line)
   local line_0 = line - 1
 
@@ -296,6 +305,7 @@ local function reveal_line_silent(bufnr, line)
 end
 
 ---Internal: Hide current reveal without notifications (for follow mode)
+---@return nil
 local function hide_silent()
   if not revealed_state.bufnr then
     return
@@ -322,7 +332,8 @@ local function hide_silent()
 end
 
 ---Internal: Handle cursor movement in follow mode
----@param bufnr number
+---@param bufnr number Buffer number
+---@return nil
 local function on_follow_cursor_moved(bufnr)
   -- Only work on camouflage-enabled buffers
   if not state.is_buffer_masked(bufnr) then
@@ -356,6 +367,7 @@ local function on_follow_cursor_moved(bufnr)
 end
 
 ---Start follow cursor mode
+---@return nil
 function M.start_follow_cursor()
   if follow_state.enabled then
     return
@@ -393,6 +405,7 @@ function M.start_follow_cursor()
 end
 
 ---Stop follow cursor mode
+---@return nil
 function M.stop_follow_cursor()
   if not follow_state.enabled then
     return

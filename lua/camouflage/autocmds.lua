@@ -10,7 +10,9 @@ local core = require('camouflage.core')
 -- Timer storage for debouncing per buffer
 local debounce_timers = {}
 
----@param bufnr number
+---Clean up debounce timer for a buffer
+---@param bufnr number Buffer number
+---@return nil
 local function cleanup_timer(bufnr)
   if debounce_timers[bufnr] then
     vim.fn.timer_stop(debounce_timers[bufnr])
@@ -18,6 +20,8 @@ local function cleanup_timer(bufnr)
   end
 end
 
+---Setup autocommands for automatic masking
+---@return nil
 function M.setup()
   local group = state.augroup
   vim.api.nvim_clear_autocmds({ group = group })
@@ -80,10 +84,14 @@ function M.setup()
   })
 end
 
+---Disable all camouflage autocommands
+---@return nil
 function M.disable()
   vim.api.nvim_clear_autocmds({ group = state.augroup })
 end
 
+---Apply decorations to all currently loaded supported buffers
+---@return nil
 function M.apply_to_loaded_buffers()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_loaded(bufnr) then

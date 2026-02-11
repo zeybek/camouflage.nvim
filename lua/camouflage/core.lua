@@ -265,10 +265,14 @@ function M.index_to_position(bufnr, index, lines, line_offsets)
   return { row = #lines - 1, col = #lines[#lines] }
 end
 
+---Refresh decorations for current buffer
+---@return nil
 function M.refresh()
   M.apply_decorations(vim.api.nvim_get_current_buf())
 end
 
+---Refresh decorations for all buffers in visible windows
+---@return nil
 function M.refresh_all()
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     local bufnr = vim.api.nvim_win_get_buf(win)

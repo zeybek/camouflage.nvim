@@ -2,6 +2,8 @@
 
 local M = {}
 
+---Setup all user commands for camouflage
+---@return nil
 function M.setup()
   vim.api.nvim_create_user_command('CamouflageToggle', function()
     local camouflage = require('camouflage')
