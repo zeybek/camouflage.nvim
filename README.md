@@ -19,7 +19,12 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Nested key support**: Handles `database.connection.password` in JSON/YAML
 - **All value types**: Masks strings, numbers, and booleans
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
-- **Telescope integration**: Mask values in preview buffers
+- **Reveal & Yank**: Temporarily reveal or copy masked values
+- **Follow Cursor Mode**: Auto-reveal current line as you navigate
+- **Hot Reload**: Config changes apply immediately
+- **Event System**: Hooks for extending functionality
+- **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML
+- **Telescope/Snacks Integration**: Mask values in preview buffers
 - **Zero file modification**: All masking is purely visual
 
 ## Installation
@@ -33,6 +38,9 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
   opts = {},
   keys = {
     { '<leader>ct', '<cmd>CamouflageToggle<cr>', desc = 'Toggle Camouflage' },
+    { '<leader>cr', '<cmd>CamouflageReveal<cr>', desc = 'Reveal Line' },
+    { '<leader>cy', '<cmd>CamouflageYank<cr>', desc = 'Yank Value' },
+    { '<leader>cf', '<cmd>CamouflageFollowCursor<cr>', desc = 'Follow Cursor' },
   },
 }
 ```
@@ -93,16 +101,44 @@ require('camouflage').setup({
       disable_in_masked = true,
     },
   },
+
+  -- Reveal settings
+  reveal = {
+    highlight_group = 'CamouflageRevealed',  -- Highlight for revealed values
+    notify = false,                           -- Show notifications
+    follow_cursor = false,                    -- Auto-reveal current line
+  },
+
+  -- Yank settings
+  yank = {
+    default_register = '+',       -- System clipboard
+    notify = true,                -- Show notification after copy
+    auto_clear_seconds = 30,      -- Auto-clear clipboard (nil to disable)
+    confirm = true,               -- Require confirmation before copying
+  },
+
+  -- Event hooks (see Events section)
+  hooks = {
+    on_before_decorate = function(bufnr, filename) end,
+    on_variable_detected = function(bufnr, var) end,
+    on_after_decorate = function(bufnr, variables) end,
+  },
 })
 ```
 
 ## Commands
 
-| Command              | Description                      |
-| -------------------- | -------------------------------- |
-| `:CamouflageToggle`  | Toggle camouflage on/off         |
-| `:CamouflageRefresh` | Refresh decorations              |
-| `:CamouflageStatus`  | Show status and masked count     |
+| Command                   | Description                                |
+| ------------------------- | ------------------------------------------ |
+| `:CamouflageToggle`       | Toggle camouflage on/off                   |
+| `:CamouflageRefresh`      | Refresh decorations                        |
+| `:CamouflageStatus`       | Show status and masked count               |
+| `:CamouflageReveal`       | Reveal masked values on current line       |
+| `:CamouflageReveal!`      | Force hide revealed values                 |
+| `:CamouflageYank`         | Copy unmasked value at cursor to clipboard |
+| `:CamouflageYank!`        | Show picker to select value to copy        |
+| `:CamouflageFollowCursor` | Toggle follow cursor mode                  |
+| `:CamouflageFollowCursor!`| Force disable follow cursor mode           |
 
 ## Keymaps
 
@@ -110,6 +146,9 @@ Camouflage doesn't set any keymaps by default. Suggested:
 
 ```lua
 vim.keymap.set('n', '<leader>ct', '<cmd>CamouflageToggle<cr>', { desc = 'Toggle Camouflage' })
+vim.keymap.set('n', '<leader>cr', '<cmd>CamouflageReveal<cr>', { desc = 'Reveal Line' })
+vim.keymap.set('n', '<leader>cy', '<cmd>CamouflageYank<cr>', { desc = 'Yank Value' })
+vim.keymap.set('n', '<leader>cf', '<cmd>CamouflageFollowCursor<cr>', { desc = 'Follow Cursor' })
 ```
 
 ## Supported File Formats
@@ -140,6 +179,28 @@ camouflage.is_enabled()
 
 -- Refresh decorations
 camouflage.refresh()
+
+-- Reveal API
+camouflage.reveal.reveal_line()      -- Reveal current line
+camouflage.reveal.hide()             -- Hide revealed line
+camouflage.reveal.toggle()           -- Toggle reveal on current line
+camouflage.reveal.is_revealed()      -- Check if any line is revealed
+
+-- Follow Cursor Mode
+camouflage.start_follow_cursor()     -- Enable follow cursor mode
+camouflage.stop_follow_cursor()      -- Disable follow cursor mode
+camouflage.toggle_follow_cursor()    -- Toggle follow cursor mode
+camouflage.is_follow_cursor_enabled() -- Check if follow mode is active
+
+-- Yank API
+camouflage.yank.yank()               -- Yank value at cursor
+camouflage.yank.yank_with_picker()   -- Show picker to select value
+
+-- Event System
+camouflage.on('variable_detected', function(bufnr, var)
+  -- Return false to skip masking this variable
+  return var.key:match('PASSWORD')
+end)
 ```
 
 ## Lualine Integration
@@ -162,15 +223,61 @@ require('lualine').setup({
     lualine_x = {
       {
         'camouflage',
-        icon_enabled = '',    -- Icon when enabled (default)
-        icon_disabled = '',   -- Icon when disabled
-        show_disabled = false, -- Show icon when disabled
-        show_count = false,    -- Show masked values count
+        icon_enabled = '',         -- Icon when enabled (default)
+        icon_disabled = '',        -- Icon when disabled
+        show_disabled = false,      -- Show icon when disabled
+        show_count = true,          -- Show masked values count
+        show_follow_indicator = true, -- Show [F] when follow mode active
+        follow_indicator = '[F]',   -- Custom follow mode indicator
       },
     },
   },
 })
 ```
+
+Example output: ` 5 [F]` (5 masked values, follow mode active)
+
+## Events / Hooks
+
+Camouflage provides an event system for extending functionality:
+
+```lua
+local camouflage = require('camouflage')
+
+-- Filter which variables get masked
+camouflage.on('variable_detected', function(bufnr, var)
+  -- Only mask variables containing 'SECRET' or 'PASSWORD'
+  if var.key:match('SECRET') or var.key:match('PASSWORD') then
+    return true  -- Mask this variable
+  end
+  return false   -- Skip masking
+end)
+
+-- Run code before/after decorations
+camouflage.on('before_decorate', function(bufnr, filename)
+  print('Decorating: ' .. filename)
+end)
+
+camouflage.on('after_decorate', function(bufnr, variables)
+  print('Masked ' .. #variables .. ' variables')
+end)
+
+-- Hook into reveal/yank/follow events
+camouflage.on('before_reveal', function(bufnr, line) end)
+camouflage.on('after_reveal', function(bufnr, line) end)
+camouflage.on('before_yank', function(bufnr, var) end)
+camouflage.on('after_yank', function(bufnr, var, register) end)
+camouflage.on('before_follow_start', function() end)
+camouflage.on('after_follow_stop', function() end)
+```
+
+Available events:
+- `before_decorate` / `after_decorate` - Decoration lifecycle
+- `variable_detected` - Called for each variable (return `false` to skip)
+- `before_reveal` / `after_reveal` - Line reveal
+- `before_yank` / `after_yank` - Value yank
+- `before_follow_start` / `after_follow_start` - Follow mode start
+- `before_follow_stop` / `after_follow_stop` - Follow mode stop
 
 ## Buffer-local Configuration
 
