@@ -9,6 +9,8 @@ local core = require('camouflage.core')
 
 -- Timer storage for debouncing per buffer
 local debounce_timers = {}
+-- Separate timer storage for pwned debouncing
+local pwned_debounce_timers = {}
 
 ---Clean up debounce timer for a buffer
 ---@param bufnr number Buffer number
@@ -17,6 +19,16 @@ local function cleanup_timer(bufnr)
   if debounce_timers[bufnr] then
     vim.fn.timer_stop(debounce_timers[bufnr])
     debounce_timers[bufnr] = nil
+  end
+end
+
+---Clean up pwned debounce timer for a buffer
+---@param bufnr number Buffer number
+---@return nil
+local function cleanup_pwned_timer(bufnr)
+  if pwned_debounce_timers[bufnr] then
+    vim.fn.timer_stop(pwned_debounce_timers[bufnr])
+    pwned_debounce_timers[bufnr] = nil
   end
 end
 
@@ -71,6 +83,7 @@ function M.setup()
     group = group,
     callback = function(args)
       cleanup_timer(args.buf)
+      cleanup_pwned_timer(args.buf)
       state.remove_buffer(args.buf)
     end,
   })
@@ -115,6 +128,31 @@ function M.setup()
             if pwned.is_available() then
               pwned.on_buf_write(args.buf)
             end
+          end)
+        end
+      end,
+    })
+  end
+
+  -- Pwned check on text change (debounced)
+  if pwned_cfg.enabled and pwned_cfg.check_on_change then
+    vim.api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI' }, {
+      group = group,
+      pattern = all_patterns,
+      callback = function(args)
+        if vim.api.nvim_buf_is_valid(args.buf) then
+          cleanup_pwned_timer(args.buf)
+          -- Use 500ms debounce to avoid API spam during typing
+          pwned_debounce_timers[args.buf] = vim.fn.timer_start(500, function()
+            vim.schedule(function()
+              if vim.api.nvim_buf_is_valid(args.buf) then
+                local pwned = require('camouflage.pwned')
+                if pwned.is_available() then
+                  pwned.on_text_changed(args.buf)
+                end
+              end
+            end)
+            pwned_debounce_timers[args.buf] = nil
           end)
         end
       end,

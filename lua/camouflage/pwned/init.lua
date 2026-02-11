@@ -341,4 +341,43 @@ function M.on_buf_write(bufnr)
   check.check_buffer(bufnr, variables, get_ui_config(), nil)
 end
 
+---Called on TextChanged when check_on_change is enabled
+---Only checks variables on the current cursor line
+---@param bufnr number Buffer number
+function M.on_text_changed(bufnr)
+  local cfg = config.get()
+  local pwned_cfg = cfg.pwned or {}
+
+  if not pwned_cfg.check_on_change then
+    return
+  end
+
+  if not M.is_available() then
+    return
+  end
+
+  -- Get cursor line (0-indexed)
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local cursor_line = cursor[1] - 1
+
+  -- Clear marks on this line first (in case value changed)
+  ui.clear_line_marks(bufnr, cursor_line)
+
+  -- Get variables on current line only
+  local all_variables = get_variables_for_pwned(bufnr)
+  local line_variables = {}
+  for _, var in ipairs(all_variables) do
+    if var.line_number == cursor_line then
+      table.insert(line_variables, var)
+    end
+  end
+
+  if #line_variables == 0 then
+    return
+  end
+
+  -- Check line variables silently (no notifications)
+  check.check_buffer(bufnr, line_variables, get_ui_config(), nil)
+end
+
 return M

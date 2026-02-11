@@ -58,8 +58,9 @@ local M = {}
 
 ---@class CamouflagePwnedConfig
 ---@field enabled? boolean Feature toggle (default: true)
----@field auto_check? boolean Check on BufEnter (default: false)
----@field check_on_save? boolean Check on BufWritePost (default: false)
+---@field auto_check? boolean Check on BufEnter (default: true)
+---@field check_on_save? boolean Check on BufWritePost (default: true)
+---@field check_on_change? boolean Check on TextChanged with debounce (default: true)
 ---@field show_sign? boolean Show sign column indicator (default: true)
 ---@field show_virtual_text? boolean Show virtual text (default: true)
 ---@field show_line_highlight? boolean Highlight the line (default: true)
@@ -137,6 +138,7 @@ M.defaults = {
     enabled = true,
     auto_check = true,
     check_on_save = true,
+    check_on_change = true,
     show_sign = true,
     show_virtual_text = true,
     show_line_highlight = true,

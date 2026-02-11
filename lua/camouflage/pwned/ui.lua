@@ -111,6 +111,17 @@ function M.clear_marks(bufnr)
   end
 end
 
+---Clear pwned marks from a specific line
+---@param bufnr number Buffer number
+---@param line number 0-indexed line number
+function M.clear_line_marks(bufnr, line)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+  -- Clear namespace for just this line
+  vim.api.nvim_buf_clear_namespace(bufnr, ns_id, line, line + 1)
+end
+
 ---Clear all pwned marks from all buffers
 function M.clear_all_marks()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
