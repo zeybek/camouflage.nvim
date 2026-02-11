@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/zeybek/camouflage.nvim/compare/v0.3.0...v0.3.1) (2026-02-11)
+
+
+### Bug Fixes
+
+* include custom_patterns in autocmd file patterns ([#9](https://github.com/zeybek/camouflage.nvim/issues/9)) ([ccaa940](https://github.com/zeybek/camouflage.nvim/commit/ccaa940ef0a0c3ba45eee1ab26953081b7ef3706))
+
 ## [0.3.0](https://github.com/zeybek/camouflage.nvim/compare/v0.2.0...v0.3.0) (2026-02-11)
 
 
