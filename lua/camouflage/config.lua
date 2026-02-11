@@ -88,7 +88,7 @@ M.defaults = {
     { file_pattern = { '*.json' }, parser = 'json' },
     { file_pattern = { '*.yaml', '*.yml' }, parser = 'yaml' },
     { file_pattern = { '*.toml' }, parser = 'toml' },
-    { file_pattern = { '*.properties', '*.ini', '*.conf' }, parser = 'properties' },
+    { file_pattern = { '*.properties', '*.ini', '*.conf', 'credentials' }, parser = 'properties' },
     { file_pattern = { '.netrc', '_netrc' }, parser = 'netrc' },
   },
   parsers = {
