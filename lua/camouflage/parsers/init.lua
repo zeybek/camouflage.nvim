@@ -138,6 +138,7 @@ function M.setup()
   M.register('toml', require('camouflage.parsers.toml'))
   M.register('properties', require('camouflage.parsers.properties'))
   M.register('netrc', require('camouflage.parsers.netrc'))
+  M.register('xml', require('camouflage.parsers.xml'))
 end
 
 return M

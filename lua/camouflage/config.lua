@@ -12,11 +12,15 @@ local M = {}
 ---@class CamouflageYamlParserConfig
 ---@field max_depth? number
 
+---@class CamouflageXmlParserConfig
+---@field max_depth? number Maximum nesting depth for XML elements
+
 ---@class CamouflageParsersConfig
 ---@field include_commented? boolean
 ---@field env? CamouflageEnvParserConfig
 ---@field json? CamouflageJsonParserConfig
 ---@field yaml? CamouflageYamlParserConfig
+---@field xml? CamouflageXmlParserConfig
 
 ---@class CamouflageCmpConfig
 ---@field disable_in_masked? boolean
@@ -90,6 +94,7 @@ M.defaults = {
     { file_pattern = { '*.toml' }, parser = 'toml' },
     { file_pattern = { '*.properties', '*.ini', '*.conf', 'credentials' }, parser = 'properties' },
     { file_pattern = { '.netrc', '_netrc' }, parser = 'netrc' },
+    { file_pattern = { '*.xml' }, parser = 'xml' },
   },
   parsers = {
     include_commented = true,

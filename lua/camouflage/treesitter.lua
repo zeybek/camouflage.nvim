@@ -25,6 +25,15 @@ M.queries = {
         [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value))
   ]],
   toml = '(pair key: (_) @key value: (_) @value)',
+  xml = [[
+    (element
+      (STag (Name) @tag)
+      (content (CharData) @value)
+      (ETag))
+    (Attribute
+      (Name) @attr_name
+      (AttValue) @attr_value)
+  ]],
 }
 
 -- Node types that contain actual values (not containers)
@@ -50,6 +59,7 @@ M.value_types = {
     'local_date_time',
     'offset_date_time',
   },
+  xml = { 'CharData', 'AttValue' },
 }
 
 ---Check if TreeSitter parser is available for a language
