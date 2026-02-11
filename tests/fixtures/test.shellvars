@@ -1,0 +1,11 @@
+# Shell-style variables: $VAR=value or ${VAR}=value
+
+$DB_PASSWORD=SuperSecret123!
+$API_KEY=sk-live-abcdef123456
+$AWS_SECRET_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+${PRIVATE_TOKEN}=ghp_xxxxxxxxxxxxxxxxxxxx
+$REDIS_URL=redis://:password123@localhost:6379
+${MONGO_PASSWORD}=mongodb_secret_pass
+
+# Inline secrets
+export $SECRET_KEY=my-secret-key-value
