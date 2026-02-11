@@ -99,4 +99,54 @@ describe('camouflage.pwned.ui', function()
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
   end)
+
+  describe('clear_line_marks', function()
+    it('should remove extmarks from specific line only', function()
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {
+        'PASSWORD=secret123',
+        'API_KEY=abc123',
+        'TOKEN=xyz789',
+      })
+
+      local config = {
+        show_sign = true,
+        show_virtual_text = true,
+        show_line_highlight = true,
+        sign_text = '!',
+      }
+
+      -- Mark all three lines
+      ui.mark_pwned(bufnr, 0, 1000, config)
+      ui.mark_pwned(bufnr, 1, 2000, config)
+      ui.mark_pwned(bufnr, 2, 3000, config)
+
+      -- Verify all marks exist
+      local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ui.get_namespace(), 0, -1, {})
+      assert.equals(3, #extmarks)
+
+      -- Clear only line 1 (middle line)
+      ui.clear_line_marks(bufnr, 1)
+
+      -- Verify only 2 marks remain (lines 0 and 2)
+      extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ui.get_namespace(), 0, -1, {})
+      assert.equals(2, #extmarks)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should not error on invalid buffer', function()
+      assert.has_no.errors(function()
+        ui.clear_line_marks(99999, 0)
+      end)
+    end)
+
+    it('should not error on empty buffer', function()
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      assert.has_no.errors(function()
+        ui.clear_line_marks(bufnr, 0)
+      end)
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+  end)
 end)
