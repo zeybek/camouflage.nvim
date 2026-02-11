@@ -27,12 +27,12 @@ M.queries = {
   toml = '(pair key: (_) @key value: (_) @value)',
   xml = [[
     (element
-      (STag (Name) @tag)
+      (STag (Name) @key)
       (content (CharData) @value)
       (ETag))
     (Attribute
-      (Name) @attr_name
-      (AttValue) @attr_value)
+      (Name) @key
+      (AttValue) @value)
   ]],
 }
 
@@ -187,6 +187,13 @@ function M.parse(bufnr, lang, content)
           value = value:sub(2, -2)
           start_index = start_index + 1
           end_index = end_index - 1
+        elseif lang == 'xml' and node_type == 'AttValue' then
+          -- XML attribute values include quotes: "value" or 'value'
+          if value:match('^".*"$') or value:match("^'.*'$") then
+            value = value:sub(2, -2)
+            start_index = start_index + 1
+            end_index = end_index - 1
+          end
         end
 
         -- Skip empty values
