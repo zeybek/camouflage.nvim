@@ -32,6 +32,11 @@ describe('camouflage.commands', function()
     assert.is_not_nil(commands['CamouflageYank'])
   end)
 
+  it('should create CamouflageReveal command', function()
+    local commands = vim.api.nvim_get_commands({})
+    assert.is_not_nil(commands['CamouflageReveal'])
+  end)
+
   describe('CamouflageToggle', function()
     it('should toggle enabled state', function()
       local camouflage = require('camouflage')
@@ -84,6 +89,19 @@ describe('camouflage.commands', function()
 
       assert.has_no.errors(function()
         vim.cmd('CamouflageYank')
+      end)
+
+      vim.notify = original_notify
+    end)
+  end)
+
+  describe('CamouflageReveal', function()
+    it('should not error when executed on buffer without variables', function()
+      local original_notify = vim.notify
+      vim.notify = function() end
+
+      assert.has_no.errors(function()
+        vim.cmd('CamouflageReveal')
       end)
 
       vim.notify = original_notify

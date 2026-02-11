@@ -47,6 +47,18 @@ function M.setup()
     bang = true,
     nargs = '?',
   })
+
+  vim.api.nvim_create_user_command('CamouflageReveal', function(opts)
+    local reveal = require('camouflage.reveal')
+    if opts.bang then
+      reveal.hide()
+    else
+      reveal.toggle()
+    end
+  end, {
+    desc = 'Reveal masked values on current line',
+    bang = true,
+  })
 end
 
 return M

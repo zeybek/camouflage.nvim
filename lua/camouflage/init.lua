@@ -279,6 +279,13 @@ local function setup_highlight()
   if next(hl_opts) then
     vim.api.nvim_set_hl(0, 'CamouflageMask', hl_opts)
   end
+
+  -- Setup revealed highlight
+  vim.api.nvim_set_hl(0, 'CamouflageRevealed', {
+    fg = '#1a1b26',
+    bg = '#e0af68',
+    bold = true,
+  })
 end
 
 ---@param opts CamouflageConfig|nil
@@ -372,5 +379,8 @@ M.hooks = require('camouflage.hooks')
 
 -- Yank API
 M.yank = require('camouflage.yank')
+
+-- Reveal API
+M.reveal = require('camouflage.reveal')
 
 return M

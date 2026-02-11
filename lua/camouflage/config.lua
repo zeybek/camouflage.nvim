@@ -47,6 +47,10 @@ local M = {}
 ---@field confirm boolean Require confirmation before copying
 ---@field confirm_message string Confirmation message format
 
+---@class CamouflageRevealConfig
+---@field highlight_group string Highlight group for revealed values
+---@field notify boolean Show notification on reveal/hide
+
 ---@class CamouflageConfig
 ---@field enabled boolean
 ---@field auto_enable boolean
@@ -62,6 +66,7 @@ local M = {}
 ---@field integrations CamouflageIntegrationsConfig
 ---@field hooks CamouflageHooksConfig|nil
 ---@field yank CamouflageYankConfig|nil Yank configuration
+---@field reveal CamouflageRevealConfig|nil Reveal configuration
 
 ---@type CamouflageConfig
 M.defaults = {
@@ -100,6 +105,10 @@ M.defaults = {
     auto_clear_seconds = 30,
     confirm = true,
     confirm_message = 'Copy value of "%s" to clipboard?',
+  },
+  reveal = {
+    highlight_group = 'CamouflageRevealed',
+    notify = false,
   },
 }
 
