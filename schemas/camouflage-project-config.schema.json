@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/zeybek/camouflage.nvim/main/schemas/camouflage-project-config.schema.json",
+  "title": "camouflage.nvim project config",
+  "description": "Project-level config file for camouflage.nvim",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Project config schema version"
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "debug": {
+      "type": "boolean"
+    },
+    "auto_enable": {
+      "type": "boolean"
+    },
+    "style": {
+      "type": "string",
+      "enum": [
+        "text",
+        "dotted",
+        "stars",
+        "scramble"
+      ]
+    },
+    "mask_char": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mask_length": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "max_lines": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "hidden_text": {
+      "type": "string"
+    },
+    "highlight_group": {
+      "type": "string"
+    },
+    "colors": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "foreground": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "background": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "bold": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "italic": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file_pattern",
+          "parser"
+        ],
+        "properties": {
+          "file_pattern": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "parser": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "parsers": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "integrations": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "yank": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "reveal": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "pwned": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "custom_patterns": {
+      "type": "array",
+      "description": "Custom patterns for file types not supported by built-in parsers",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file_pattern",
+          "pattern",
+          "value_capture"
+        ],
+        "properties": {
+          "file_pattern": {
+            "description": "Glob pattern(s) for matching files",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "pattern": {
+            "type": "string",
+            "description": "Lua pattern with capture groups"
+          },
+          "key_capture": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Capture group number for the key (optional)"
+          },
+          "value_capture": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Capture group number for the value to mask"
+          }
+        }
+      }
+    }
+  }
+}

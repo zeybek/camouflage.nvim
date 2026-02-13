@@ -111,6 +111,24 @@ describe('camouflage.parsers', function()
       assert.equals('yaml', name)
     end)
 
+    it('should exclude .camouflage.yaml from parsing', function()
+      local parser, name = parsers.find_parser_for_file('.camouflage.yaml')
+
+      assert.is_nil(parser)
+      assert.is_nil(name)
+    end)
+
+    it('should exclude project config file with custom filename', function()
+      local config = require('camouflage.config')
+      config.setup({ project_config = { filename = '.my-camouflage.yml' } })
+      parsers.clear_cache()
+
+      local parser, name = parsers.find_parser_for_file('.my-camouflage.yml')
+
+      assert.is_nil(parser)
+      assert.is_nil(name)
+    end)
+
     it('should return toml parser for config.toml', function()
       local parser, name = parsers.find_parser_for_file('config.toml')
 

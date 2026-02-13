@@ -92,6 +92,33 @@ function M.setup()
   vim.api.nvim_create_user_command('CamouflagePwnedClearCache', function()
     require('camouflage.pwned').clear_cache()
   end, { desc = 'Clear pwned check cache' })
+
+  vim.api.nvim_create_user_command('CamouflageProjectConfigStatus', function()
+    local status = require('camouflage').project_config_status()
+    local lines = {
+      '[camouflage] Project Config Status:',
+      '  Loaded: ' .. (status.loaded and 'yes' or 'no'),
+      '  Path: ' .. (status.path or 'none'),
+      '  Errors: ' .. #status.errors,
+    }
+    vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
+  end, { desc = 'Show Camouflage project config status' })
+
+  vim.api.nvim_create_user_command('CamouflageProjectConfigWatchStatus', function()
+    local status = require('camouflage').project_config_watch_status()
+    local lines = {
+      '[camouflage] Project Config Watch Status:',
+      '  Enabled: ' .. (status.enabled and 'yes' or 'no'),
+      '  Backend: ' .. status.backend,
+      '  Watched roots: ' .. status.root_count,
+      '  Last event: ' .. (status.last_event_at and tostring(status.last_event_at) or 'none'),
+    }
+    vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
+  end, { desc = 'Show Camouflage project config watcher status' })
+
+  vim.api.nvim_create_user_command('CamouflageInit', function(opts)
+    require('camouflage.init_command').init({ force = opts.bang })
+  end, { desc = 'Create .camouflage.yaml in project root', bang = true })
 end
 
 return M

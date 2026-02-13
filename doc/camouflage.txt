@@ -18,8 +18,9 @@ CONTENTS                                                  *camouflage-contents*
   9. Custom Patterns ......................... |camouflage-custom-patterns|
  10. Styles .................................. |camouflage-styles|
  11. Integrations ............................ |camouflage-integrations|
- 12. Have I Been Pwned ....................... |camouflage-pwned|
- 13. Troubleshooting ......................... |camouflage-troubleshooting|
+ 12. Project Config .......................... |camouflage-project-config|
+ 13. Have I Been Pwned ....................... |camouflage-pwned|
+ 14. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -195,6 +196,12 @@ patterns ~
 ==============================================================================
 COMMANDS                                                  *camouflage-commands*
 
+                                                            *:CamouflageInit*
+:CamouflageInit
+  Create a .camouflage.yaml template file in the project root.
+  If the file already exists, prompts to overwrite, open, or cancel.
+  Use :CamouflageInit! to force overwrite without prompting.
+
                                                           *:CamouflageToggle*
 :CamouflageToggle
   Toggle camouflage on/off for all buffers.
@@ -228,9 +235,17 @@ COMMANDS                                                  *camouflage-commands*
 :CamouflagePwnedClear
   Clear pwned indicators (signs, virtual text, highlights) from buffer.
 
-                                                 *:CamouflagePwnedClearCache*
+                                                  *:CamouflagePwnedClearCache*
 :CamouflagePwnedClearCache
   Clear the local cache of pwned check results.
+
+                                             *:CamouflageProjectConfigStatus*
+:CamouflageProjectConfigStatus
+  Show repo config load status, config path, and validation errors.
+
+                                        *:CamouflageProjectConfigWatchStatus*
+:CamouflageProjectConfigWatchStatus
+  Show watcher status for runtime `.camouflage.yaml` tracking.
 
 ==============================================================================
 API                                                            *camouflage-api*
@@ -282,10 +297,39 @@ camouflage.pwned_check_buffer()
 camouflage.pwned_clear()
   Clear pwned indicators from the current buffer.
 
-                                              *camouflage.pwned_is_available()*
+                                               *camouflage.pwned_is_available()*
 camouflage.pwned_is_available()
   Returns `true` if the pwned feature is available (Neovim 0.10+ and
   required CLI tools are installed).
+
+                                          *camouflage.project_config_status()*
+camouflage.project_config_status()
+  Returns project config status table:
+  - loaded: boolean
+  - path: string|nil
+  - errors: string[]
+
+                                    *camouflage.project_config_watch_status()*
+camouflage.project_config_watch_status()
+  Returns watcher status table:
+  - enabled: boolean
+  - backend: string
+  - root_count: number
+  - roots: string[]
+  - last_event_at: number|nil
+
+                                         *camouflage.project_config_refresh()*
+camouflage.project_config_refresh()
+  Reload project config and apply changes at runtime when valid.
+
+                                            *camouflage.init_project_config()*
+camouflage.init_project_config({opts})
+  Create a .camouflage.yaml template file in the project root.
+
+  Parameters: ~
+    {opts}  (optional) Table with options:
+            - force: boolean - Overwrite existing file without prompting
+            - open: boolean - Open file after creation (default: true)
 
 ==============================================================================
 BUFFER-LOCAL CONFIGURATION                             *camouflage-buffer-local*
@@ -629,6 +673,95 @@ With custom options: >lua
 <
 
 Example with count: ` 12` - Showing 12 masked values
+
+==============================================================================
+PROJECT CONFIG                                       *camouflage-project-config*
+
+Camouflage supports repo-level configuration via `.camouflage.yaml` files.
+This allows you to enforce consistent settings across team members without
+requiring Neovim configuration changes.
+
+Creating a project config ~
+                                           *camouflage-project-config-create*
+Create `.camouflage.yaml` in your project root:
+>yaml
+  # yaml-language-server: $schema=https://raw.githubusercontent.com/zeybek/camouflage.nvim/main/schemas/camouflage-project-config.schema.json
+  version: 1
+  style: dotted
+  debug: true
+<
+
+The schema comment enables editor validation and autocomplete in YAML editors.
+
+Configuration merge precedence ~
+                                        *camouflage-project-config-precedence*
+Settings are merged in this order (later overrides earlier):
+
+1. Plugin defaults
+2. User config from `require('camouflage').setup({...})`
+3. Project config from `.camouflage.yaml`
+4. Buffer-local overrides (`vim.b.camouflage_*`)
+
+Supported options ~
+                                          *camouflage-project-config-options*
+Project config files support most configuration options:
+- enabled, debug, auto_enable
+- style, mask_char, mask_length, hidden_text
+- highlight_group, colors
+- patterns, parsers
+- integrations, yank, reveal, pwned
+
+Note: The `project_config` key itself cannot be set in project config files.
+
+Watching for changes ~
+                                            *camouflage-project-config-watch*
+Camouflage can watch `.camouflage.yaml` for changes and automatically reload:
+>lua
+  require('camouflage').setup({
+    project_config = {
+      enabled = true,              -- Enable repo config loading
+      filename = '.camouflage.yaml', -- Config filename
+      notify = true,               -- Show warnings for parse/validation issues
+      watch_enabled = true,        -- Watch for runtime changes
+      watch_backend = 'auto',      -- 'auto' | 'autocmd' | 'fs' | 'both'
+      watch_debounce_ms = 200,     -- Debounce for change events
+      max_watched_roots = 10,      -- Max roots to watch in one session
+      notify_on_reload = false,    -- Show notification after reload
+    },
+  })
+<
+
+Commands ~
+                                         *camouflage-project-config-commands*
+:CamouflageProjectConfigStatus
+  Show project config load status, including:
+  - Whether a project config was loaded
+  - Path to the loaded config file
+  - Any validation errors
+
+:CamouflageProjectConfigWatchStatus
+  Show watcher status, including:
+  - Whether watching is enabled
+  - Backend being used (fs/autocmd)
+  - Number of watched roots
+  - Last event timestamp
+
+API ~
+                                              *camouflage-project-config-api*
+>lua
+  local camouflage = require('camouflage')
+
+  -- Get project config status
+  local status = camouflage.project_config_status()
+  -- { loaded = true, path = '/path/to/.camouflage.yaml', errors = {} }
+
+  -- Manually reload project config
+  local applied, status = camouflage.project_config_refresh()
+
+  -- Get watcher status
+  local watch_status = camouflage.project_config_watch_status()
+  -- { enabled = true, backend = 'auto', root_count = 1, roots = {...} }
+<
 
 ==============================================================================
 HAVE I BEEN PWNED                                           *camouflage-pwned*

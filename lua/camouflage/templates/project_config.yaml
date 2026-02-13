@@ -1,0 +1,223 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/zeybek/camouflage.nvim/main/schemas/camouflage-project-config.schema.json
+# =============================================================================
+# camouflage.nvim - Project Configuration
+# =============================================================================
+# This file allows you to configure camouflage.nvim settings per-project.
+# Place this file in your project root directory.
+#
+# Config merge precedence (later overrides earlier):
+#   1. Plugin defaults
+#   2. User config from require('camouflage').setup({...})
+#   3. This project config file
+#   4. Buffer-local overrides (vim.b.camouflage_*)
+# =============================================================================
+
+# Required: Schema version (must be 1)
+version: 1
+
+# =============================================================================
+# GENERAL SETTINGS
+# =============================================================================
+
+# Enable/disable camouflage globally for this project
+enabled: true
+
+# Enable debug logging (shows in :messages)
+debug: false
+
+# Automatically apply masking when entering supported buffers
+auto_enable: true
+
+# Skip masking for files with more lines than this value (null = no limit)
+max_lines: 5000
+
+# =============================================================================
+# MASKING STYLE
+# =============================================================================
+
+# Masking style: 'stars', 'dotted', 'text', 'scramble'
+# Examples:
+#   stars:    API_KEY=sk-1234  ->  API_KEY=********
+#   dotted:   API_KEY=sk-1234  ->  API_KEY=••••••••
+#   text:     API_KEY=sk-1234  ->  API_KEY=************************
+#   scramble: API_KEY=sk-1234  ->  API_KEY=s1-k324 (deterministic shuffle)
+style: stars
+
+# Character used for 'stars' and 'dotted' styles
+mask_char: '*'
+
+# Fixed mask length (null = use actual value length)
+# mask_length: 8
+
+# Text shown for 'text' style
+hidden_text: '************************'
+
+# =============================================================================
+# APPEARANCE
+# =============================================================================
+
+# Highlight group for masked text
+highlight_group: Comment
+
+# Custom colors (overrides highlight_group when set)
+# colors:
+#   foreground: '#808080'
+#   background: transparent
+#   bold: false
+#   italic: false
+
+# =============================================================================
+# FILE PATTERNS
+# =============================================================================
+
+# Define which files should be parsed and with which parser
+# Available parsers: env, json, yaml, toml, properties, netrc, xml, http
+patterns:
+  - file_pattern: ['.env*', '*.env', '.envrc']
+    parser: env
+  - file_pattern: ['*.sh']
+    parser: env
+  - file_pattern: ['*.json']
+    parser: json
+  - file_pattern: ['*.yaml', '*.yml']
+    parser: yaml
+  - file_pattern: ['*.toml']
+    parser: toml
+  - file_pattern: ['*.properties', '*.ini', '*.conf', 'credentials']
+    parser: properties
+  - file_pattern: ['.netrc', '_netrc']
+    parser: netrc
+  - file_pattern: ['*.xml']
+    parser: xml
+  - file_pattern: ['*.http']
+    parser: http
+
+# =============================================================================
+# CUSTOM PATTERNS
+# =============================================================================
+
+# Define custom patterns for file types not supported by built-in parsers
+# Uses Lua patterns with capture groups
+#
+# Example:
+# custom_patterns:
+#   - file_pattern: '*.rest'
+#     pattern: '@([%w_]+)%s*=%s*(.+)'
+#     key_capture: 1
+#     value_capture: 2
+custom_patterns: []
+
+# =============================================================================
+# PARSER SETTINGS
+# =============================================================================
+
+# Parser-specific configuration
+parsers:
+  # Include commented lines in parsing (all parsers)
+  include_commented: true
+
+  # ENV parser settings
+  env:
+    include_commented: true
+    include_export: true
+
+  # JSON parser settings
+  json:
+    max_depth: 10
+
+  # YAML parser settings
+  yaml:
+    max_depth: 10
+
+# =============================================================================
+# INTEGRATIONS
+# =============================================================================
+
+# Third-party plugin integrations
+integrations:
+  # Mask values in Telescope preview buffers
+  telescope: true
+
+  # nvim-cmp integration
+  cmp:
+    disable_in_masked: true
+
+# =============================================================================
+# YANK (COPY) FEATURE
+# =============================================================================
+
+# Configuration for copying unmasked values
+yank:
+  # Default register for copying ('+' = system clipboard)
+  default_register: '+'
+
+  # Show notification after copying
+  notify: true
+
+  # Auto-clear clipboard after N seconds (null = disabled)
+  auto_clear_seconds: 30
+
+  # Require confirmation before copying
+  confirm: true
+
+  # Confirmation message format (%s = variable key)
+  confirm_message: 'Copy value of "%s" to clipboard?'
+
+# =============================================================================
+# REVEAL FEATURE
+# =============================================================================
+
+# Configuration for temporarily revealing masked values
+reveal:
+  # Highlight group for revealed values
+  highlight_group: CamouflageRevealed
+
+  # Show notification when revealing
+  notify: false
+
+  # Auto-reveal values on current line as cursor moves
+  follow_cursor: false
+
+# =============================================================================
+# HAVE I BEEN PWNED (HIBP) INTEGRATION
+# =============================================================================
+
+# Check passwords against the HIBP breach database
+# Requires: Neovim 0.10+, curl, sha1sum/openssl
+# Privacy: Uses k-anonymity (only first 5 chars of SHA-1 hash sent)
+pwned:
+  # Enable the feature
+  enabled: true
+
+  # Check passwords on BufEnter
+  auto_check: true
+
+  # Check passwords on save
+  check_on_save: true
+
+  # Check passwords on text change (with debounce)
+  check_on_change: true
+
+  # Show sign column indicator for breached passwords
+  show_sign: true
+
+  # Show virtual text with breach count
+  show_virtual_text: true
+
+  # Highlight the entire line
+  show_line_highlight: true
+
+  # Sign column icon
+  sign_text: '⚠'
+
+  # Sign highlight group
+  sign_hl: DiagnosticWarn
+
+  # Virtual text format (%s = breach count, e.g., "52.3M")
+  virtual_text_format: 'PWNED (%s)'
+
+  # Virtual text highlight group
+  virtual_text_hl: DiagnosticWarn
+
+  # Line highlight group
+  line_hl: CamouflagePwned
