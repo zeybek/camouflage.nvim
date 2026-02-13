@@ -135,6 +135,7 @@ M.defaults = {
     env = { include_commented = true, include_export = true },
     json = { max_depth = 10 },
     yaml = { max_depth = 10 },
+    xml = { max_depth = 10 },
   },
   integrations = {
     telescope = true,

@@ -127,9 +127,23 @@ Call the setup function with your options: >lua
       enabled = true,             -- Enable the feature
       auto_check = true,          -- Check on BufEnter
       check_on_save = true,       -- Check on BufWritePost
+      check_on_change = true,     -- Check when value changes
       show_sign = true,           -- Show sign column indicator
       show_virtual_text = true,   -- Show virtual text
       show_line_highlight = true, -- Highlight the line
+    },
+
+    -- Yank
+    yank = {
+      default_register = '+',     -- Default register for yanking
+      notify = true,              -- Show notification after yank
+    },
+
+    -- Reveal
+    reveal = {
+      highlight_group = 'CamouflageRevealed', -- Highlight for revealed values
+      notify = false,             -- Show notification when revealing
+      follow_cursor = false,      -- Auto-reveal current line
     },
   })
 <
@@ -247,6 +261,18 @@ COMMANDS                                                  *camouflage-commands*
 :CamouflageProjectConfigWatchStatus
   Show watcher status for runtime `.camouflage.yaml` tracking.
 
+:CamouflageYank[!] [register]                                *:CamouflageYank*
+  Copy the unmasked value to clipboard. When cursor is on a variable line,
+  copies that value. Otherwise shows a picker. Use `!` to force the picker.
+  Optional [register] specifies target register (default: +).
+
+:CamouflageReveal[!]                                        *:CamouflageReveal*
+  Reveal masked values on the current line. Use `!` to hide revealed values.
+
+:CamouflageFollowCursor[!]                            *:CamouflageFollowCursor*
+  Toggle follow cursor mode (auto-reveal current line). Use `!` to force
+  disable.
+
 ==============================================================================
 API                                                            *camouflage-api*
 
@@ -318,7 +344,7 @@ camouflage.project_config_watch_status()
   - roots: string[]
   - last_event_at: number|nil
 
-                                         *camouflage.project_config_refresh()*
+                                          *camouflage.project_config_refresh()*
 camouflage.project_config_refresh()
   Reload project config and apply changes at runtime when valid.
 
@@ -330,6 +356,37 @@ camouflage.init_project_config({opts})
     {opts}  (optional) Table with options:
             - force: boolean - Overwrite existing file without prompting
             - open: boolean - Open file after creation (default: true)
+
+                                                           *camouflage.on()*
+camouflage.on({event}, {callback})
+  Register an event listener.
+  Events: 'before_decorate', 'variable_detected', 'after_decorate',
+          'before_yank', 'after_yank', 'before_reveal', 'after_reveal'
+  Returns listener ID for unregistration.
+
+                                                         *camouflage.once()*
+camouflage.once({event}, {callback})
+  Register a one-time event listener. Automatically unregisters after firing.
+
+                                                          *camouflage.off()*
+camouflage.off({event}, {id})
+  Unregister an event listener by ID.
+
+                                            *camouflage.start_follow_cursor()*
+camouflage.start_follow_cursor()
+  Start follow cursor mode (auto-reveal current line).
+
+                                             *camouflage.stop_follow_cursor()*
+camouflage.stop_follow_cursor()
+  Stop follow cursor mode and hide any revealed values.
+
+                                           *camouflage.toggle_follow_cursor()*
+camouflage.toggle_follow_cursor({opts})
+  Toggle follow cursor mode. Options: { force_disable = bool }
+
+                                        *camouflage.is_follow_cursor_enabled()*
+camouflage.is_follow_cursor_enabled()
+  Returns true if follow cursor mode is enabled.
 
 ==============================================================================
 BUFFER-LOCAL CONFIGURATION                             *camouflage-buffer-local*
@@ -662,10 +719,12 @@ With custom options: >lua
       lualine_x = {
         {
           'camouflage',
-          icon_enabled = '',    -- Icon when enabled (default)
-          icon_disabled = '',   -- Icon when disabled
-          show_disabled = false, -- Show icon when disabled
-          show_count = false,    -- Show masked values count
+          icon_enabled = '',         -- Icon when enabled (default)
+          icon_disabled = '',        -- Icon when disabled
+          show_disabled = false,      -- Show icon when disabled
+          show_count = false,         -- Show masked values count
+          show_follow_indicator = true,  -- Show indicator when follow mode active
+          follow_indicator = '👁',        -- Indicator icon for follow mode
         },
       },
     },
@@ -806,7 +865,7 @@ Configuration ~
       show_sign = true,             -- Show sign column indicator
       show_virtual_text = true,     -- Show virtual text
       show_line_highlight = true,   -- Highlight the line
-      sign_text = '!',              -- Sign icon
+      sign_text = '⚠',              -- Sign icon (default: warning sign)
       sign_hl = 'DiagnosticWarn',   -- Sign highlight group
       virtual_text_format = 'PWNED (%s)',  -- Virtual text format
       virtual_text_hl = 'DiagnosticWarn',  -- Virtual text highlight

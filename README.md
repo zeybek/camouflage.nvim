@@ -94,6 +94,9 @@ require('camouflage').setup({
     yaml = {
       max_depth = 10,              -- Maximum nesting depth
     },
+    xml = {
+      max_depth = 10,              -- Maximum nesting depth for XML
+    },
   },
 
   -- Integrations
@@ -117,6 +120,7 @@ require('camouflage').setup({
     notify = true,                -- Show notification after copy
     auto_clear_seconds = 30,      -- Auto-clear clipboard (nil to disable)
     confirm = true,               -- Require confirmation before copying
+    confirm_message = 'Copy value of "%s" to clipboard?',
   },
 
   -- Have I Been Pwned integration (requires Neovim 0.10+)
@@ -124,10 +128,11 @@ require('camouflage').setup({
     enabled = true,               -- Enable the feature
     auto_check = true,            -- Check on BufEnter
     check_on_save = true,         -- Check on BufWritePost
+    check_on_change = true,        -- Check on TextChanged with debounce
     show_sign = true,             -- Show sign column indicator
     show_virtual_text = true,     -- Show virtual text with breach count
     show_line_highlight = true,   -- Highlight the line
-    sign_text = '!',              -- Sign icon
+    sign_text = '⚠',              -- Sign icon
     sign_hl = 'DiagnosticWarn',   -- Sign highlight group
     virtual_text_format = 'PWNED (%s)',  -- Virtual text format
     virtual_text_hl = 'DiagnosticWarn',  -- Virtual text highlight
