@@ -2,7 +2,7 @@
 
 Author:   Ahmet Zeybek
 License:  MIT
-Version:  0.5.0 x-release-please-version
+Version:  0.6.0 x-release-please-version
 
 ==============================================================================
 CONTENTS                                                  *camouflage-contents*
