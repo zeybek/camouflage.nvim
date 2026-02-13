@@ -78,4 +78,27 @@ describe('camouflage.project_config', function()
     assert.equals('stars', config.get().style)
     assert.is_true(#status.errors > 0)
   end)
+
+  it('should parse YAML list items (patterns array)', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'patterns:',
+      "  - file_pattern: ['*.json']",
+      '    parser: json',
+      "  - file_pattern: ['*.yaml', '*.yml']",
+      '    parser: yaml',
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local status = project_config.status()
+    local patterns = config.get().patterns
+
+    assert.is_true(status.loaded)
+    assert.equals(2, #patterns)
+    assert.equals('json', patterns[1].parser)
+    assert.equals('yaml', patterns[2].parser)
+  end)
 end)

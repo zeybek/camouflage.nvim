@@ -62,7 +62,7 @@ end
 ---@return boolean, table|string
 local function fallback_yaml_decode(content)
   local root = {}
-  local stack = { { indent = -1, value = root } }
+  local stack = { { indent = -1, value = root, is_list = false } }
 
   for _, raw_line in ipairs(vim.split(content, '\n', { plain = true })) do
     if raw_line:match('^%s*$') or raw_line:match('^%s*#') then
@@ -72,23 +72,56 @@ local function fallback_yaml_decode(content)
     local indent = #(raw_line:match('^(%s*)') or '')
     local line = trim(raw_line)
 
+    -- Pop stack until we find a parent with lower indent
     while #stack > 1 and indent <= stack[#stack].indent do
       table.remove(stack)
     end
 
-    local key, rest = line:match('^([^:]+):%s*(.*)$')
-    if not key then
-      return false, 'invalid YAML line: ' .. line
-    end
+    -- Check if this is a list item (starts with "- ")
+    local list_item_content = line:match('^%-%s*(.*)$')
+    if list_item_content then
+      local parent = stack[#stack].value
 
-    key = trim(key)
-    local parent = stack[#stack].value
-    if rest == '' then
-      local child = {}
-      parent[key] = child
-      table.insert(stack, { indent = indent, value = child })
+      -- Convert parent to array if it's not already
+      if not stack[#stack].is_list then
+        -- Parent should be an empty table that will become a list
+        stack[#stack].is_list = true
+      end
+
+      -- Parse list item content
+      local item_key, item_rest = list_item_content:match('^([^:]+):%s*(.*)$')
+      if item_key then
+        -- List item with key-value: "- file_pattern: value"
+        local item = {}
+        item_key = trim(item_key)
+        if item_rest == '' then
+          item[item_key] = {}
+        else
+          item[item_key] = parse_scalar(item_rest)
+        end
+        table.insert(parent, item)
+        -- Push item to stack for nested properties
+        table.insert(stack, { indent = indent, value = item, is_list = false })
+      else
+        -- Simple list item: "- value"
+        table.insert(parent, parse_scalar(list_item_content))
+      end
     else
-      parent[key] = parse_scalar(rest)
+      -- Regular key-value pair
+      local key, rest = line:match('^([^:]+):%s*(.*)$')
+      if not key then
+        return false, 'invalid YAML line: ' .. line
+      end
+
+      key = trim(key)
+      local parent = stack[#stack].value
+      if rest == '' then
+        local child = {}
+        parent[key] = child
+        table.insert(stack, { indent = indent, value = child, is_list = false })
+      else
+        parent[key] = parse_scalar(rest)
+      end
     end
 
     ::continue::
