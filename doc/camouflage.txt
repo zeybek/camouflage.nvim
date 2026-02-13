@@ -361,7 +361,9 @@ camouflage.init_project_config({opts})
 camouflage.on({event}, {callback})
   Register an event listener.
   Events: 'before_decorate', 'variable_detected', 'after_decorate',
-          'before_yank', 'after_yank', 'before_reveal', 'after_reveal'
+          'before_yank', 'after_yank', 'before_reveal', 'after_reveal',
+          'before_follow_start', 'after_follow_start',
+          'before_follow_stop', 'after_follow_stop'
   Returns listener ID for unregistration.
 
                                                          *camouflage.once()*

@@ -12,6 +12,7 @@ local config = require('camouflage.config')
 ---@field line_number number
 ---@field is_nested boolean
 ---@field is_commented boolean
+---@field is_multiline boolean|nil
 
 ---@type table<string, table>
 M.parsers = {}

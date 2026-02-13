@@ -62,18 +62,6 @@ function M.setup()
     end
   end
 
-  -- Also add custom patterns
-  for _, pattern_config in ipairs(config.get().custom_patterns or {}) do
-    local patterns = pattern_config.file_pattern
-    if type(patterns) == 'string' then
-      patterns = { patterns }
-    end
-    for _, p in ipairs(patterns) do
-      table.insert(all_patterns, '*/' .. p)
-      table.insert(all_patterns, p)
-    end
-  end
-
   vim.api.nvim_create_autocmd({ 'BufEnter' }, {
     group = group,
     pattern = all_patterns,
