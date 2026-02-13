@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/zeybek/camouflage.nvim/compare/v0.4.0...v0.5.0) (2026-02-13)
+
+
+### Features
+
+* extract TreeSitter queries to separate .scm files ([6c9cbc5](https://github.com/zeybek/camouflage.nvim/commit/6c9cbc588767f644e4019a3f92de633894a8afe9))
+
 ## [0.4.0](https://github.com/zeybek/camouflage.nvim/compare/v0.3.1...v0.4.0) (2026-02-13)
 
 
