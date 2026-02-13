@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/zeybek/camouflage.nvim/compare/v0.5.0...v0.6.0) (2026-02-13)
+
+
+### Features
+
+* **parsers:** add HCL/Terraform support ([73a2e4c](https://github.com/zeybek/camouflage.nvim/commit/73a2e4cd7bb72c69e5d7d9157bfc1f58029f71ca))
+
 ## [0.5.0](https://github.com/zeybek/camouflage.nvim/compare/v0.4.0...v0.5.0) (2026-02-13)
 
 
