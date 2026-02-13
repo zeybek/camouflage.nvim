@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/zeybek/camouflage.nvim/compare/v0.3.1...v0.4.0) (2026-02-13)
+
+
+### Features
+
+* add project config support with live reload ([#11](https://github.com/zeybek/camouflage.nvim/issues/11)) ([8ca84ec](https://github.com/zeybek/camouflage.nvim/commit/8ca84ec61db7178898924666e619521ae4a7fc04))
+
 ## [0.3.1](https://github.com/zeybek/camouflage.nvim/compare/v0.3.0...v0.3.1) (2026-02-11)
 
 
