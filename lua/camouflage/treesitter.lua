@@ -11,8 +11,8 @@ local M = {}
 ---@type table<string, boolean>
 local parser_cache = {}
 
--- TreeSitter queries for each language
-M.queries = {
+-- Fallback TreeSitter queries for each language (used when no query file exists)
+local fallback_queries = {
   json = '(pair key: (string) @key value: (_) @value)',
   yaml = [[
     (block_mapping_pair
@@ -36,6 +36,29 @@ M.queries = {
   ]],
   http = '(variable_declaration name: (identifier) @key value: (value) @value)',
 }
+
+---Get query for language (file-based with fallback)
+---@param lang string
+---@return vim.treesitter.Query|nil
+local function get_query(lang)
+  -- Try to load from file first
+  local ok, query = pcall(vim.treesitter.query.get, lang, 'camouflage')
+  if ok and query then
+    return query
+  end
+
+  -- Fallback to inline query
+  local query_string = fallback_queries[lang]
+  if query_string then
+    local parse_ok, parsed = pcall(vim.treesitter.query.parse, lang, query_string)
+    if parse_ok and parsed then
+      log.debug('Using fallback query for %s', lang)
+      return parsed
+    end
+  end
+
+  return nil
+end
 
 -- Node types that contain actual values (not containers)
 M.value_types = {
@@ -108,8 +131,8 @@ function M.parse(bufnr, lang, content)
     return nil
   end
 
-  local query_string = M.queries[lang]
-  if not query_string then
+  local query = get_query(lang)
+  if not query then
     return nil
   end
 
@@ -128,15 +151,6 @@ function M.parse(bufnr, lang, content)
   end
 
   local root = trees[1]:root()
-
-  -- Parse query
-  local query_ok, query = pcall(vim.treesitter.query.parse, lang, query_string)
-  if not query_ok or not query then
-    if not query_ok then
-      log.pcall_error('treesitter.query.parse', query, { lang = lang })
-    end
-    return nil
-  end
 
   local variables = {}
   local current_key = nil

@@ -483,6 +483,44 @@ vim.api.nvim_create_autocmd('BufEnter', {
 })
 ```
 
+## Custom TreeSitter Queries
+
+Camouflage uses TreeSitter queries to detect key-value pairs in structured files.
+You can customize these queries by creating override files.
+
+### Override a Query
+
+Create a file in your Neovim config:
+`~/.config/nvim/after/queries/<lang>/camouflage.scm`
+
+Example - Only mask keys containing "secret", "password", or "key":
+```scheme
+(pair
+  key: (string) @key
+  value: (_) @value
+  (#match? @key "(secret|password|api_key)"))
+```
+
+### Extend a Query
+
+Use `;extends` directive to add patterns to existing queries:
+
+```scheme
+;extends
+
+; Your additional patterns here
+```
+
+### Supported Languages
+
+| Language | Query File |
+|----------|------------|
+| JSON | `queries/json/camouflage.scm` |
+| YAML | `queries/yaml/camouflage.scm` |
+| TOML | `queries/toml/camouflage.scm` |
+| XML | `queries/xml/camouflage.scm` |
+| HTTP | `queries/http/camouflage.scm` |
+
 ## Troubleshooting
 
 ### Masking not working

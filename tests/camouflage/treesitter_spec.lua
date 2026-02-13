@@ -38,25 +38,8 @@ describe('camouflage.treesitter', function()
     end)
   end)
 
-  describe('queries', function()
-    it('should have query for json', function()
-      assert.is_string(ts.queries.json)
-      assert.is_truthy(ts.queries.json:find('@key'))
-      assert.is_truthy(ts.queries.json:find('@value'))
-    end)
-
-    it('should have query for yaml', function()
-      assert.is_string(ts.queries.yaml)
-      assert.is_truthy(ts.queries.yaml:find('@key'))
-      assert.is_truthy(ts.queries.yaml:find('@value'))
-    end)
-
-    it('should have query for toml', function()
-      assert.is_string(ts.queries.toml)
-      assert.is_truthy(ts.queries.toml:find('@key'))
-      assert.is_truthy(ts.queries.toml:find('@value'))
-    end)
-  end)
+  -- Note: Query string tests moved to treesitter_queries_spec.lua
+  -- Queries are now loaded from .scm files with fallback mechanism
 
   describe('value_types', function()
     it('should have value types for json', function()

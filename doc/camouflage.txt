@@ -20,7 +20,8 @@ CONTENTS                                                  *camouflage-contents*
  11. Integrations ............................ |camouflage-integrations|
  12. Project Config .......................... |camouflage-project-config|
  13. Have I Been Pwned ....................... |camouflage-pwned|
- 14. Troubleshooting ......................... |camouflage-troubleshooting|
+ 14. Custom Queries .......................... |camouflage-custom-queries|
+ 15. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -894,6 +895,46 @@ API ~
   camouflage.pwned_clear()          -- Clear indicators
   camouflage.pwned_is_available()   -- Check if feature is available
 <
+
+==============================================================================
+CUSTOM QUERIES                                    *camouflage-custom-queries*
+
+Camouflage uses TreeSitter queries to detect key-value pairs. These queries
+can be customized by creating override files in your Neovim configuration.
+
+                                                  *camouflage-query-override*
+Override a Query ~
+
+Create a file at `~/.config/nvim/after/queries/<lang>/camouflage.scm`
+
+Example for JSON (only mask specific keys):
+>scheme
+    (pair
+      key: (string) @key
+      value: (_) @value
+      (#match? @key "(secret|password|api_key)"))
+<
+
+                                                  *camouflage-query-extend*
+Extend a Query ~
+
+Use `;extends` to add to existing queries:
+>scheme
+    ;extends
+
+    ; Additional patterns
+<
+
+                                                  *camouflage-query-files*
+Query Files ~
+
+| Language | File                           |
+|----------|--------------------------------|
+| JSON     | `queries/json/camouflage.scm`  |
+| YAML     | `queries/yaml/camouflage.scm`  |
+| TOML     | `queries/toml/camouflage.scm`  |
+| XML      | `queries/xml/camouflage.scm`   |
+| HTTP     | `queries/http/camouflage.scm`  |
 
 ==============================================================================
 TROUBLESHOOTING                                     *camouflage-troubleshooting*
