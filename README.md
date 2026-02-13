@@ -132,7 +132,7 @@ require('camouflage').setup({
     show_sign = true,             -- Show sign column indicator
     show_virtual_text = true,     -- Show virtual text with breach count
     show_line_highlight = true,   -- Highlight the line
-    sign_text = '⚠',              -- Sign icon
+    sign_text = '!',              -- Sign icon
     sign_hl = 'DiagnosticWarn',   -- Sign highlight group
     virtual_text_format = 'PWNED (%s)',  -- Virtual text format
     virtual_text_hl = 'DiagnosticWarn',  -- Virtual text highlight

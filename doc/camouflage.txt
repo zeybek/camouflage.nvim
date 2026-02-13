@@ -724,7 +724,7 @@ With custom options: >lua
           show_disabled = false,      -- Show icon when disabled
           show_count = false,         -- Show masked values count
           show_follow_indicator = true,  -- Show indicator when follow mode active
-          follow_indicator = '👁',        -- Indicator icon for follow mode
+          follow_indicator = '[F]',      -- Indicator icon for follow mode
         },
       },
     },
@@ -865,7 +865,7 @@ Configuration ~
       show_sign = true,             -- Show sign column indicator
       show_virtual_text = true,     -- Show virtual text
       show_line_highlight = true,   -- Highlight the line
-      sign_text = '⚠',              -- Sign icon (default: warning sign)
+      sign_text = '!',              -- Sign icon (default: warning sign)
       sign_hl = 'DiagnosticWarn',   -- Sign highlight group
       virtual_text_format = 'PWNED (%s)',  -- Virtual text format
       virtual_text_hl = 'DiagnosticWarn',  -- Virtual text highlight
@@ -877,7 +877,7 @@ Configuration ~
 Visual Indicators ~
                                                 *camouflage-pwned-indicators*
 When a password is found in breaches, you'll see:
-- A sign in the sign column (e.g., `!` or `⚠`)
+- A sign in the sign column (e.g., `!`)
 - Virtual text showing breach count: `PWNED (52.3M)`
 - Line highlight (reddish background by default)
 

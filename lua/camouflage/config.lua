@@ -70,7 +70,7 @@ local M = {}
 ---@field show_sign? boolean Show sign column indicator (default: true)
 ---@field show_virtual_text? boolean Show virtual text (default: true)
 ---@field show_line_highlight? boolean Highlight the line (default: true)
----@field sign_text? string Sign icon (default: "⚠")
+---@field sign_text? string Sign icon (default: "!")
 ---@field sign_hl? string Sign highlight group (default: "DiagnosticWarn")
 ---@field virtual_text_format? string Virtual text format (default: "PWNED (%s)")
 ---@field virtual_text_hl? string Virtual text highlight (default: "DiagnosticWarn")
@@ -162,7 +162,7 @@ M.defaults = {
     show_sign = true,
     show_virtual_text = true,
     show_line_highlight = true,
-    sign_text = '⚠',
+    sign_text = '!',
     sign_hl = 'DiagnosticWarn',
     virtual_text_format = 'PWNED (%s)',
     virtual_text_hl = 'DiagnosticWarn',

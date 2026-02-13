@@ -124,7 +124,7 @@ function M.do_yank(var, opts)
   if cfg.notify then
     local display_reg = register == '+' and 'clipboard' or ('register ' .. register)
     vim.notify(
-      string.format('[camouflage] Copied: %s → %s', var.key, display_reg),
+      string.format('[camouflage] Copied: %s -> %s', var.key, display_reg),
       vim.log.levels.INFO
     )
   end

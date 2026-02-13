@@ -208,7 +208,7 @@ pwned:
   show_line_highlight: true
 
   # Sign column icon
-  sign_text: '⚠'
+  sign_text: '!'
 
   # Sign highlight group
   sign_hl: DiagnosticWarn
