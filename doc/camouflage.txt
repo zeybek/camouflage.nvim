@@ -31,7 +31,8 @@ configuration files during screen sharing. It uses extmarks to overlay
 masked text without modifying the actual file content.
 
 Features:
-- Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc, .xml, .http
+- Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc, .xml,
+  .http, .tf, .tfvars, .hcl
 - Nested key support for JSON, YAML, and XML
 - Multiple masking styles: stars, dotted, text, scramble
 - Have I Been Pwned integration for password breach checking
@@ -588,6 +589,42 @@ HTTP files ~
     ### Get Users
     GET {{base_url}}/users
     Authorization: Bearer {{api_key}}
+<
+
+                                                              *camouflage-hcl*
+HCL/Terraform ~
+
+Supports HashiCorp Configuration Language files used by Terraform, Packer,
+Vault, and other HashiCorp tools.
+
+File patterns: `*.tf`, `*.tfvars`, `*.hcl`
+
+Features:
+- Variable block default values
+- Resource and provider attributes
+- Locals block values
+- Heredoc strings (<<EOF and <<-EOF)
+- TreeSitter parsing when available
+
+Example: >hcl
+  variable "db_password" {
+    default = "secret123"  # This value is masked
+  }
+
+  provider "aws" {
+    access_key = "AKIA..."  # Masked
+    secret_key = "wJal..."  # Masked
+  }
+<
+
+Configuration: >lua
+  require('camouflage').setup({
+    parsers = {
+      hcl = {
+        max_depth = 10,
+      },
+    },
+  })
 <
 
                                                      *camouflage-custom-parser*

@@ -2,7 +2,7 @@
 
 Hide sensitive values in configuration files during screen sharing.
 
-A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, `.properties`, `.netrc`, `.xml`, and `.http` files using extmarks - **without modifying the actual file content**.
+A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, `.properties`, `.netrc`, `.xml`, `.http`, and **Terraform/HCL** (`.tf`, `.tfvars`, `.hcl`) files using extmarks - **without modifying the actual file content**.
 
 [![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
@@ -16,7 +16,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 
 ## Features
 
-- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`
+- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`, `.tf`, `.tfvars`, `.hcl`
 - **Nested key support**: Handles `database.connection.password` in JSON/YAML/XML
 - **All value types**: Masks strings, numbers, and booleans
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
@@ -25,7 +25,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+)
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
-- **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP
+- **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL
 - **Telescope/Snacks Integration**: Mask values in preview buffers
 - **Zero file modification**: All masking is purely visual
 
@@ -131,6 +131,9 @@ require('camouflage').setup({
     },
     xml = {
       max_depth = 10,              -- Maximum nesting depth for XML
+    },
+    hcl = {
+      max_depth = 10,              -- Maximum block nesting depth
     },
   },
 

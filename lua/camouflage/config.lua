@@ -15,12 +15,16 @@ local M = {}
 ---@class CamouflageXmlParserConfig
 ---@field max_depth? number Maximum nesting depth for XML elements
 
+---@class CamouflageHclParserConfig
+---@field max_depth? number Maximum block nesting depth
+
 ---@class CamouflageParsersConfig
 ---@field include_commented? boolean
 ---@field env? CamouflageEnvParserConfig
 ---@field json? CamouflageJsonParserConfig
 ---@field yaml? CamouflageYamlParserConfig
 ---@field xml? CamouflageXmlParserConfig
+---@field hcl? CamouflageHclParserConfig
 
 ---@class CamouflageCmpConfig
 ---@field disable_in_masked? boolean
@@ -129,6 +133,7 @@ M.defaults = {
     { file_pattern = { '.netrc', '_netrc' }, parser = 'netrc' },
     { file_pattern = { '*.xml' }, parser = 'xml' },
     { file_pattern = { '*.http' }, parser = 'http' },
+    { file_pattern = { '*.tf', '*.tfvars', '*.hcl' }, parser = 'hcl' },
   },
   parsers = {
     include_commented = true,
@@ -136,6 +141,7 @@ M.defaults = {
     json = { max_depth = 10 },
     yaml = { max_depth = 10 },
     xml = { max_depth = 10 },
+    hcl = { max_depth = 10 },
   },
   integrations = {
     telescope = true,

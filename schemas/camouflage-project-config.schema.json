@@ -177,9 +177,19 @@
               "description": "Maximum nesting depth"
             }
           }
+        },
+        "hcl": {
+          "type": "object",
+          "properties": {
+            "max_depth": {
+              "type": "integer",
+              "description": "Maximum block nesting depth"
+            }
+          }
         }
       },
       "additionalProperties": true
+    },
     },
     "integrations": {
       "type": "object",

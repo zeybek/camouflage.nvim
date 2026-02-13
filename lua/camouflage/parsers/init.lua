@@ -178,6 +178,15 @@ function M.setup()
   M.register('netrc', require('camouflage.parsers.netrc'))
   M.register('xml', require('camouflage.parsers.xml'))
   M.register('http', require('camouflage.parsers.http'))
+  M.register('hcl', require('camouflage.parsers.hcl'))
+  M.register('http', require('camouflage.parsers.http'))
+  M.register('hcl', require('camouflage.parsers.hcl'))
+  M.register('http', require('camouflage.parsers.http'))
+  M.register('hcl', require('camouflage.parsers.hcl'))
+  M.register('http', require('camouflage.parsers.http'))
+  M.register('hcl', require('camouflage.parsers.hcl'))
+  M.register('http', require('camouflage.parsers.http'))
+  M.register('hcl', require('camouflage.parsers.hcl'))
 end
 
 return M

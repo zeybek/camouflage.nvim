@@ -35,6 +35,19 @@ local fallback_queries = {
       (AttValue) @value)
   ]],
   http = '(variable_declaration name: (identifier) @key value: (value) @value)',
+  hcl = [[
+    ; Simple attribute: key = "value"
+    (attribute
+      (identifier) @key
+      (expression) @value)
+  ]],
+  -- Terraform uses the same syntax as HCL
+  terraform = [[
+    ; Simple attribute: key = "value"
+    (attribute
+      (identifier) @key
+      (expression) @value)
+  ]],
 }
 
 ---Get query for language (file-based with fallback)
@@ -85,6 +98,25 @@ M.value_types = {
   },
   xml = { 'CharData', 'AttValue' },
   http = { 'value' },
+  hcl = {
+    'template_literal',
+    'literal_value',
+    'numeric_lit',
+    'bool_lit',
+    'string_lit',
+    'quoted_template',
+    'heredoc_template',
+  },
+  -- Terraform uses the same value types as HCL
+  terraform = {
+    'template_literal',
+    'literal_value',
+    'numeric_lit',
+    'bool_lit',
+    'string_lit',
+    'quoted_template',
+    'heredoc_template',
+  },
 }
 
 ---Check if TreeSitter parser is available for a language
