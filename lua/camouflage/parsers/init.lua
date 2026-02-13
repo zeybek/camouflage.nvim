@@ -12,6 +12,7 @@ local config = require('camouflage.config')
 ---@field line_number number
 ---@field is_nested boolean
 ---@field is_commented boolean
+---@field is_multiline boolean|nil
 
 ---@type table<string, table>
 M.parsers = {}
@@ -42,6 +43,16 @@ function M.find_parser_for_file(filename)
 
   local cfg = config.get()
   local basename = vim.fn.fnamemodify(filename, ':t')
+
+  -- Always exclude project config file from masking
+  local project_config_filename = (cfg.project_config and cfg.project_config.filename)
+    or '.camouflage.yaml'
+  if basename == project_config_filename then
+    parser_cache.filename = filename
+    parser_cache.parser = nil
+    parser_cache.parser_name = nil
+    return nil, nil
+  end
 
   for _, pattern_config in ipairs(cfg.patterns) do
     local patterns = pattern_config.file_pattern

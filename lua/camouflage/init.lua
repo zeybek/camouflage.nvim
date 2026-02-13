@@ -298,6 +298,38 @@ local function setup_highlight()
   })
 end
 
+---Re-apply runtime systems that depend on config.
+---@return nil
+local function reconfigure_runtime()
+  setup_highlight()
+
+  local autocmds = require('camouflage.autocmds')
+  autocmds.setup()
+  setup_integrations()
+  autocmds.apply_to_loaded_buffers()
+end
+
+---Reload project config and re-apply runtime state if valid.
+---@param _root string|nil
+---@return boolean applied
+---@return CamouflageProjectConfigStatus status
+local function refresh_project_config(_root)
+  local config = require('camouflage.config')
+  local applied, status = config.reload_project_config()
+  if not applied then
+    return false, status
+  end
+
+  reconfigure_runtime()
+
+  local project_cfg = config.get().project_config or {}
+  if project_cfg.notify_on_reload then
+    vim.notify('[camouflage] project config reloaded', vim.log.levels.INFO)
+  end
+
+  return true, status
+end
+
 ---@param opts CamouflageConfig|nil
 function M.setup(opts)
   if initialized then
@@ -306,7 +338,7 @@ function M.setup(opts)
   end
 
   require('camouflage.config').setup(opts)
-  setup_highlight()
+  reconfigure_runtime()
 
   -- Setup hooks with config
   local hooks_config = opts and opts.hooks or nil
@@ -314,12 +346,7 @@ function M.setup(opts)
 
   require('camouflage.parsers').setup()
 
-  local autocmds = require('camouflage.autocmds')
-  autocmds.setup()
-
   require('camouflage.commands').setup()
-  setup_integrations()
-  autocmds.apply_to_loaded_buffers()
 
   -- Setup pwned feature
   local pwned_ok, pwned = pcall(require, 'camouflage.pwned')
@@ -328,6 +355,9 @@ function M.setup(opts)
   end
 
   initialized = true
+
+  -- Start runtime project config watchers
+  require('camouflage.project_config_watch').setup(refresh_project_config)
 
   -- Auto-start follow cursor mode if configured
   local reveal_config = opts and opts.reveal or {}
@@ -460,6 +490,21 @@ end
 
 M.pwned_is_available = function()
   return require('camouflage.pwned').is_available()
+end
+
+-- Repo project config API
+M.project_config_status = function()
+  return require('camouflage.project_config').status()
+end
+
+M.project_config_refresh = refresh_project_config
+
+M.project_config_watch_status = function()
+  return require('camouflage.project_config_watch').status()
+end
+
+M.init_project_config = function(opts)
+  return require('camouflage.init_command').init(opts)
 end
 
 return M

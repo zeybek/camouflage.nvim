@@ -25,6 +25,11 @@ local cache = require('camouflage.pwned.cache')
 ---@param bufnr number
 ---@return ParsedVariable[]
 local function get_variables_for_pwned(bufnr)
+  -- Ensure buffer is still valid (may have been deleted in vim.schedule)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return {}
+  end
+
   -- First try state (camouflage is active and has parsed)
   local variables = state.get_variables(bufnr)
   if variables and #variables > 0 then

@@ -94,6 +94,9 @@ require('camouflage').setup({
     yaml = {
       max_depth = 10,              -- Maximum nesting depth
     },
+    xml = {
+      max_depth = 10,              -- Maximum nesting depth for XML
+    },
   },
 
   -- Integrations
@@ -117,6 +120,7 @@ require('camouflage').setup({
     notify = true,                -- Show notification after copy
     auto_clear_seconds = 30,      -- Auto-clear clipboard (nil to disable)
     confirm = true,               -- Require confirmation before copying
+    confirm_message = 'Copy value of "%s" to clipboard?',
   },
 
   -- Have I Been Pwned integration (requires Neovim 0.10+)
@@ -124,6 +128,7 @@ require('camouflage').setup({
     enabled = true,               -- Enable the feature
     auto_check = true,            -- Check on BufEnter
     check_on_save = true,         -- Check on BufWritePost
+    check_on_change = true,        -- Check on TextChanged with debounce
     show_sign = true,             -- Show sign column indicator
     show_virtual_text = true,     -- Show virtual text with breach count
     show_line_highlight = true,   -- Highlight the line
@@ -147,6 +152,7 @@ require('camouflage').setup({
 
 | Command                     | Description                                |
 | --------------------------- | ------------------------------------------ |
+| `:CamouflageInit`           | Create .camouflage.yaml in project root    |
 | `:CamouflageToggle`         | Toggle camouflage on/off                   |
 | `:CamouflageRefresh`        | Refresh decorations                        |
 | `:CamouflageStatus`         | Show status and masked count               |
@@ -161,6 +167,8 @@ require('camouflage').setup({
 | `:CamouflagePwnedCheckBuffer` | Check all values in buffer               |
 | `:CamouflagePwnedClear`     | Clear pwned indicators from buffer         |
 | `:CamouflagePwnedClearCache`| Clear pwned check cache                    |
+| `:CamouflageProjectConfigStatus`| Show project config status            |
+| `:CamouflageProjectConfigWatchStatus`| Show project config watcher status |
 
 ## Keymaps
 
@@ -275,6 +283,11 @@ camouflage.pwned_check_line()        -- Check all values on current line
 camouflage.pwned_check_buffer()      -- Check all values in buffer
 camouflage.pwned_clear()             -- Clear pwned indicators
 camouflage.pwned_is_available()      -- Check if feature is available
+
+-- Project Config API
+camouflage.project_config_status()       -- Get project config load status
+camouflage.project_config_refresh()      -- Reload project config
+camouflage.project_config_watch_status() -- Get watcher status
 
 -- Event System
 camouflage.on('variable_detected', function(bufnr, var)
@@ -397,6 +410,46 @@ Available events:
 - `before_yank` / `after_yank` - Value yank
 - `before_follow_start` / `after_follow_start` - Follow mode start
 - `before_follow_stop` / `after_follow_stop` - Follow mode stop
+
+## Project Config (`.camouflage.yaml`)
+
+You can enforce repo-level defaults by creating `.camouflage.yaml` in the project root.
+
+For YAML editor validation/autocomplete, add the schema comment at the top:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/zeybek/camouflage.nvim/main/schemas/camouflage-project-config.schema.json
+version: 1
+style: dotted
+debug: true
+```
+
+Merge precedence:
+- defaults
+- `require('camouflage').setup({...})`
+- repo config (`.camouflage.yaml`)
+- buffer-local overrides
+
+Check active project config:
+- `:CamouflageProjectConfigStatus`
+- `:CamouflageProjectConfigWatchStatus`
+
+Live update settings:
+
+```lua
+require('camouflage').setup({
+  project_config = {
+    enabled = true,              -- Enable repo config loading (default: true)
+    filename = '.camouflage.yaml', -- Config filename (default)
+    notify = true,               -- Show warnings for parse/validation issues
+    watch_enabled = true,        -- Watch for runtime changes
+    watch_backend = 'auto',      -- 'auto' | 'autocmd' | 'fs' | 'both'
+    watch_debounce_ms = 200,     -- Debounce for change events
+    max_watched_roots = 10,      -- Max roots to watch in one session
+    notify_on_reload = false,    -- Show notification after successful reload
+  },
+})
+```
 
 ## Buffer-local Configuration
 

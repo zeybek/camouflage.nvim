@@ -70,11 +70,21 @@ local M = {}
 ---@field show_sign? boolean Show sign column indicator (default: true)
 ---@field show_virtual_text? boolean Show virtual text (default: true)
 ---@field show_line_highlight? boolean Highlight the line (default: true)
----@field sign_text? string Sign icon (default: "⚠")
+---@field sign_text? string Sign icon (default: "!")
 ---@field sign_hl? string Sign highlight group (default: "DiagnosticWarn")
 ---@field virtual_text_format? string Virtual text format (default: "PWNED (%s)")
 ---@field virtual_text_hl? string Virtual text highlight (default: "DiagnosticWarn")
 ---@field line_hl? string Line highlight group (default: "CamouflagePwned")
+
+---@class CamouflageProjectConfigLoaderConfig
+---@field enabled? boolean Enable repo config loading (default: true)
+---@field filename? string Project config filename (default: ".camouflage.yaml")
+---@field notify? boolean Show warnings for project config parse/validation issues (default: true)
+---@field watch_enabled? boolean Watch .camouflage.yaml for runtime changes (default: true)
+---@field watch_backend? string "auto" | "autocmd" | "fs" | "both" (default: "auto")
+---@field watch_debounce_ms? number Debounce for change events (default: 200)
+---@field max_watched_roots? number Max roots to watch in one session (default: 10)
+---@field notify_on_reload? boolean Show info notification after successful live reload (default: false)
 
 ---@class CamouflageConfig
 ---@field enabled? boolean
@@ -95,6 +105,7 @@ local M = {}
 ---@field reveal? CamouflageRevealConfig|nil Reveal configuration
 ---@field pwned? CamouflagePwnedConfig Pwned passwords check configuration
 ---@field custom_patterns? CamouflageCustomPatternConfig[] Custom patterns for unsupported file types
+---@field project_config? CamouflageProjectConfigLoaderConfig Repo-level project config loading
 
 ---@type CamouflageConfig
 M.defaults = {
@@ -124,6 +135,7 @@ M.defaults = {
     env = { include_commented = true, include_export = true },
     json = { max_depth = 10 },
     yaml = { max_depth = 10 },
+    xml = { max_depth = 10 },
   },
   integrations = {
     telescope = true,
@@ -150,17 +162,30 @@ M.defaults = {
     show_sign = true,
     show_virtual_text = true,
     show_line_highlight = true,
-    sign_text = '⚠',
+    sign_text = '!',
     sign_hl = 'DiagnosticWarn',
     virtual_text_format = 'PWNED (%s)',
     virtual_text_hl = 'DiagnosticWarn',
     line_hl = 'CamouflagePwned',
   },
   custom_patterns = {},
+  project_config = {
+    enabled = true,
+    filename = '.camouflage.yaml',
+    notify = true,
+    watch_enabled = true,
+    watch_backend = 'auto',
+    watch_debounce_ms = 200,
+    max_watched_roots = 10,
+    notify_on_reload = false,
+  },
 }
 
 ---@type CamouflageConfig
 M.options = {}
+
+---@type CamouflageConfig
+M.user_options = {}
 
 ---@param opts CamouflageConfig|nil
 ---@return CamouflageConfig|nil
@@ -190,7 +215,36 @@ end
 
 ---@param opts CamouflageConfig|nil
 function M.setup(opts)
-  M.options = vim.tbl_deep_extend('force', {}, M.defaults, validate_config(opts) or {})
+  local user_opts = validate_config(opts) or {}
+  M.user_options = vim.tbl_deep_extend('force', {}, user_opts)
+
+  -- Merge user project_config with defaults to get effective settings
+  local effective_project_config = vim.tbl_deep_extend(
+    'force',
+    {},
+    M.defaults.project_config or {},
+    M.user_options.project_config or {}
+  )
+  local project_config_opts = require('camouflage.project_config').load(effective_project_config)
+  M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
+end
+
+---Reload project config and rebuild effective options.
+---Returns false if project config exists but is invalid.
+---@return boolean applied
+---@return CamouflageProjectConfigStatus status
+function M.reload_project_config()
+  local project_config = require('camouflage.project_config')
+  local project_config_opts = project_config.load(M.user_options.project_config or {})
+  local status = project_config.status()
+
+  -- Keep current effective options if the file exists but could not be parsed/validated.
+  if status.path ~= nil and not status.loaded and #status.errors > 0 then
+    return false, status
+  end
+
+  M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
+  return true, status
 end
 
 ---@return CamouflageConfig

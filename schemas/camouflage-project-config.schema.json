@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/zeybek/camouflage.nvim/main/schemas/camouflage-project-config.schema.json",
+  "title": "camouflage.nvim project config",
+  "description": "Project-level config file for camouflage.nvim",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Project config schema version"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Enable/disable camouflage globally for this project"
+    },
+    "debug": {
+      "type": "boolean",
+      "description": "Enable debug logging (shows in :messages)"
+    },
+    "auto_enable": {
+      "type": "boolean",
+      "description": "Automatically apply masking when entering supported buffers"
+    },
+    "style": {
+      "type": "string",
+      "enum": [
+        "text",
+        "dotted",
+        "stars",
+        "scramble"
+      ],
+      "description": "Masking style: stars (****), dotted (••••), text (fixed string), scramble (shuffled)"
+    },
+    "mask_char": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Character used for 'stars' and 'dotted' styles"
+    },
+    "mask_length": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "description": "Fixed mask length (null = use actual value length)"
+    },
+    "max_lines": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "description": "Skip masking for files with more lines than this value"
+    },
+    "hidden_text": {
+      "type": "string",
+      "description": "Text shown for 'text' style"
+    },
+    "highlight_group": {
+      "type": "string",
+      "description": "Vim highlight group for masked text"
+    },
+    "colors": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "foreground": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Foreground color (hex or color name)"
+        },
+        "background": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Background color (hex, color name, or 'transparent')"
+        },
+        "bold": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Use bold text"
+        },
+        "italic": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Use italic text"
+        }
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file_pattern",
+          "parser"
+        ],
+        "properties": {
+          "file_pattern": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "parser": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "parsers": {
+      "type": "object",
+      "description": "Parser-specific configuration",
+      "properties": {
+        "include_commented": {
+          "type": "boolean",
+          "description": "Include commented lines in parsing"
+        },
+        "env": {
+          "type": "object",
+          "properties": {
+            "include_commented": {
+              "type": "boolean"
+            },
+            "include_export": {
+              "type": "boolean",
+              "description": "Parse export statements"
+            }
+          }
+        },
+        "json": {
+          "type": "object",
+          "properties": {
+            "max_depth": {
+              "type": "integer",
+              "description": "Maximum nesting depth"
+            }
+          }
+        },
+        "yaml": {
+          "type": "object",
+          "properties": {
+            "max_depth": {
+              "type": "integer",
+              "description": "Maximum nesting depth"
+            }
+          }
+        },
+        "xml": {
+          "type": "object",
+          "properties": {
+            "max_depth": {
+              "type": "integer",
+              "description": "Maximum nesting depth"
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "integrations": {
+      "type": "object",
+      "description": "Third-party plugin integrations",
+      "properties": {
+        "telescope": {
+          "type": "boolean",
+          "description": "Mask values in Telescope preview"
+        },
+        "cmp": {
+          "type": "object",
+          "properties": {
+            "disable_in_masked": {
+              "type": "boolean",
+              "description": "Disable completion in masked buffers"
+            }
+          }
+        }
+      }
+    },
+    "yank": {
+      "type": "object",
+      "description": "Configuration for copying unmasked values",
+      "properties": {
+        "default_register": {
+          "type": "string",
+          "description": "Default register ('+' for system clipboard)"
+        },
+        "notify": {
+          "type": "boolean",
+          "description": "Show notification after copying"
+        },
+        "auto_clear_seconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Auto-clear clipboard after N seconds"
+        },
+        "confirm": {
+          "type": "boolean",
+          "description": "Require confirmation before copying"
+        },
+        "confirm_message": {
+          "type": "string",
+          "description": "Confirmation message format (%s = key)"
+        }
+      }
+    },
+    "reveal": {
+      "type": "object",
+      "description": "Configuration for revealing masked values",
+      "properties": {
+        "highlight_group": {
+          "type": "string",
+          "description": "Highlight group for revealed values"
+        },
+        "notify": {
+          "type": "boolean",
+          "description": "Show notification when revealing"
+        },
+        "follow_cursor": {
+          "type": "boolean",
+          "description": "Auto-reveal values on current line"
+        }
+      }
+    },
+    "pwned": {
+      "type": "object",
+      "description": "Have I Been Pwned integration settings",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable the feature"
+        },
+        "auto_check": {
+          "type": "boolean",
+          "description": "Check on BufEnter"
+        },
+        "check_on_save": {
+          "type": "boolean",
+          "description": "Check on save"
+        },
+        "check_on_change": {
+          "type": "boolean",
+          "description": "Check on text change with debounce"
+        },
+        "show_sign": {
+          "type": "boolean",
+          "description": "Show sign column indicator"
+        },
+        "show_virtual_text": {
+          "type": "boolean",
+          "description": "Show virtual text with breach count"
+        },
+        "show_line_highlight": {
+          "type": "boolean",
+          "description": "Highlight the line"
+        },
+        "sign_text": {
+          "type": "string",
+          "description": "Sign column icon"
+        },
+        "sign_hl": {
+          "type": "string",
+          "description": "Sign highlight group"
+        },
+        "virtual_text_format": {
+          "type": "string",
+          "description": "Virtual text format (%s = count)"
+        },
+        "virtual_text_hl": {
+          "type": "string",
+          "description": "Virtual text highlight group"
+        },
+        "line_hl": {
+          "type": "string",
+          "description": "Line highlight group"
+        }
+      }
+    },
+    "custom_patterns": {
+      "type": "array",
+      "description": "Custom patterns for file types not supported by built-in parsers",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file_pattern",
+          "pattern",
+          "value_capture"
+        ],
+        "properties": {
+          "file_pattern": {
+            "description": "Glob pattern(s) for matching files",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "pattern": {
+            "type": "string",
+            "description": "Lua pattern with capture groups"
+          },
+          "key_capture": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Capture group number for the key (optional)"
+          },
+          "value_capture": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Capture group number for the value to mask"
+          }
+        }
+      }
+    }
+  }
+}
