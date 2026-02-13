@@ -8,6 +8,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
 [![Neovim](https://img.shields.io/badge/Neovim-0.9%2B-green?logo=neovim)](https://neovim.io)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zeybek/camouflage.nvim)
 
 ## Demo
 
@@ -55,6 +56,40 @@ use {
     require('camouflage').setup()
   end
 }
+```
+
+### [vim-plug](https://github.com/junegunn/vim-plug)
+
+```vim
+Plug 'zeybek/camouflage.nvim'
+
+" In your init.lua or after/plugin/camouflage.lua:
+lua require('camouflage').setup()
+```
+
+### [mini.deps](https://github.com/echasnovski/mini.deps)
+
+```lua
+local add = MiniDeps.add
+add({
+  source = 'zeybek/camouflage.nvim',
+})
+require('camouflage').setup()
+```
+
+### Manual Installation
+
+Clone the repository to your Neovim packages directory:
+
+```bash
+git clone https://github.com/zeybek/camouflage.nvim.git \
+  ~/.local/share/nvim/site/pack/plugins/start/camouflage.nvim
+```
+
+Then add to your `init.lua`:
+
+```lua
+require('camouflage').setup()
 ```
 
 ## Configuration

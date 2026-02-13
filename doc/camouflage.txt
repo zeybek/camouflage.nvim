@@ -76,6 +76,31 @@ Using packer.nvim: >lua
   }
 <
 
+Using vim-plug: >vim
+  Plug 'zeybek/camouflage.nvim'
+
+  " In your init.lua or after/plugin/camouflage.lua:
+  lua require('camouflage').setup()
+<
+
+Using mini.deps: >lua
+  local add = MiniDeps.add
+  add({
+    source = 'zeybek/camouflage.nvim',
+  })
+  require('camouflage').setup()
+<
+
+Manual installation:
+Clone the repository to your Neovim packages directory: >bash
+  git clone https://github.com/zeybek/camouflage.nvim.git \
+    ~/.local/share/nvim/site/pack/plugins/start/camouflage.nvim
+<
+
+Then add to your init.lua: >lua
+  require('camouflage').setup()
+<
+
 ==============================================================================
 CONFIGURATION                                        *camouflage-configuration*
 
