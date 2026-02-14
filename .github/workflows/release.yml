@@ -12,8 +12,11 @@ jobs:
   release-please:
     name: Release Please
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@c3fc4de07084f75a2b61a5b933069bda6edf3d5c # v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json

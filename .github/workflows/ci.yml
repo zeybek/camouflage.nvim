@@ -6,18 +6,24 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   commitlint:
     name: Commit Messages
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Check commit messages
-        uses: wagoid/commitlint-github-action@v6
+        uses: wagoid/commitlint-github-action@f133a0d95090ef2609192b4a21f54e20af819ea9 # v6
         with:
           failOnWarnings: false
           helpURL: https://www.conventionalcommits.org/
@@ -25,16 +31,18 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Setup Lua
-        uses: leafo/gh-actions-lua@v10
+        uses: leafo/gh-actions-lua@35bcb06abec04ec87df82e08caa84d545348536e # v10
         with:
           luaVersion: "5.1"
 
       - name: Setup LuaRocks
-        uses: leafo/gh-actions-luarocks@v4
+        uses: leafo/gh-actions-luarocks@e65774a6386cb4f24e293dca7fc4ff89165b64c5 # v4
 
       - name: Install luacheck
         run: luarocks install luacheck
@@ -45,11 +53,13 @@ jobs:
   stylua:
     name: Format
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Check formatting with StyLua
-        uses: JohnnyMorganz/stylua-action@v4
+        uses: JohnnyMorganz/stylua-action@479972f01e665acfcba96ada452c36608bdbbb5e # v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: latest
@@ -58,15 +68,17 @@ jobs:
   test:
     name: Test (Neovim ${{ matrix.nvim-version }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         nvim-version: ['v0.9.5', 'v0.10.0', 'nightly']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Neovim
-        uses: rhysd/action-setup-vim@v1
+        uses: rhysd/action-setup-vim@19e3dd31a84dbc2c5445d65e9b363f616cab96c1 # v1
         with:
           neovim: true
           version: ${{ matrix.nvim-version }}

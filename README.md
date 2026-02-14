@@ -6,6 +6,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 
 [![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/zeybek/camouflage.nvim/badge)](https://securityscorecards.dev/viewer/?uri=github.com/zeybek/camouflage.nvim)
 [![Neovim](https://img.shields.io/badge/Neovim-0.9%2B-green?logo=neovim)](https://neovim.io)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zeybek/camouflage.nvim)
