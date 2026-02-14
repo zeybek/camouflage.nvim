@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/zeybek/camouflage.nvim/compare/v0.6.0...v0.7.0) (2026-02-14)
+
+
+### Features
+
+* **config:** add debounce_ms option for masking delay control ([adc725a](https://github.com/zeybek/camouflage.nvim/commit/adc725a80a6affc39a81111d904538f72f03a142))
+* **parsers:** add Dockerfile/Containerfile support ([92436e1](https://github.com/zeybek/camouflage.nvim/commit/92436e10e99653811c4d497934b8c913ab981f3a))
+
 ## [0.6.0](https://github.com/zeybek/camouflage.nvim/compare/v0.5.0...v0.6.0) (2026-02-13)
 
 
