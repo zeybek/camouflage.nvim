@@ -179,14 +179,7 @@ function M.setup()
   M.register('xml', require('camouflage.parsers.xml'))
   M.register('http', require('camouflage.parsers.http'))
   M.register('hcl', require('camouflage.parsers.hcl'))
-  M.register('http', require('camouflage.parsers.http'))
-  M.register('hcl', require('camouflage.parsers.hcl'))
-  M.register('http', require('camouflage.parsers.http'))
-  M.register('hcl', require('camouflage.parsers.hcl'))
-  M.register('http', require('camouflage.parsers.http'))
-  M.register('hcl', require('camouflage.parsers.hcl'))
-  M.register('http', require('camouflage.parsers.http'))
-  M.register('hcl', require('camouflage.parsers.hcl'))
+  M.register('dockerfile', require('camouflage.parsers.dockerfile'))
 end
 
 return M

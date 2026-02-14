@@ -48,6 +48,24 @@ local fallback_queries = {
       (identifier) @key
       (expression) @value)
   ]],
+  dockerfile = [[
+    ; ENV KEY=value
+    (env_instruction
+      (env_pair
+        name: (_) @key
+        value: (_) @value))
+
+    ; ARG KEY=default
+    (arg_instruction
+      name: (_) @key
+      default: (_) @value)
+
+    ; LABEL key=value
+    (label_instruction
+      (label_pair
+        key: (_) @key
+        value: (_) @value))
+  ]],
 }
 
 ---Get query for language (file-based with fallback)
@@ -116,6 +134,11 @@ M.value_types = {
     'string_lit',
     'quoted_template',
     'heredoc_template',
+  },
+  dockerfile = {
+    'double_quoted_string',
+    'single_quoted_string',
+    'unquoted_string',
   },
 }
 

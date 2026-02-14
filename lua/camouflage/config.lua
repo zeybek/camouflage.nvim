@@ -134,6 +134,16 @@ M.defaults = {
     { file_pattern = { '*.xml' }, parser = 'xml' },
     { file_pattern = { '*.http' }, parser = 'http' },
     { file_pattern = { '*.tf', '*.tfvars', '*.hcl' }, parser = 'hcl' },
+    {
+      file_pattern = {
+        'Dockerfile',
+        'Dockerfile.*',
+        '*.dockerfile',
+        'Containerfile',
+        'Containerfile.*',
+      },
+      parser = 'dockerfile',
+    },
   },
   parsers = {
     include_commented = true,
@@ -142,6 +152,7 @@ M.defaults = {
     yaml = { max_depth = 10 },
     xml = { max_depth = 10 },
     hcl = { max_depth = 10 },
+    dockerfile = {},
   },
   integrations = {
     telescope = true,

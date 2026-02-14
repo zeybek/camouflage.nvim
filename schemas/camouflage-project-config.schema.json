@@ -186,10 +186,13 @@
               "description": "Maximum block nesting depth"
             }
           }
+        },
+        "dockerfile": {
+          "type": "object",
+          "description": "Dockerfile parser configuration"
         }
       },
       "additionalProperties": true
-    },
     },
     "integrations": {
       "type": "object",

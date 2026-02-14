@@ -32,7 +32,7 @@ masked text without modifying the actual file content.
 
 Features:
 - Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc, .xml,
-  .http, .tf, .tfvars, .hcl
+  .http, .tf, .tfvars, .hcl, Dockerfile, Containerfile
 - Nested key support for JSON, YAML, and XML
 - Multiple masking styles: stars, dotted, text, scramble
 - Have I Been Pwned integration for password breach checking
@@ -625,6 +625,27 @@ Configuration: >lua
       },
     },
   })
+<
+
+                                                       *camouflage-dockerfile*
+Dockerfile ~
+
+Supports Dockerfile and Containerfile formats used by Docker and Podman.
+
+File patterns: `Dockerfile`, `Dockerfile.*`, `*.dockerfile`, `Containerfile`,
+`Containerfile.*`
+
+Masked instructions:
+- ENV - Environment variables (`ENV KEY=value`)
+- ARG - Build arguments with defaults (`ARG KEY=value`)
+- LABEL - Metadata labels (`LABEL key=value`)
+
+Example: >dockerfile
+  FROM alpine:3.19
+  ARG BUILD_SECRET=my_secret      # Masked
+  ENV DATABASE_URL=postgres://... # Masked
+  ENV API_KEY="secret_key"        # Masked
+  LABEL api.token="token123"      # Masked
 <
 
                                                      *camouflage-custom-parser*
