@@ -47,7 +47,10 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 }
 ```
 
-### [packer.nvim](https://github.com/wbthomason/packer.nvim)
+<details>
+<summary>Other package managers</summary>
+
+#### [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
 ```lua
 use {
@@ -58,7 +61,7 @@ use {
 }
 ```
 
-### [vim-plug](https://github.com/junegunn/vim-plug)
+#### [vim-plug](https://github.com/junegunn/vim-plug)
 
 ```vim
 Plug 'zeybek/camouflage.nvim'
@@ -67,7 +70,7 @@ Plug 'zeybek/camouflage.nvim'
 lua require('camouflage').setup()
 ```
 
-### [mini.deps](https://github.com/echasnovski/mini.deps)
+#### [mini.deps](https://github.com/echasnovski/mini.deps)
 
 ```lua
 local add = MiniDeps.add
@@ -77,9 +80,7 @@ add({
 require('camouflage').setup()
 ```
 
-### Manual Installation
-
-Clone the repository to your Neovim packages directory:
+#### Manual Installation
 
 ```bash
 git clone https://github.com/zeybek/camouflage.nvim.git \
@@ -92,573 +93,89 @@ Then add to your `init.lua`:
 require('camouflage').setup()
 ```
 
+</details>
+
 ## Configuration
+
+The plugin works with zero configuration. Here's a quick overview of common options:
 
 ```lua
 require('camouflage').setup({
-  -- General
   enabled = true,
-  debug = false,               -- Enable verbose debug logging
   auto_enable = true,
-  debounce_ms = 150,           -- Masking delay in ms (0 = instant)
-  max_lines = 5000,            -- Skip files larger than this
-
-  -- Appearance
   style = 'stars',           -- 'text' | 'dotted' | 'stars' | 'scramble'
-  mask_char = '*',           -- Character for stars/dotted style
-  mask_length = nil,         -- nil = actual length, number = fixed
-  hidden_text = '************************',  -- For 'text' style
-  highlight_group = 'Comment', -- Highlight group for masked text
+  mask_char = '*',
+  debounce_ms = 150,
+  max_lines = 5000,
 
-  -- Custom colors (overrides highlight_group when set)
-  colors = {
-    foreground = '#808080',  -- Text color (hex or color name)
-    background = 'transparent', -- Background ('transparent' or hex)
-    bold = false,
-    italic = false,
+  reveal = {
+    follow_cursor = false,   -- Auto-reveal current line
   },
 
-  -- Parser settings
-  parsers = {
-    include_commented = true,      -- Include commented lines (all parsers)
-    env = {
-      include_export = true,       -- Include export KEY=value
-    },
-    json = {
-      max_depth = 10,              -- Maximum nesting depth
-    },
-    yaml = {
-      max_depth = 10,              -- Maximum nesting depth
-    },
-    xml = {
-      max_depth = 10,              -- Maximum nesting depth for XML
-    },
-    hcl = {
-      max_depth = 10,              -- Maximum block nesting depth
-    },
+  yank = {
+    confirm = true,          -- Require confirmation before copying
+    auto_clear_seconds = 30, -- Auto-clear clipboard
   },
 
-  -- Integrations
   integrations = {
     telescope = true,
-    cmp = {
-      disable_in_masked = true,
-    },
-  },
-
-  -- Reveal settings
-  reveal = {
-    highlight_group = 'CamouflageRevealed',  -- Highlight for revealed values
-    notify = false,                           -- Show notifications
-    follow_cursor = false,                    -- Auto-reveal current line
-  },
-
-  -- Yank settings
-  yank = {
-    default_register = '+',       -- System clipboard
-    notify = true,                -- Show notification after copy
-    auto_clear_seconds = 30,      -- Auto-clear clipboard (nil to disable)
-    confirm = true,               -- Require confirmation before copying
-    confirm_message = 'Copy value of "%s" to clipboard?',
-  },
-
-  -- Have I Been Pwned integration (requires Neovim 0.10+)
-  pwned = {
-    enabled = true,               -- Enable the feature
-    auto_check = true,            -- Check on BufEnter
-    check_on_save = true,         -- Check on BufWritePost
-    check_on_change = true,        -- Check on TextChanged with debounce
-    show_sign = true,             -- Show sign column indicator
-    show_virtual_text = true,     -- Show virtual text with breach count
-    show_line_highlight = true,   -- Highlight the line
-    sign_text = '!',              -- Sign icon
-    sign_hl = 'DiagnosticWarn',   -- Sign highlight group
-    virtual_text_format = 'PWNED (%s)',  -- Virtual text format
-    virtual_text_hl = 'DiagnosticWarn',  -- Virtual text highlight
-    line_hl = 'CamouflagePwned',  -- Line highlight group
-  },
-
-  -- Event hooks (see Events section)
-  hooks = {
-    on_before_decorate = function(bufnr, filename) end,
-    on_variable_detected = function(bufnr, var) end,
-    on_after_decorate = function(bufnr, variables) end,
+    cmp = { disable_in_masked = true },
   },
 })
 ```
+
+> **[Full configuration reference](https://github.com/zeybek/camouflage.nvim/wiki/Configuration)** on the wiki.
 
 ## Commands
 
-| Command                     | Description                                |
-| --------------------------- | ------------------------------------------ |
-| `:CamouflageInit`           | Create .camouflage.yaml in project root    |
-| `:CamouflageToggle`         | Toggle camouflage on/off                   |
-| `:CamouflageRefresh`        | Refresh decorations                        |
-| `:CamouflageStatus`         | Show status and masked count               |
-| `:CamouflageReveal`         | Reveal masked values on current line       |
-| `:CamouflageReveal!`        | Force hide revealed values                 |
-| `:CamouflageYank`           | Copy unmasked value at cursor to clipboard |
-| `:CamouflageYank!`          | Show picker to select value to copy        |
-| `:CamouflageFollowCursor`   | Toggle follow cursor mode                  |
-| `:CamouflageFollowCursor!`  | Force disable follow cursor mode           |
-| `:CamouflagePwnedCheck`     | Check if value under cursor is pwned       |
-| `:CamouflagePwnedCheckLine` | Check all values on current line           |
-| `:CamouflagePwnedCheckBuffer` | Check all values in buffer               |
-| `:CamouflagePwnedClear`     | Clear pwned indicators from buffer         |
-| `:CamouflagePwnedClearCache`| Clear pwned check cache                    |
-| `:CamouflageProjectConfigStatus`| Show project config status            |
-| `:CamouflageProjectConfigWatchStatus`| Show project config watcher status |
+| Command | Description |
+|---------|-------------|
+| `:CamouflageToggle` | Toggle camouflage on/off |
+| `:CamouflageReveal` | Reveal masked values on current line |
+| `:CamouflageYank` | Copy unmasked value at cursor to clipboard |
+| `:CamouflageFollowCursor` | Toggle follow cursor mode |
+| `:CamouflageStatus` | Show status and masked count |
+| `:CamouflageRefresh` | Refresh decorations |
+| `:CamouflagePwnedCheck` | Check if value under cursor is pwned |
+| `:CamouflagePwnedCheckBuffer` | Check all values in buffer |
+| `:CamouflageInit` | Create `.camouflage.yaml` in project root |
 
-## Keymaps
-
-Camouflage doesn't set any keymaps by default. Suggested:
-
-```lua
-vim.keymap.set('n', '<leader>ct', '<cmd>CamouflageToggle<cr>', { desc = 'Toggle Camouflage' })
-vim.keymap.set('n', '<leader>cr', '<cmd>CamouflageReveal<cr>', { desc = 'Reveal Line' })
-vim.keymap.set('n', '<leader>cy', '<cmd>CamouflageYank<cr>', { desc = 'Yank Value' })
-vim.keymap.set('n', '<leader>cf', '<cmd>CamouflageFollowCursor<cr>', { desc = 'Follow Cursor' })
-```
+> **[Full commands list](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)** on the wiki.
 
 ## Supported File Formats
 
-| Format      | Extensions                                  | Nested Keys    |
-| ----------- | ------------------------------------------- | -------------- |
-| Environment | `.env`, `.env.*`, `.envrc`, `.sh`           | No             |
-| JSON        | `.json`                                     | Yes            |
-| YAML        | `.yaml`, `.yml`                             | Yes            |
-| TOML        | `.toml`                                     | Yes (sections) |
-| Properties  | `.properties`, `.ini`, `.conf`, `credentials` | Yes (sections) |
-| Netrc       | `.netrc`, `_netrc`                          | No             |
-| XML         | `.xml`                                      | Yes            |
-| HTTP        | `.http`                                     | No             |
-
-## Custom Patterns
-
-For file types not supported by built-in parsers, you can define custom patterns using Lua patterns:
-
-```lua
-require('camouflage').setup({
-  custom_patterns = {
-    {
-      file_pattern = { '*.myconfig' },  -- Glob pattern(s) for file matching
-      pattern = '@([%w_]+)%s*=%s*(.+)', -- Lua pattern with capture groups
-      key_capture = 1,                   -- Capture group for key (optional)
-      value_capture = 2,                 -- Capture group for value (required)
-    },
-    {
-      file_pattern = '*.secret',
-      pattern = 'SECRET:%s*(.+)',
-      value_capture = 1,  -- key_capture omitted, keys will be "custom_1", "custom_2", etc.
-    },
-  },
-})
-```
-
-**Pattern Options:**
-
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `file_pattern` | `string\|string[]` | Yes | Glob pattern(s) for matching files |
-| `pattern` | `string` | Yes | Lua pattern with capture groups |
-| `key_capture` | `number` | No | Capture group number for key (auto-generated if omitted) |
-| `value_capture` | `number` | Yes | Capture group number for value to mask |
-
-**Example patterns:**
-
-```lua
--- @variable = value
-{ pattern = '@([%w_]+)%s*=%s*(.+)', key_capture = 1, value_capture = 2 }
-
--- SECRET: value
-{ pattern = 'SECRET:%s*(.+)', value_capture = 1 }
-
--- $VAR=value (shell-like)
-{ pattern = '%$([%w_]+)=([^%s]+)', key_capture = 1, value_capture = 2 }
-
--- key :: value
-{ pattern = '([%w_]+)%s*::%s*(.+)', key_capture = 1, value_capture = 2 }
-```
-
-**Note:** Built-in parsers take priority over custom patterns. If a file matches a built-in parser (e.g., `.json`, `.env`), the custom pattern will not be used.
-
-## API
-
-```lua
-local camouflage = require('camouflage')
-
--- Toggle
-camouflage.toggle()
-
--- Enable/disable programmatically
-camouflage.enable()
-camouflage.disable()
-
--- Check status
-camouflage.is_enabled()
-
--- Refresh decorations
-camouflage.refresh()
-
--- Reveal API
-camouflage.reveal.reveal_line()      -- Reveal current line
-camouflage.reveal.hide()             -- Hide revealed line
-camouflage.reveal.toggle()           -- Toggle reveal on current line
-camouflage.reveal.is_revealed()      -- Check if any line is revealed
-
--- Follow Cursor Mode
-camouflage.start_follow_cursor()     -- Enable follow cursor mode
-camouflage.stop_follow_cursor()      -- Disable follow cursor mode
-camouflage.toggle_follow_cursor()    -- Toggle follow cursor mode
-camouflage.is_follow_cursor_enabled() -- Check if follow mode is active
-
--- Yank API
-camouflage.yank.yank()               -- Yank value at cursor
-camouflage.yank.yank_with_picker()   -- Show picker to select value
-
--- Pwned API (requires Neovim 0.10+)
-camouflage.pwned_check()             -- Check value under cursor
-camouflage.pwned_check_line()        -- Check all values on current line
-camouflage.pwned_check_buffer()      -- Check all values in buffer
-camouflage.pwned_clear()             -- Clear pwned indicators
-camouflage.pwned_is_available()      -- Check if feature is available
-
--- Project Config API
-camouflage.project_config_status()       -- Get project config load status
-camouflage.project_config_refresh()      -- Reload project config
-camouflage.project_config_watch_status() -- Get watcher status
-
--- Event System
-camouflage.on('variable_detected', function(bufnr, var)
-  -- Return false to skip masking this variable
-  return var.key:match('PASSWORD')
-end)
-```
-
-## Have I Been Pwned Integration
-
-Camouflage can check your masked passwords against the [Have I Been Pwned](https://haveibeenpwned.com/) database to warn you if they've been exposed in data breaches.
-
-> **Requires:** Neovim 0.10+, `curl`, and `sha1sum` or `openssl`
-
-### Privacy
-
-Uses **k-anonymity**: only the first 5 characters of the SHA-1 hash are sent to the API. Your actual passwords never leave your machine.
-
-### Usage
-
-```vim
-:CamouflagePwnedCheck        " Check password under cursor
-:CamouflagePwnedCheckLine    " Check all on current line
-:CamouflagePwnedCheckBuffer  " Check all in buffer
-:CamouflagePwnedClear        " Clear indicators
-```
-
-### Visual Indicators
-
-When a password is found in breaches, you'll see:
-- A sign in the sign column (configurable)
-- Virtual text showing breach count: `PWNED (52.3M)`
-- Line highlight (configurable)
-
-### Configuration
-
-```lua
-pwned = {
-  enabled = true,               -- Feature toggle
-  auto_check = true,            -- Check on BufEnter
-  check_on_save = true,         -- Check when saving file
-  show_sign = true,
-  show_virtual_text = true,
-  show_line_highlight = true,
-}
-```
-
-## Lualine Integration
-
-Camouflage provides a built-in lualine component:
-
-```lua
-require('lualine').setup({
-  sections = {
-    lualine_x = { 'camouflage' },
-  },
-})
-```
-
-With custom options:
-
-```lua
-require('lualine').setup({
-  sections = {
-    lualine_x = {
-      {
-        'camouflage',
-        icon_enabled = '',         -- Icon when enabled (default)
-        icon_disabled = '',        -- Icon when disabled
-        show_disabled = false,      -- Show icon when disabled
-        show_count = true,          -- Show masked values count
-        show_follow_indicator = true, -- Show [F] when follow mode active
-        follow_indicator = '[F]',   -- Custom follow mode indicator
-      },
-    },
-  },
-})
-```
-
-Example output: ` 5 [F]` (5 masked values, follow mode active)
-
-## Events / Hooks
-
-Camouflage provides an event system for extending functionality:
-
-```lua
-local camouflage = require('camouflage')
-
--- Filter which variables get masked
-camouflage.on('variable_detected', function(bufnr, var)
-  -- Only mask variables containing 'SECRET' or 'PASSWORD'
-  if var.key:match('SECRET') or var.key:match('PASSWORD') then
-    return true  -- Mask this variable
-  end
-  return false   -- Skip masking
-end)
-
--- Run code before/after decorations
-camouflage.on('before_decorate', function(bufnr, filename)
-  print('Decorating: ' .. filename)
-end)
-
-camouflage.on('after_decorate', function(bufnr, variables)
-  print('Masked ' .. #variables .. ' variables')
-end)
-
--- Hook into reveal/yank/follow events
-camouflage.on('before_reveal', function(bufnr, line) end)
-camouflage.on('after_reveal', function(bufnr, line) end)
-camouflage.on('before_yank', function(bufnr, var) end)
-camouflage.on('after_yank', function(bufnr, var, register) end)
-camouflage.on('before_follow_start', function() end)
-camouflage.on('after_follow_stop', function() end)
-```
-
-Available events:
-- `before_decorate` / `after_decorate` - Decoration lifecycle
-- `variable_detected` - Called for each variable (return `false` to skip)
-- `before_reveal` / `after_reveal` - Line reveal
-- `before_yank` / `after_yank` - Value yank
-- `before_follow_start` / `after_follow_start` - Follow mode start
-- `before_follow_stop` / `after_follow_stop` - Follow mode stop
-
-## Project Config (`.camouflage.yaml`)
-
-You can enforce repo-level defaults by creating `.camouflage.yaml` in the project root.
-
-For YAML editor validation/autocomplete, add the schema comment at the top:
-
-```yaml
-# yaml-language-server: $schema=https://raw.githubusercontent.com/zeybek/camouflage.nvim/main/schemas/camouflage-project-config.schema.json
-version: 1
-style: dotted
-debug: true
-```
-
-Merge precedence:
-- defaults
-- `require('camouflage').setup({...})`
-- repo config (`.camouflage.yaml`)
-- buffer-local overrides
-
-Check active project config:
-- `:CamouflageProjectConfigStatus`
-- `:CamouflageProjectConfigWatchStatus`
-
-Live update settings:
-
-```lua
-require('camouflage').setup({
-  project_config = {
-    enabled = true,              -- Enable repo config loading (default: true)
-    filename = '.camouflage.yaml', -- Config filename (default)
-    notify = true,               -- Show warnings for parse/validation issues
-    watch_enabled = true,        -- Watch for runtime changes
-    watch_backend = 'auto',      -- 'auto' | 'autocmd' | 'fs' | 'both'
-    watch_debounce_ms = 200,     -- Debounce for change events
-    max_watched_roots = 10,      -- Max roots to watch in one session
-    notify_on_reload = false,    -- Show notification after successful reload
-  },
-})
-```
-
-## Buffer-local Configuration
-
-Override global settings for specific buffers using buffer variables:
-
-```lua
--- Disable masking for current buffer
-vim.b.camouflage_enabled = false
-
--- Use different style for current buffer
-vim.b.camouflage_style = 'scramble'
-
--- Use different mask character
-vim.b.camouflage_mask_char = '#'
-
--- Use fixed mask length
-vim.b.camouflage_mask_length = 8
-
--- Use different highlight group
-vim.b.camouflage_highlight_group = 'NonText'
-```
-
-Example autocommand for project-specific settings:
-
-```lua
-vim.api.nvim_create_autocmd('BufEnter', {
-  pattern = '*/production/.env*',
-  callback = function()
-    vim.b.camouflage_style = 'scramble'
-  end,
-})
-```
-
-## Custom TreeSitter Queries
-
-Camouflage uses TreeSitter queries to detect key-value pairs in structured files.
-You can customize these queries by creating override files.
-
-### Override a Query
-
-Create a file in your Neovim config:
-`~/.config/nvim/after/queries/<lang>/camouflage.scm`
-
-Example - Only mask keys containing "secret", "password", or "key":
-```scheme
-(pair
-  key: (string) @key
-  value: (_) @value
-  (#match? @key "(secret|password|api_key)"))
-```
-
-### Extend a Query
-
-Use `;extends` directive to add patterns to existing queries:
-
-```scheme
-;extends
-
-; Your additional patterns here
-```
-
-### Supported Languages
-
-| Language | Query File |
-|----------|------------|
-| JSON | `queries/json/camouflage.scm` |
-| YAML | `queries/yaml/camouflage.scm` |
-| TOML | `queries/toml/camouflage.scm` |
-| XML | `queries/xml/camouflage.scm` |
-| HTTP | `queries/http/camouflage.scm` |
-
-## Troubleshooting
-
-### Masking not working
-
-1. Check if the plugin is enabled:
-   ```vim
-   :CamouflageStatus
-   ```
-
-2. Verify the file type is supported:
-   ```vim
-   :echo expand('%:e')
-   ```
-
-3. Check if file exceeds `max_lines` (default: 5000):
-   ```vim
-   :echo line('$')
-   ```
-
-4. Ensure `setup()` was called:
-   ```lua
-   :lua print(require('camouflage').is_enabled())
-   ```
-
-### Values not being detected
-
-1. For `.env` files, ensure proper format: `KEY=value` or `export KEY=value`
-2. For YAML/JSON, check nesting depth isn't exceeded (default: 10)
-3. Ensure values are not empty
-
-### Performance issues
-
-1. Reduce `max_lines` for large files:
-   ```lua
-   require('camouflage').setup({ max_lines = 1000 })
-   ```
-
-2. Disable `auto_enable` and toggle manually:
-   ```lua
-   require('camouflage').setup({ auto_enable = false })
-   ```
-
-### Telescope preview not masked
-
-1. Ensure telescope integration is enabled (default: `true`):
-   ```lua
-   require('camouflage').setup({
-     integrations = { telescope = true },
-   })
-   ```
-
-2. Check if telescope.nvim is installed and loaded
-
-### Snacks.nvim picker
-
-Camouflage automatically masks values in Snacks.nvim picker preview buffers. This integration is always enabled when snacks.nvim is detected.
-
-### Buffer-local settings not applying
-
-1. Set buffer variables before entering the buffer, or call `:CamouflageRefresh` after setting them
-2. Check variable names: `vim.b.camouflage_enabled` (not `vim.b.camouflage.enabled`)
-
-### Debug Mode
-
-Enable debug logging to see detailed information about plugin operations:
-
-```lua
-require('camouflage').setup({
-  debug = true,  -- Enable verbose logging
-})
-```
-
-View logs with `:messages` command. Log levels:
-- **TRACE/DEBUG/INFO**: Only shown when `debug = true`
-- **WARN/ERROR**: Always shown
-
-Debug logs include:
-- pcall failures (extmarks, buffer operations)
-- TreeSitter parser availability
-- Integration detection errors
-
-### Inspecting State
-
-View parsed variables:
-```lua
-:lua print(vim.inspect(require('camouflage.state').get_variables(0)))
-```
-
-View buffer state:
-```lua
-:lua print(vim.inspect(require('camouflage.state').get_buffer(0)))
-```
-
-View current config:
-```lua
-:lua print(vim.inspect(require('camouflage.config').get()))
-```
-
-For more help, see `:help camouflage` or report issues at [GitHub](https://github.com/zeybek/camouflage.nvim/issues).
+| Format | Extensions | Nested Keys |
+|--------|-----------|-------------|
+| Environment | `.env`, `.env.*`, `.envrc`, `.sh` | No |
+| JSON | `.json` | Yes |
+| YAML | `.yaml`, `.yml` | Yes |
+| TOML | `.toml` | Yes (sections) |
+| Properties | `.properties`, `.ini`, `.conf`, `credentials` | Yes (sections) |
+| Netrc | `.netrc`, `_netrc` | No |
+| XML | `.xml` | Yes |
+| HTTP | `.http` | No |
+| HCL / Terraform | `.tf`, `.tfvars`, `.hcl` | Yes |
+| Dockerfile | `Dockerfile`, `Containerfile`, `*.dockerfile` | No |
+
+For unsupported formats, you can define [custom patterns](https://github.com/zeybek/camouflage.nvim/wiki/Custom-Patterns).
+
+## Documentation
+
+For detailed documentation, visit the **[Wiki](https://github.com/zeybek/camouflage.nvim/wiki)**:
+
+- **[Getting Started](https://github.com/zeybek/camouflage.nvim/wiki/Getting-Started)** — Installation and first steps
+- **[Configuration](https://github.com/zeybek/camouflage.nvim/wiki/Configuration)** — Full configuration reference
+- **[Commands & Keymaps](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)** — All commands and suggested keybindings
+- **[API Reference](https://github.com/zeybek/camouflage.nvim/wiki/API)** — Lua API for programmatic control
+- **[Events & Hooks](https://github.com/zeybek/camouflage.nvim/wiki/Events-and-Hooks)** — Extend functionality with event listeners
+- **[Have I Been Pwned](https://github.com/zeybek/camouflage.nvim/wiki/Have-I-Been-Pwned)** — Password breach checking
+- **[Integrations](https://github.com/zeybek/camouflage.nvim/wiki/Integrations)** — Telescope, Snacks.nvim, nvim-cmp, Lualine
+- **[Project Config](https://github.com/zeybek/camouflage.nvim/wiki/Project-Config)** — Repo-level `.camouflage.yaml`
+- **[TreeSitter](https://github.com/zeybek/camouflage.nvim/wiki/TreeSitter)** — Custom TreeSitter queries
+- **[Architecture](https://github.com/zeybek/camouflage.nvim/wiki/Architecture)** — Internal design and code flow
+- **[Troubleshooting](https://github.com/zeybek/camouflage.nvim/wiki/Troubleshooting)** — Common issues and solutions
+
+You can also use `:help camouflage` within Neovim.
 
 ## Also Available
 
