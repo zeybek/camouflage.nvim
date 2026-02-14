@@ -79,14 +79,24 @@ function M.setup()
     callback = function(args)
       if config.is_enabled() and state.is_buffer_masked(args.buf) then
         cleanup_timer(args.buf)
-        debounce_timers[args.buf] = vim.fn.timer_start(150, function()
+        local debounce_ms = config.get().debounce_ms or 150
+        if debounce_ms <= 0 then
+          -- No debounce: apply immediately
           vim.schedule(function()
             if vim.api.nvim_buf_is_valid(args.buf) then
               core.apply_decorations(args.buf)
             end
           end)
-          debounce_timers[args.buf] = nil
-        end)
+        else
+          debounce_timers[args.buf] = vim.fn.timer_start(debounce_ms, function()
+            vim.schedule(function()
+              if vim.api.nvim_buf_is_valid(args.buf) then
+                core.apply_decorations(args.buf)
+              end
+            end)
+            debounce_timers[args.buf] = nil
+          end)
+        end
       end
     end,
   })

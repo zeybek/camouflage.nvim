@@ -94,6 +94,7 @@ local M = {}
 ---@field enabled? boolean
 ---@field debug? boolean Enable debug logging (default: false)
 ---@field auto_enable? boolean
+---@field debounce_ms? number Debounce delay in ms for TextChanged masking (default: 150, 0 = instant)
 ---@field style? string
 ---@field mask_char? string
 ---@field mask_length? number|nil
@@ -116,6 +117,7 @@ M.defaults = {
   enabled = true,
   debug = false,
   auto_enable = true,
+  debounce_ms = 150,
   style = 'stars',
   mask_char = '*',
   mask_length = nil,

@@ -100,6 +100,7 @@ require('camouflage').setup({
   enabled = true,
   debug = false,               -- Enable verbose debug logging
   auto_enable = true,
+  debounce_ms = 150,           -- Masking delay in ms (0 = instant)
   max_lines = 5000,            -- Skip files larger than this
 
   -- Appearance

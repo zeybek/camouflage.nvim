@@ -21,6 +21,16 @@ describe('camouflage.config', function()
       -- Default should still be there
       assert.equals('*', config.get().mask_char)
     end)
+
+    it('should have default debounce_ms of 150', function()
+      config.setup()
+      assert.equals(150, config.get().debounce_ms)
+    end)
+
+    it('should allow custom debounce_ms', function()
+      config.setup({ debounce_ms = 0 })
+      assert.equals(0, config.get().debounce_ms)
+    end)
   end)
 
   describe('is_enabled', function()
