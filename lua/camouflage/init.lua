@@ -3,7 +3,7 @@
 local M = {}
 
 -- x-release-please-start-version
-M.version = '0.7.0'
+M.version = '0.7.1'
 -- x-release-please-end
 
 local initialized = false
