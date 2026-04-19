@@ -49,7 +49,8 @@ end
 ---@field show_virtual_text? boolean Show virtual text (default: true)
 ---@field show_line_highlight? boolean Highlight entire line (default: true)
 ---@field sign_text? string Sign text (default: "!")
----@field virtual_text_prefix? string Prefix for virtual text (default: " PWNED: ")
+---@field virtual_text_format? string Format for virtual text (default: "PWNED (%s) exposures")
+---@field virtual_text_prefix? string Deprecated: prefix for virtual text, used as fallback
 
 ---Mark a line as pwned
 ---@param bufnr number Buffer number
@@ -62,7 +63,12 @@ function M.mark_pwned(bufnr, line, count, config)
   local show_virtual_text = config.show_virtual_text ~= false
   local show_line_highlight = config.show_line_highlight ~= false
   local sign_text = config.sign_text or '!'
-  local virtual_text_prefix = config.virtual_text_prefix or ' PWNED: '
+  local virtual_text_format = config.virtual_text_format
+
+  if not virtual_text_format then
+    local virtual_text_prefix = config.virtual_text_prefix or ' PWNED: '
+    virtual_text_format = virtual_text_prefix .. '%s exposures'
+  end
 
   -- Validate buffer and line
   if not vim.api.nvim_buf_is_valid(bufnr) then
@@ -95,7 +101,7 @@ function M.mark_pwned(bufnr, line, count, config)
   if show_virtual_text then
     local formatted = M.format_count(count)
     extmark_opts.virt_text = {
-      { virtual_text_prefix .. formatted .. ' exposures', 'CamouflagePwnedVirtualText' },
+      { string.format(virtual_text_format, formatted), 'CamouflagePwnedVirtualText' },
     }
     extmark_opts.virt_text_pos = 'eol'
   end

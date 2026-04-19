@@ -73,6 +73,8 @@ local function get_ui_config()
     show_virtual_text = pwned_cfg.show_virtual_text,
     show_line_highlight = pwned_cfg.show_line_highlight,
     sign_text = pwned_cfg.sign_text,
+    virtual_text_format = pwned_cfg.virtual_text_format,
+    -- Backward compatibility for older configs/tests that used prefix semantics.
     virtual_text_prefix = pwned_cfg.virtual_text_prefix,
   }
 end

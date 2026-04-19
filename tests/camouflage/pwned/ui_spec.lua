@@ -60,7 +60,7 @@ describe('camouflage.pwned.ui', function()
         show_line_highlight = true,
         sign_text = '!',
         sign_hl = 'DiagnosticWarn',
-        virtual_text_prefix = ' PWNED: ',
+        virtual_text_format = ' PWNED: %s exposures',
         virtual_text_hl = 'DiagnosticWarn',
         line_hl = 'CamouflagePwned',
       }
@@ -85,7 +85,7 @@ describe('camouflage.pwned.ui', function()
         show_line_highlight = true,
         sign_text = '!',
         sign_hl = 'DiagnosticWarn',
-        virtual_text_prefix = ' PWNED: ',
+        virtual_text_format = ' PWNED: %s exposures',
         virtual_text_hl = 'DiagnosticWarn',
         line_hl = 'CamouflagePwned',
       }
@@ -131,6 +131,23 @@ describe('camouflage.pwned.ui', function()
       -- Verify only 2 marks remain (lines 0 and 2)
       extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ui.get_namespace(), 0, -1, {})
       assert.equals(2, #extmarks)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should support deprecated virtual_text_prefix as fallback', function()
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'PASSWORD=secret123' })
+
+      ui.mark_pwned(bufnr, 0, 1000, {
+        virtual_text_prefix = ' PWNED: ',
+      })
+
+      local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, ui.get_namespace(), 0, -1, {
+        details = true,
+      })
+      local details = extmarks[1][4]
+      assert.same({ { ' PWNED: 1K exposures', 'CamouflagePwnedVirtualText' } }, details.virt_text)
 
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)

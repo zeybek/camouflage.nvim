@@ -77,6 +77,7 @@ local M = {}
 ---@field sign_text? string Sign icon (default: "!")
 ---@field sign_hl? string Sign highlight group (default: "DiagnosticWarn")
 ---@field virtual_text_format? string Virtual text format (default: "PWNED (%s)")
+---@field virtual_text_prefix? string Deprecated: prefix for virtual text, use virtual_text_format instead
 ---@field virtual_text_hl? string Virtual text highlight (default: "DiagnosticWarn")
 ---@field line_hl? string Line highlight group (default: "CamouflagePwned")
 
