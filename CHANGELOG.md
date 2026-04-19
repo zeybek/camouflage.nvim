@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/zeybek/camouflage.nvim/compare/v0.7.0...v0.7.1) (2026-04-19)
+
+
+### Bug Fixes
+
+* align pwned virtual text config keys ([#18](https://github.com/zeybek/camouflage.nvim/issues/18)) ([28a3614](https://github.com/zeybek/camouflage.nvim/commit/28a3614766f877971a27e509566b4924a6b2b32f))
+
 ## [0.7.0](https://github.com/zeybek/camouflage.nvim/compare/v0.6.0...v0.7.0) (2026-02-14)
 
 
