@@ -492,6 +492,79 @@ M.pwned_is_available = function()
   return require('camouflage.pwned').is_available()
 end
 
+-- Parser API
+---Register a custom parser.
+---
+---Spec fields:
+---  name (string, required)
+---  parser (table with parse function) OR provide `parse` directly on spec
+---  filetypes (string[], optional)         -- vim filetypes to match
+---  file_patterns (string[], optional)     -- basename globs ('*.kdl', 'Foo*')
+---  priority (integer, optional, default 50)
+---  treesitter (table, optional) { lang, query?, query_file? }
+---
+---@param spec table
+function M.register_parser(spec)
+  assert(type(spec) == 'table' and spec.name, 'register_parser requires a spec with .name')
+
+  if spec.treesitter then
+    local ts_spec = spec.treesitter
+    if ts_spec.lang and ts_spec.query then
+      require('camouflage.treesitter').register_query(ts_spec.lang, ts_spec.query)
+    end
+  end
+
+  require('camouflage.parsers').register(spec)
+end
+
+---Register a simple pattern-based parser. Shorthand for custom Lua-pattern matching.
+---@param spec { name: string, file_patterns: string[], filetypes?: string[], pattern: string, key_capture?: integer, value_capture: integer, priority?: integer }
+function M.register_pattern(spec)
+  assert(
+    type(spec) == 'table' and spec.name and spec.pattern and spec.value_capture,
+    'register_pattern requires name, pattern, value_capture'
+  )
+
+  local custom = require('camouflage.parsers.custom')
+  local pattern_config = {
+    file_pattern = spec.file_patterns or {},
+    pattern = spec.pattern,
+    key_capture = spec.key_capture,
+    value_capture = spec.value_capture,
+  }
+
+  M.register_parser({
+    name = spec.name,
+    filetypes = spec.filetypes,
+    file_patterns = spec.file_patterns,
+    priority = spec.priority,
+    parser = {
+      parse = function(content, _bufnr)
+        return custom.parse(content, pattern_config)
+      end,
+    },
+  })
+end
+
+---Unregister a parser by name (works for builtins too).
+---@param name string
+function M.unregister_parser(name)
+  require('camouflage.parsers').unregister(name)
+end
+
+---List all registered parsers.
+---@return CamouflageParserEntry[]
+function M.list_parsers()
+  return require('camouflage.parsers').list()
+end
+
+---Get a registered parser by name.
+---@param name string
+---@return table|nil
+function M.get_parser(name)
+  return require('camouflage.parsers').get(name)
+end
+
 -- Repo project config API
 M.project_config_status = function()
   return require('camouflage.project_config').status()

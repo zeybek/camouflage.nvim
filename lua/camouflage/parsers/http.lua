@@ -86,4 +86,8 @@ function M.parse_line(line, line_num, current_index)
   }
 end
 
+M.filetypes = { 'http' }
+M.file_patterns = { '*.http' }
+M.treesitter = { lang = 'http' }
+
 return M

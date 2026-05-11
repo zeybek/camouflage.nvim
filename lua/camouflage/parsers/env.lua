@@ -91,4 +91,7 @@ function M.parse_line(line, line_num, current_index, parser_config)
   }
 end
 
+M.filetypes = { 'sh', 'bash', 'zsh' }
+M.file_patterns = { '.env*', '*.env', '.envrc', '*.sh' }
+
 return M

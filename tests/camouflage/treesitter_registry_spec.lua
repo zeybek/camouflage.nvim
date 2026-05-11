@@ -1,0 +1,25 @@
+local ts = require('camouflage.treesitter')
+
+describe('camouflage.treesitter runtime registry', function()
+  after_each(function()
+    ts.unregister_query('my_lang')
+  end)
+
+  it('register_query stores the query string', function()
+    ts.register_query('my_lang', '(node) @value')
+    assert.equals('(node) @value', ts.runtime_queries['my_lang'])
+  end)
+
+  it('unregister_query clears the entry', function()
+    ts.register_query('my_lang', '(x) @y')
+    ts.unregister_query('my_lang')
+    assert.is_nil(ts.runtime_queries['my_lang'])
+  end)
+
+  it('register_value_types stores node types', function()
+    ts.register_value_types('my_lang', { 'string', 'number' })
+    assert.same({ 'string', 'number' }, ts.value_types['my_lang'])
+    assert.is_true(ts.is_value_type('my_lang', 'string'))
+    assert.is_false(ts.is_value_type('my_lang', 'object'))
+  end)
+end)

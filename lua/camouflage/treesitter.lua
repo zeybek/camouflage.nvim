@@ -68,26 +68,72 @@ local fallback_queries = {
   ]],
 }
 
----Get query for language (file-based with fallback)
+-- Runtime-registered queries (by language). These take precedence over
+-- queries/<lang>/camouflage.scm so 3rd party parsers can ship TS support
+-- without touching the runtimepath.
+---@type table<string, string>
+M.runtime_queries = {}
+
+-- Parsed query cache to avoid re-parsing on every buffer.
+---@type table<string, vim.treesitter.Query|false>
+local parsed_query_cache = {}
+
+---Register a TreeSitter query for a language at runtime.
+---@param lang string
+---@param query_string string
+function M.register_query(lang, query_string)
+  M.runtime_queries[lang] = query_string
+  parsed_query_cache[lang] = nil
+end
+
+---@param lang string
+function M.unregister_query(lang)
+  M.runtime_queries[lang] = nil
+  parsed_query_cache[lang] = nil
+end
+
+---Get query for language. Resolution order:
+---  1. Runtime-registered query (M.runtime_queries)
+---  2. queries/<lang>/camouflage.scm from runtimepath
+---  3. Hardcoded fallback_queries
 ---@param lang string
 ---@return vim.treesitter.Query|nil
 local function get_query(lang)
-  -- Try to load from file first
+  local cached = parsed_query_cache[lang]
+  if cached ~= nil then
+    return cached or nil
+  end
+
+  -- 1. Runtime-registered
+  local runtime_q = M.runtime_queries[lang]
+  if runtime_q then
+    local ok, parsed = pcall(vim.treesitter.query.parse, lang, runtime_q)
+    if ok and parsed then
+      parsed_query_cache[lang] = parsed
+      return parsed
+    end
+    log.debug('Failed to parse runtime query for %s', lang)
+  end
+
+  -- 2. File-based (runtimepath)
   local ok, query = pcall(vim.treesitter.query.get, lang, 'camouflage')
   if ok and query then
+    parsed_query_cache[lang] = query
     return query
   end
 
-  -- Fallback to inline query
+  -- 3. Hardcoded fallback
   local query_string = fallback_queries[lang]
   if query_string then
     local parse_ok, parsed = pcall(vim.treesitter.query.parse, lang, query_string)
     if parse_ok and parsed then
       log.debug('Using fallback query for %s', lang)
+      parsed_query_cache[lang] = parsed
       return parsed
     end
   end
 
+  parsed_query_cache[lang] = false
   return nil
 end
 
@@ -141,6 +187,13 @@ M.value_types = {
     'unquoted_string',
   },
 }
+
+---Register value node types for a language (what counts as a "value", not a container).
+---@param lang string
+---@param types string[]
+function M.register_value_types(lang, types)
+  M.value_types[lang] = types
+end
 
 ---Check if TreeSitter parser is available for a language
 ---@param lang string Language name (e.g., 'json', 'yaml', 'toml')

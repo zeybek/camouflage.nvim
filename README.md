@@ -28,6 +28,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL/Dockerfile
 - **Telescope/Snacks Integration**: Mask values in preview buffers
 - **Zero file modification**: All masking is purely visual
+- **Extensible**: Register custom parsers for unsupported formats via a public API
 
 ## Installation
 
@@ -139,6 +140,7 @@ require('camouflage').setup({
 | `:CamouflagePwnedCheck` | Check if value under cursor is pwned |
 | `:CamouflagePwnedCheckBuffer` | Check all values in buffer |
 | `:CamouflageInit` | Create `.camouflage.yaml` in project root |
+| `:CamouflageParsers` | List registered parsers (debug) |
 
 > **[Full commands list](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)** on the wiki.
 
