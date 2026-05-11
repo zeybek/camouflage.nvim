@@ -229,4 +229,8 @@ function M.get_line_number(content, index)
   return count
 end
 
+M.filetypes = { 'json', 'jsonc' }
+M.file_patterns = { '*.json' }
+M.treesitter = { lang = 'json' }
+
 return M

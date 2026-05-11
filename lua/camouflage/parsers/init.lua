@@ -14,23 +14,93 @@ local config = require('camouflage.config')
 ---@field is_commented boolean
 ---@field is_multiline boolean|nil
 
+---@class CamouflageTSParserSpec
+---@field lang string
+---@field query? string
+---@field query_file? string
+
+---@class CamouflageParserEntry
+---@field name string
+---@field parser table
+---@field filetypes? string[]
+---@field file_patterns? string[]
+---@field priority? integer
+---@field treesitter? CamouflageTSParserSpec
+---@field source? string  -- 'builtin' | 'user'
+
 ---@type table<string, table>
 M.parsers = {}
+
+-- Rich metadata registry. M.parsers stays as the primary storage for
+-- backward compatibility (tests and external callers read it directly).
+---@type table<string, CamouflageParserEntry>
+M.entries = {}
+
+local DEFAULT_PRIORITY = 50
 
 -- Simple cache for find_parser_for_file to avoid repeated lookups
 ---@type {filename: string|nil, parser: table|nil, parser_name: string|nil}
 local parser_cache = { filename = nil, parser = nil, parser_name = nil }
 
+---Register a parser.
+---
+---Supports two call forms:
+---  - register(name, parser_table)         -- legacy
+---  - register(spec) where spec has .name  -- new, accepts metadata
+---@param name_or_spec string|CamouflageParserEntry
+---@param parser? table
+function M.register(name_or_spec, parser)
+  local entry
+  if type(name_or_spec) == 'string' then
+    entry = { name = name_or_spec, parser = parser }
+  else
+    entry = vim.deepcopy(name_or_spec)
+    -- Allow passing parser table directly as the spec (must have .parse and .name)
+    if not entry.parser and type(entry.parse) == 'function' then
+      entry.parser = { parse = entry.parse }
+    end
+  end
+
+  assert(entry.name, 'parser registration requires a name')
+  assert(
+    entry.parser and type(entry.parser.parse) == 'function',
+    'parser must have a parse function'
+  )
+
+  entry.priority = entry.priority or DEFAULT_PRIORITY
+  entry.source = entry.source or 'user'
+
+  M.parsers[entry.name] = entry.parser
+  M.entries[entry.name] = entry
+  M.clear_cache()
+end
+
 ---@param name string
----@param parser table
-function M.register(name, parser)
-  M.parsers[name] = parser
+function M.unregister(name)
+  M.parsers[name] = nil
+  M.entries[name] = nil
+  M.clear_cache()
 end
 
 ---@param name string
 ---@return table|nil
 function M.get(name)
   return M.parsers[name]
+end
+
+---@return CamouflageParserEntry[]
+function M.list()
+  local out = {}
+  for _, entry in pairs(M.entries) do
+    table.insert(out, entry)
+  end
+  table.sort(out, function(a, b)
+    if (a.priority or 0) ~= (b.priority or 0) then
+      return (a.priority or 0) > (b.priority or 0)
+    end
+    return a.name < b.name
+  end)
+  return out
 end
 
 ---@param filename string
@@ -74,6 +144,16 @@ function M.find_parser_for_file(filename)
     end
   end
 
+  -- Try parsers registered with metadata (file_patterns / filetypes).
+  -- Sorted by priority desc so user-registered parsers can override.
+  local entry_match = M.find_entry_for_file(filename)
+  if entry_match then
+    parser_cache.filename = filename
+    parser_cache.parser = entry_match.parser
+    parser_cache.parser_name = entry_match.name
+    return entry_match.parser, entry_match.name
+  end
+
   -- If no built-in parser found, check custom patterns
   local custom = require('camouflage.parsers.custom')
   local custom_pattern = custom.find_matching_pattern(filename)
@@ -96,6 +176,60 @@ function M.find_parser_for_file(filename)
   parser_cache.parser = nil
   parser_cache.parser_name = nil
   return nil, nil
+end
+
+---Find a parser entry whose registered filetypes/file_patterns match the file.
+---Higher priority wins; ties resolved by user-source before builtin.
+---@param filename string
+---@param filetype? string
+---@return CamouflageParserEntry|nil
+function M.find_entry_for_file(filename, filetype)
+  local basename = vim.fn.fnamemodify(filename, ':t')
+  local candidates = {}
+
+  for _, entry in pairs(M.entries) do
+    local matched = false
+
+    if filetype and entry.filetypes then
+      for _, ft in ipairs(entry.filetypes) do
+        if ft == filetype then
+          matched = true
+          break
+        end
+      end
+    end
+
+    if not matched and entry.file_patterns then
+      for _, pat in ipairs(entry.file_patterns) do
+        if M.match_pattern(basename, pat) then
+          matched = true
+          break
+        end
+      end
+    end
+
+    if matched then
+      table.insert(candidates, entry)
+    end
+  end
+
+  if #candidates == 0 then
+    return nil
+  end
+
+  table.sort(candidates, function(a, b)
+    local pa, pb = a.priority or DEFAULT_PRIORITY, b.priority or DEFAULT_PRIORITY
+    if pa ~= pb then
+      return pa > pb
+    end
+    -- user-registered beats builtin on tie
+    if a.source ~= b.source then
+      return a.source == 'user'
+    end
+    return a.name < b.name
+  end)
+
+  return candidates[1]
 end
 
 ---@param filename string
@@ -170,16 +304,34 @@ end
 function M.setup()
   -- Clear cache when setup is called (config may have changed)
   M.clear_cache()
-  M.register('env', require('camouflage.parsers.env'))
-  M.register('json', require('camouflage.parsers.json'))
-  M.register('yaml', require('camouflage.parsers.yaml'))
-  M.register('toml', require('camouflage.parsers.toml'))
-  M.register('properties', require('camouflage.parsers.properties'))
-  M.register('netrc', require('camouflage.parsers.netrc'))
-  M.register('xml', require('camouflage.parsers.xml'))
-  M.register('http', require('camouflage.parsers.http'))
-  M.register('hcl', require('camouflage.parsers.hcl'))
-  M.register('dockerfile', require('camouflage.parsers.dockerfile'))
+  M.parsers = {}
+  M.entries = {}
+
+  local builtins = {
+    { name = 'env', module = 'camouflage.parsers.env' },
+    { name = 'json', module = 'camouflage.parsers.json' },
+    { name = 'yaml', module = 'camouflage.parsers.yaml' },
+    { name = 'toml', module = 'camouflage.parsers.toml' },
+    { name = 'properties', module = 'camouflage.parsers.properties' },
+    { name = 'netrc', module = 'camouflage.parsers.netrc' },
+    { name = 'xml', module = 'camouflage.parsers.xml' },
+    { name = 'http', module = 'camouflage.parsers.http' },
+    { name = 'hcl', module = 'camouflage.parsers.hcl' },
+    { name = 'dockerfile', module = 'camouflage.parsers.dockerfile' },
+  }
+
+  for _, b in ipairs(builtins) do
+    local mod = require(b.module)
+    M.register({
+      name = b.name,
+      parser = mod,
+      filetypes = mod.filetypes,
+      file_patterns = mod.file_patterns,
+      priority = mod.priority,
+      treesitter = mod.treesitter,
+      source = 'builtin',
+    })
+  end
 end
 
 return M

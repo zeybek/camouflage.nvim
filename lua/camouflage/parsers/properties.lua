@@ -92,4 +92,7 @@ function M.process_line(line, line_num, line_start, current_section, include_com
   }
 end
 
+M.filetypes = { 'properties', 'dosini', 'config' }
+M.file_patterns = { '*.properties', '*.ini', '*.conf', 'credentials' }
+
 return M

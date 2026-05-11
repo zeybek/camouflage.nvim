@@ -293,4 +293,8 @@ function M.get_line_number(content, index)
   return count
 end
 
+M.filetypes = { 'xml' }
+M.file_patterns = { '*.xml' }
+M.treesitter = { lang = 'xml' }
+
 return M

@@ -12,6 +12,31 @@ function M.setup()
     vim.notify('[camouflage] ' .. status, vim.log.levels.INFO)
   end, { desc = 'Toggle Camouflage' })
 
+  vim.api.nvim_create_user_command('CamouflageParsers', function()
+    local entries = require('camouflage.parsers').list()
+    if #entries == 0 then
+      vim.notify('[camouflage] No parsers registered', vim.log.levels.INFO)
+      return
+    end
+    local lines = { '[camouflage] Registered parsers:' }
+    for _, e in ipairs(entries) do
+      local fts = e.filetypes and table.concat(e.filetypes, ',') or '-'
+      local pats = e.file_patterns and table.concat(e.file_patterns, ',') or '-'
+      table.insert(
+        lines,
+        string.format(
+          '  %-14s priority=%-3d source=%-7s filetypes=%s patterns=%s',
+          e.name,
+          e.priority or 50,
+          e.source or '-',
+          fts,
+          pats
+        )
+      )
+    end
+    vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
+  end, { desc = 'List registered camouflage parsers' })
+
   vim.api.nvim_create_user_command('CamouflageRefresh', function()
     require('camouflage').refresh()
     vim.notify('[camouflage] refreshed', vim.log.levels.INFO)

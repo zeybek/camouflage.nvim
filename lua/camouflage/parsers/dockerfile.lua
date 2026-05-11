@@ -368,4 +368,9 @@ function M.find_value_position(line, prefix, value, line_start)
   return { start = line_start + value_start - 1 }
 end
 
+M.filetypes = { 'dockerfile' }
+M.file_patterns =
+  { 'Dockerfile', 'Dockerfile.*', '*.dockerfile', 'Containerfile', 'Containerfile.*' }
+M.treesitter = { lang = 'dockerfile' }
+
 return M

@@ -181,4 +181,8 @@ function M.parse_value(raw_value)
   return raw_value, 0
 end
 
+M.filetypes = { 'toml' }
+M.file_patterns = { '*.toml' }
+M.treesitter = { lang = 'toml' }
+
 return M

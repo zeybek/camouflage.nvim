@@ -157,4 +157,7 @@ function M.parse(content, _bufnr)
   return variables
 end
 
+M.filetypes = { 'netrc' }
+M.file_patterns = { '.netrc', '_netrc' }
+
 return M

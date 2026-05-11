@@ -370,4 +370,8 @@ function M.is_function_call(value)
   return value:match('^[a-zA-Z_][a-zA-Z0-9_]*%s*%(') ~= nil
 end
 
+M.filetypes = { 'hcl', 'terraform', 'tf' }
+M.file_patterns = { '*.tf', '*.tfvars', '*.hcl' }
+M.treesitter = { lang = 'hcl' }
+
 return M

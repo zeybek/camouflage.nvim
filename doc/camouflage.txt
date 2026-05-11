@@ -16,12 +16,13 @@ CONTENTS                                                  *camouflage-contents*
   7. Buffer-local Configuration .............. |camouflage-buffer-local|
   8. Supported Formats ....................... |camouflage-formats|
   9. Custom Patterns ......................... |camouflage-custom-patterns|
- 10. Styles .................................. |camouflage-styles|
- 11. Integrations ............................ |camouflage-integrations|
- 12. Project Config .......................... |camouflage-project-config|
- 13. Have I Been Pwned ....................... |camouflage-pwned|
- 14. Custom Queries .......................... |camouflage-custom-queries|
- 15. Troubleshooting ......................... |camouflage-troubleshooting|
+ 10. Custom Parsers .......................... |camouflage-custom-parsers|
+ 11. Styles .................................. |camouflage-styles|
+ 12. Integrations ............................ |camouflage-integrations|
+ 13. Project Config .......................... |camouflage-project-config|
+ 14. Have I Been Pwned ....................... |camouflage-pwned|
+ 15. Custom Queries .......................... |camouflage-custom-queries|
+ 16. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -258,6 +259,12 @@ COMMANDS                                                  *camouflage-commands*
 :CamouflageRefresh
   Refresh decorations for all visible buffers.
 
+                                                         *:CamouflageParsers*
+:CamouflageParsers
+  List all registered parsers with their priority, source (builtin/user),
+  filetypes and file_patterns. Useful for debugging custom parser
+  registration and resolution order.
+
                                                           *:CamouflageStatus*
 :CamouflageStatus
   Show camouflage status including:
@@ -340,6 +347,34 @@ camouflage.refresh()
                                                           *camouflage.version*
 camouflage.version
   String containing the current plugin version.
+
+                                                  *camouflage.register_parser()*
+camouflage.register_parser({spec})
+  Register a custom parser. See |camouflage-custom-parsers| for details.
+
+  Parameters: ~
+    {spec}  Table with: name, parser (or parse fn), filetypes?,
+            file_patterns?, priority?, treesitter?
+
+                                                 *camouflage.register_pattern()*
+camouflage.register_pattern({spec})
+  Shorthand to register a simple Lua-pattern based parser.
+
+  Parameters: ~
+    {spec}  Table with: name, file_patterns, pattern, value_capture,
+            key_capture?, filetypes?, priority?
+
+                                                *camouflage.unregister_parser()*
+camouflage.unregister_parser({name})
+  Remove a registered parser. Works for builtins too.
+
+                                                     *camouflage.list_parsers()*
+camouflage.list_parsers()
+  Return all registered parser entries sorted by priority (desc).
+
+                                                       *camouflage.get_parser()*
+camouflage.get_parser({name})
+  Return the parser table registered under {name}, or nil.
 
                                                      *camouflage.pwned_check()*
 camouflage.pwned_check()
@@ -494,6 +529,80 @@ Use autocommands to apply buffer-local settings for specific projects:
 
 Note: After setting buffer variables, call `:CamouflageRefresh` to apply
 the changes immediately.
+
+==============================================================================
+CUSTOM PARSERS                                          *camouflage-custom-parsers*
+
+You can register parsers for unsupported file formats at runtime via the
+public API. Three levels are supported:
+
+1. Pattern-based (simple Lua pattern) ~
+
+>lua
+    require('camouflage').register_pattern({
+      name = 'kdl_tokens',
+      file_patterns = { '*.kdl' },
+      pattern = '(%w+)%s+"([^"]+)"',
+      key_capture = 1,
+      value_capture = 2,
+    })
+<
+
+2. Full parser (Lua function) ~
+
+>lua
+    require('camouflage').register_parser({
+      name = 'my_format',
+      filetypes = { 'myft' },
+      file_patterns = { '*.myft' },
+      priority = 60,             -- default 50, higher wins on conflict
+      parser = {
+        parse = function(content, bufnr)
+          -- return ParsedVariable[]
+          return {
+            {
+              key = 'token',
+              value = 'abc',
+              start_index = 0,
+              end_index = 3,
+              line_number = 0,
+              is_nested = false,
+              is_commented = false,
+            },
+          }
+        end,
+      },
+    })
+<
+
+3. TreeSitter-backed parser ~
+
+>lua
+    require('camouflage').register_parser({
+      name = 'kdl_ts',
+      filetypes = { 'kdl' },
+      file_patterns = { '*.kdl' },
+      parser = {
+        parse = function(content, bufnr)
+          return require('camouflage.treesitter').parse(bufnr, 'kdl', content) or {}
+        end,
+      },
+      treesitter = {
+        lang = 'kdl',
+        query = [[
+          (node (identifier) @key
+                (string (string_fragment) @value))
+        ]],
+      },
+    })
+<
+
+Other API functions: ~
+
+- `camouflage.unregister_parser(name)` — remove a parser (builtins allowed)
+- `camouflage.list_parsers()` — list all registered parsers
+- `camouflage.get_parser(name)` — fetch a parser by name
+- `:CamouflageParsers` — inspect current registry
 
 ==============================================================================
 SUPPORTED FORMATS                                          *camouflage-formats*

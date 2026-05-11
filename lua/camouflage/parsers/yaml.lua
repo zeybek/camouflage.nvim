@@ -296,4 +296,8 @@ function M.build_key_path(stack, current_key)
   return stack[#stack].key .. '.' .. current_key
 end
 
+M.filetypes = { 'yaml' }
+M.file_patterns = { '*.yaml', '*.yml' }
+M.treesitter = { lang = 'yaml' }
+
 return M
