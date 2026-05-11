@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/zeybek/camouflage.nvim/compare/v0.7.1...v0.8.0) (2026-05-11)
+
+
+### Features
+
+* **parsers:** add public API for registering custom parsers ([#20](https://github.com/zeybek/camouflage.nvim/issues/20)) ([dba809b](https://github.com/zeybek/camouflage.nvim/commit/dba809b12777196807c54da8ef2d1b20c8ef71a2))
+
 ## [0.7.1](https://github.com/zeybek/camouflage.nvim/compare/v0.7.0...v0.7.1) (2026-04-19)
 
 
