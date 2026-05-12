@@ -106,9 +106,29 @@ function M.setup()
     callback = function(args)
       cleanup_timer(args.buf)
       cleanup_pwned_timer(args.buf)
+      pcall(function()
+        require('camouflage.checks.expiry').stop_auto_refresh(args.buf)
+      end)
       state.remove_buffer(args.buf)
     end,
   })
+
+  -- Expiry auto-refresh timer: start when a maskable buffer is entered
+  -- so 'expires in 2h' counts down without user action.
+  local expiry_cfg = (config.get().checks or {}).expiry or {}
+  if expiry_cfg.enabled ~= false then
+    vim.api.nvim_create_autocmd('BufEnter', {
+      group = group,
+      pattern = all_patterns,
+      callback = function(args)
+        if vim.api.nvim_buf_is_valid(args.buf) then
+          pcall(function()
+            require('camouflage.checks.expiry').start_auto_refresh(args.buf)
+          end)
+        end
+      end,
+    })
+  end
 
   vim.api.nvim_create_autocmd('User', {
     group = group,

@@ -1,12 +1,16 @@
 ---@mod camouflage.pwned.ui Visual indicators for pwned passwords
 ---@brief [[
---- Provides visual feedback for passwords found in breaches.
---- Shows signs, virtual text, and line highlights.
+--- Provides visual feedback for passwords found in breaches via the
+--- centralized camouflage.checks badges renderer. Public API
+--- (mark_pwned, clear_marks, clear_line_marks, get_namespace, ...) is
+--- preserved for backward compatibility with existing callers and tests.
 ---@brief ]]
 
 local M = {}
 
-local ns_id = vim.api.nvim_create_namespace('camouflage_pwned')
+local checks = require('camouflage.checks')
+
+local CHECK_NAME = 'pwned'
 
 ---Setup highlight groups
 function M.setup_highlights()
@@ -45,24 +49,26 @@ function M.format_count(count)
 end
 
 ---@class PwnedUIConfig
----@field show_sign? boolean Show sign in sign column (default: true)
----@field show_virtual_text? boolean Show virtual text (default: true)
----@field show_line_highlight? boolean Highlight entire line (default: true)
----@field sign_text? string Sign text (default: "!")
----@field virtual_text_format? string Format for virtual text (default: "PWNED (%s) exposures")
----@field virtual_text_prefix? string Deprecated: prefix for virtual text, used as fallback
+---@field show_sign? boolean
+---@field show_virtual_text? boolean
+---@field show_line_highlight? boolean
+---@field sign_text? string
+---@field sign_hl? string
+---@field virtual_text_format? string
+---@field virtual_text_hl? string
+---@field virtual_text_prefix? string Deprecated fallback
+---@field line_hl? string
 
 ---Mark a line as pwned
----@param bufnr number Buffer number
----@param line number 0-indexed line number
+---@param bufnr integer
+---@param line integer 0-indexed
 ---@param count number Number of times found in breaches
----@param config PwnedUIConfig|nil Configuration options
+---@param config PwnedUIConfig|nil
 function M.mark_pwned(bufnr, line, count, config)
   config = config or {}
   local show_sign = config.show_sign ~= false
   local show_virtual_text = config.show_virtual_text ~= false
   local show_line_highlight = config.show_line_highlight ~= false
-  local sign_text = config.sign_text or '!'
   local virtual_text_format = config.virtual_text_format
 
   if not virtual_text_format then
@@ -70,7 +76,6 @@ function M.mark_pwned(bufnr, line, count, config)
     virtual_text_format = virtual_text_prefix .. '%s exposures'
   end
 
-  -- Validate buffer and line
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
@@ -80,67 +85,54 @@ function M.mark_pwned(bufnr, line, count, config)
     return
   end
 
-  ---@type vim.api.keyset.set_extmark
-  local extmark_opts = {
-    id = line + 1, -- Use line+1 as ID to allow one mark per line
-    priority = 200, -- Higher than normal extmarks
+  local formatted = M.format_count(count)
+
+  ---@type CheckResult
+  local result = {
+    severity = 'error',
+    text = show_virtual_text and string.format(virtual_text_format, formatted) or '',
+    hl_group = config.virtual_text_hl or 'CamouflagePwnedVirtualText',
+    sign_text = show_sign and (config.sign_text or '!') or nil,
+    sign_hl = config.sign_hl or 'CamouflagePwnedSign',
+    line_hl = show_line_highlight and (config.line_hl or 'CamouflagePwned') or nil,
+    priority = 100,
+    data = { count = count },
   }
 
-  -- Line highlight
-  if show_line_highlight then
-    extmark_opts.line_hl_group = 'CamouflagePwned'
-  end
-
-  -- Sign
-  if show_sign then
-    extmark_opts.sign_text = sign_text
-    extmark_opts.sign_hl_group = 'CamouflagePwnedSign'
-  end
-
-  -- Virtual text
-  if show_virtual_text then
-    local formatted = M.format_count(count)
-    extmark_opts.virt_text = {
-      { string.format(virtual_text_format, formatted), 'CamouflagePwnedVirtualText' },
-    }
-    extmark_opts.virt_text_pos = 'eol'
-  end
-
-  vim.api.nvim_buf_set_extmark(bufnr, ns_id, line, 0, extmark_opts)
+  checks.set_result(bufnr, line, CHECK_NAME, result)
 end
 
 ---Clear all pwned marks from a buffer
----@param bufnr number Buffer number
+---@param bufnr integer
 function M.clear_marks(bufnr)
   if vim.api.nvim_buf_is_valid(bufnr) then
-    vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+    checks.clear_check(bufnr, CHECK_NAME)
   end
 end
 
 ---Clear pwned marks from a specific line
----@param bufnr number Buffer number
----@param line number 0-indexed line number
+---@param bufnr integer
+---@param line integer 0-indexed
 function M.clear_line_marks(bufnr, line)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
-  -- Clear namespace for just this line
-  vim.api.nvim_buf_clear_namespace(bufnr, ns_id, line, line + 1)
+  checks.set_result(bufnr, line, CHECK_NAME, nil)
 end
 
 ---Clear all pwned marks from all buffers
 function M.clear_all_marks()
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     if vim.api.nvim_buf_is_valid(bufnr) then
-      vim.api.nvim_buf_clear_namespace(bufnr, ns_id, 0, -1)
+      checks.clear_check(bufnr, CHECK_NAME)
     end
   end
 end
 
----Get namespace id
----@return number
+---Get namespace id (badges namespace — single shared namespace for all checks).
+---@return integer
 function M.get_namespace()
-  return ns_id
+  return checks.badges.get_namespace()
 end
 
 return M

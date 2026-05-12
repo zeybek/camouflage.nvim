@@ -354,6 +354,12 @@ function M.setup(opts)
     pwned.setup()
   end
 
+  -- Setup expiry check (JWT)
+  local expiry_ok, expiry = pcall(require, 'camouflage.checks.expiry')
+  if expiry_ok then
+    expiry.setup()
+  end
+
   initialized = true
 
   -- Start runtime project config watchers

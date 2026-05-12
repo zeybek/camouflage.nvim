@@ -81,6 +81,32 @@ local M = {}
 ---@field virtual_text_hl? string Virtual text highlight (default: "DiagnosticWarn")
 ---@field line_hl? string Line highlight group (default: "CamouflagePwned")
 
+---@class CamouflageExpiryRefreshConfig
+---@field on_buf_enter? boolean Re-check on BufEnter (default: true)
+---@field on_save? boolean Re-check on BufWritePost (default: true)
+---@field on_change? boolean Re-check on TextChanged (debounced) (default: true)
+---@field auto_interval? integer Background re-render interval in seconds, 0 disables (default: 60)
+
+---@class CamouflageExpiryConfig
+---@field enabled? boolean (default: true)
+---@field show_threshold_seconds? integer Show badge only when remaining < this (default: 86400 = 24h)
+---@field warn_threshold_seconds? integer Switch badge to warning color when remaining < this (default: 3600 = 1h)
+---@field show_provider? boolean Append provider name from `iss` claim (default: true)
+---@field refresh? CamouflageExpiryRefreshConfig
+---@field hl_valid? string Highlight when token is valid but within show_threshold (default: 'Comment')
+---@field hl_warning? string Highlight when within warn_threshold (default: 'DiagnosticWarn')
+---@field hl_expired? string Highlight when expired (default: 'DiagnosticError')
+
+---@class CamouflageBadgesConfig
+---@field position? string Where badges render: 'right_align' | 'eol' | 'inline' (default: 'right_align')
+---@field separator? string Text inserted between adjacent badges (default: ' ')
+---@field separator_hl? string Highlight for the separator (default: 'Comment')
+
+---@class CamouflageChecksConfig
+---@field badges? CamouflageBadgesConfig
+---@field pwned? CamouflagePwnedConfig
+---@field expiry? CamouflageExpiryConfig
+
 ---@class CamouflageProjectConfigLoaderConfig
 ---@field enabled? boolean Enable repo config loading (default: true)
 ---@field filename? string Project config filename (default: ".camouflage.yaml")
@@ -112,6 +138,7 @@ local M = {}
 ---@field pwned? CamouflagePwnedConfig Pwned passwords check configuration
 ---@field custom_patterns? CamouflageCustomPatternConfig[] Custom patterns for unsupported file types
 ---@field project_config? CamouflageProjectConfigLoaderConfig Repo-level project config loading
+---@field checks? CamouflageChecksConfig Per-check configuration (pwned, expiry, ...)
 
 ---@type CamouflageConfig
 M.defaults = {
@@ -189,6 +216,28 @@ M.defaults = {
     line_hl = 'CamouflagePwned',
   },
   custom_patterns = {},
+  checks = {
+    badges = {
+      position = 'right_align',
+      separator = ' ',
+      separator_hl = 'Comment',
+    },
+    expiry = {
+      enabled = true,
+      show_threshold_seconds = 86400,
+      warn_threshold_seconds = 3600,
+      show_provider = true,
+      refresh = {
+        on_buf_enter = true,
+        on_save = true,
+        on_change = true,
+        auto_interval = 60,
+      },
+      hl_valid = 'Comment',
+      hl_warning = 'DiagnosticWarn',
+      hl_expired = 'DiagnosticError',
+    },
+  },
   project_config = {
     enabled = true,
     filename = '.camouflage.yaml',
@@ -233,6 +282,20 @@ local function validate_config(opts)
   return opts
 end
 
+---Mirror legacy top-level keys (pwned.*) into the new checks.* namespace so
+---both `setup({ pwned = {...} })` and `setup({ checks = { pwned = {...} } })`
+---continue to work. Idempotent.
+---@param options table
+local function apply_legacy_aliases(options)
+  options.checks = options.checks or {}
+  if options.pwned then
+    options.checks.pwned =
+      vim.tbl_deep_extend('force', {}, options.checks.pwned or {}, options.pwned)
+  else
+    options.checks.pwned = options.checks.pwned or {}
+  end
+end
+
 ---@param opts CamouflageConfig|nil
 function M.setup(opts)
   local user_opts = validate_config(opts) or {}
@@ -247,6 +310,7 @@ function M.setup(opts)
   )
   local project_config_opts = require('camouflage.project_config').load(effective_project_config)
   M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
+  apply_legacy_aliases(M.options)
 end
 
 ---Reload project config and rebuild effective options.
@@ -264,6 +328,7 @@ function M.reload_project_config()
   end
 
   M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
+  apply_legacy_aliases(M.options)
   return true, status
 end
 
