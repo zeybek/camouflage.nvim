@@ -23,6 +23,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Reveal & Yank**: Temporarily reveal or copy masked values
 - **Follow Cursor Mode**: Auto-reveal current line as you navigate
 - **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+)
+- **JWT Expiry Hints**: Decode `exp` claim and show "expires in 2h" badges
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
 - **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL/Dockerfile
@@ -139,6 +140,7 @@ require('camouflage').setup({
 | `:CamouflageRefresh` | Refresh decorations |
 | `:CamouflagePwnedCheck` | Check if value under cursor is pwned |
 | `:CamouflagePwnedCheckBuffer` | Check all values in buffer |
+| `:CamouflageExpiryToggle` | Toggle JWT expiry check on/off |
 | `:CamouflageInit` | Create `.camouflage.yaml` in project root |
 | `:CamouflageParsers` | List registered parsers (debug) |
 

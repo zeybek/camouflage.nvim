@@ -21,8 +21,9 @@ CONTENTS                                                  *camouflage-contents*
  12. Integrations ............................ |camouflage-integrations|
  13. Project Config .......................... |camouflage-project-config|
  14. Have I Been Pwned ....................... |camouflage-pwned|
- 15. Custom Queries .......................... |camouflage-custom-queries|
- 16. Troubleshooting ......................... |camouflage-troubleshooting|
+ 15. JWT Expiry Hints ........................ |camouflage-expiry|
+ 16. Custom Queries .......................... |camouflage-custom-queries|
+ 17. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -1094,6 +1095,44 @@ API ~
   camouflage.pwned_clear()          -- Clear indicators
   camouflage.pwned_is_available()   -- Check if feature is available
 <
+
+==============================================================================
+JWT EXPIRY HINTS                                          *camouflage-expiry*
+
+Decodes the `exp` claim of JWT values and renders a badge with the time
+remaining (or expired). Pwned and expiry badges share a single line via
+the central badges renderer.
+
+Example: ~
+>
+    JWT_TOKEN=*********  [Google expires in 2h]
+    SESSION=***********  [expired 3d ago]
+<
+
+Config: ~
+>lua
+    require('camouflage').setup({
+      checks = {
+        badges = {
+          position = 'right_align',  -- 'right_align' | 'eol' | 'inline'
+        },
+        expiry = {
+          enabled = true,
+          show_threshold_seconds = 86400,   -- show badge when < 24h left
+          warn_threshold_seconds = 3600,    -- warning color when < 1h
+          show_provider = true,
+          refresh = { auto_interval = 60 }, -- 0 disables timer
+        },
+      },
+    })
+<
+
+                                                     *:CamouflageExpiryToggle*
+:CamouflageExpiryToggle
+  Toggle the expiry check on/off.
+
+Recognized providers via `iss`: Google, Auth0, Microsoft, GitHub,
+GitHub Actions, Cognito, Okta, Firebase.
 
 ==============================================================================
 CUSTOM QUERIES                                    *camouflage-custom-queries*

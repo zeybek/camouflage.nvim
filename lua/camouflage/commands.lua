@@ -37,6 +37,33 @@ function M.setup()
     vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
   end, { desc = 'List registered camouflage parsers' })
 
+  vim.api.nvim_create_user_command('CamouflageExpiryToggle', function()
+    local cfg = require('camouflage.config')
+    local current = (cfg.get().checks or {}).expiry or {}
+    local new_enabled = current.enabled == false
+    cfg.set('checks.expiry.enabled', new_enabled)
+    local expiry = require('camouflage.checks.expiry')
+    if new_enabled then
+      expiry.setup()
+      -- Re-decorate all loaded supported buffers immediately so badges
+      -- appear without waiting for the next edit/BufEnter.
+      vim.schedule(function()
+        require('camouflage.autocmds').apply_to_loaded_buffers()
+        local bufnr = vim.api.nvim_get_current_buf()
+        if vim.api.nvim_buf_is_valid(bufnr) then
+          pcall(expiry.start_auto_refresh, bufnr)
+        end
+      end)
+      vim.notify('[camouflage] expiry check enabled', vim.log.levels.INFO)
+    else
+      expiry.teardown()
+      for _, b in ipairs(vim.api.nvim_list_bufs()) do
+        require('camouflage.checks').clear_check(b, 'expiry')
+      end
+      vim.notify('[camouflage] expiry check disabled', vim.log.levels.INFO)
+    end
+  end, { desc = 'Toggle JWT expiry check on/off' })
+
   vim.api.nvim_create_user_command('CamouflageRefresh', function()
     require('camouflage').refresh()
     vim.notify('[camouflage] refreshed', vim.log.levels.INFO)
