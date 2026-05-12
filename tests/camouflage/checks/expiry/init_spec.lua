@@ -3,9 +3,30 @@ local checks = require('camouflage.checks')
 local store = require('camouflage.checks.store')
 local config = require('camouflage.config')
 
+-- Pure-Lua base64 encoder (vim.base64.encode is Neovim 0.10+).
+local ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+local function b64_encode(input)
+  local out, i = {}, 1
+  while i <= #input do
+    local b1 = string.byte(input, i) or 0
+    local b2 = string.byte(input, i + 1)
+    local b3 = string.byte(input, i + 2)
+    local n = b1 * 65536 + (b2 or 0) * 256 + (b3 or 0)
+    table.insert(out, ALPHA:sub(math.floor(n / 262144) % 64 + 1, math.floor(n / 262144) % 64 + 1))
+    table.insert(out, ALPHA:sub(math.floor(n / 4096) % 64 + 1, math.floor(n / 4096) % 64 + 1))
+    table.insert(
+      out,
+      b2 and ALPHA:sub(math.floor(n / 64) % 64 + 1, math.floor(n / 64) % 64 + 1) or '='
+    )
+    table.insert(out, b3 and ALPHA:sub(n % 64 + 1, n % 64 + 1) or '=')
+    i = i + 3
+  end
+  return table.concat(out)
+end
+
 local function encode_segment(tbl)
   local json = vim.json.encode(tbl)
-  local b64 = vim.base64.encode(json)
+  local b64 = b64_encode(json)
   return (b64:gsub('+', '-'):gsub('/', '_'):gsub('=', ''))
 end
 
