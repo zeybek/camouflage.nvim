@@ -62,6 +62,21 @@ function M.setup()
     end
   end
 
+  -- Include file patterns from parsers registered at runtime via
+  -- register_parser; without this their files never trigger auto-masking.
+  for _, entry in ipairs(parsers.list()) do
+    if entry.source == 'user' and entry.file_patterns then
+      local patterns = entry.file_patterns
+      if type(patterns) == 'string' then
+        patterns = { patterns }
+      end
+      for _, p in ipairs(patterns) do
+        table.insert(all_patterns, '*/' .. p)
+        table.insert(all_patterns, p)
+      end
+    end
+  end
+
   vim.api.nvim_create_autocmd({ 'BufEnter' }, {
     group = group,
     pattern = all_patterns,
@@ -111,6 +126,11 @@ function M.setup()
       cleanup_pwned_timer(args.buf)
       pcall(function()
         require('camouflage.checks.expiry').stop_auto_refresh(args.buf)
+      end)
+      -- Drop accumulated check results (pwned/expiry) so the per-line store does
+      -- not grow without bound and a recycled bufnr never inherits stale badges.
+      pcall(function()
+        require('camouflage.checks').clear_buffer(args.buf)
       end)
       state.remove_buffer(args.buf)
     end,

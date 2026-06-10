@@ -77,13 +77,13 @@ function M.apply_decorations(bufnr, override_filename)
   -- variables) never leaves stale extmarks drifting over the buffer.
   M.clear_decorations(bufnr)
 
-  -- Check is_enabled first to avoid unnecessary API calls
-  if not config.is_enabled() then
+  -- Buffer-local config (vim.b.camouflage_*) overrides the global config; with
+  -- no overrides this returns the shared config table at no extra cost.
+  local cfg = config.get_for_buffer(bufnr)
+  if not cfg.enabled then
     reset_mask_state(bufnr)
     return
   end
-
-  local cfg = config.get()
   local line_count = vim.api.nvim_buf_line_count(bufnr)
   if cfg.max_lines and line_count > cfg.max_lines then
     reset_mask_state(bufnr)

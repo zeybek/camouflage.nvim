@@ -98,18 +98,32 @@ end
 
 ---@param start_dir string
 ---@return string
+-- Cache resolved roots per start directory so repeated BufEnter/BufAdd events
+-- don't pay two synchronous upward filesystem scans (findfile + finddir) every
+-- time. Reset on watcher (re)setup.
+local root_cache = {}
+
 local function resolve_root_from_dir(start_dir)
+  local cached = root_cache[start_dir]
+  if cached ~= nil then
+    return cached
+  end
+
+  local result
   local policy_file = vim.fn.findfile(watched_filename, start_dir .. ';')
   if policy_file ~= '' then
-    return normalize(vim.fn.fnamemodify(policy_file, ':h'))
+    result = normalize(vim.fn.fnamemodify(policy_file, ':h'))
+  else
+    local git_dir = vim.fn.finddir('.git', start_dir .. ';')
+    if git_dir ~= '' then
+      result = normalize(vim.fn.fnamemodify(git_dir, ':h'))
+    else
+      result = normalize(vim.fn.getcwd())
+    end
   end
 
-  local git_dir = vim.fn.finddir('.git', start_dir .. ';')
-  if git_dir ~= '' then
-    return normalize(vim.fn.fnamemodify(git_dir, ':h'))
-  end
-
-  return normalize(vim.fn.getcwd())
+  root_cache[start_dir] = result
+  return result
 end
 
 ---@param bufnr number
@@ -292,10 +306,29 @@ function M.setup(callback)
 
   vim.api.nvim_clear_autocmds({ group = augroup })
 
-  -- Track roots from active buffers lazily.
+  root_cache = {}
+
+  -- Track roots from active buffers lazily. Gate cheaply first so ordinary
+  -- buffers (terminals, pickers, unnamed, non-camouflage files) never trigger
+  -- the upward filesystem scan.
   vim.api.nvim_create_autocmd({ 'BufEnter', 'BufAdd' }, {
     group = augroup,
     callback = function(args)
+      if not vim.api.nvim_buf_is_valid(args.buf) then
+        return
+      end
+      if vim.bo[args.buf].buftype ~= '' then
+        return
+      end
+      local name = vim.api.nvim_buf_get_name(args.buf)
+      if name == '' then
+        return
+      end
+      local basename = vim.fn.fnamemodify(name, ':t')
+      if basename ~= watched_filename and not require('camouflage.parsers').is_supported(name) then
+        return
+      end
+
       local root = resolve_root_for_buffer(args.buf)
       if root then
         add_root_watcher(root, cfg)

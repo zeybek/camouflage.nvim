@@ -83,6 +83,21 @@ describe('camouflage end-to-end extmark placement', function()
     vim.api.nvim_buf_delete(bufnr, { force = true })
   end)
 
+  it('respects the vim.b.camouflage_enabled buffer-local override', function()
+    require('camouflage').setup()
+    local bufnr = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/camouflage_test/blocal.env')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'API_KEY=secret123' })
+    vim.b[bufnr].camouflage_enabled = false
+
+    core.apply_decorations(bufnr)
+
+    local marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+    assert.equals(0, #marks)
+
+    vim.api.nvim_buf_delete(bufnr, { force = true })
+  end)
+
   it('does not leave stale extmarks or variables when a buffer grows past max_lines', function()
     config.setup({ max_lines = 3 })
     local bufnr = vim.api.nvim_create_buf(true, false)

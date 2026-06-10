@@ -435,6 +435,19 @@ function M.get_for_buffer(bufnr)
     return base_config
   end
 
+  -- Fast path: with no buffer-local overrides, return the shared config without
+  -- the deep copy below (this runs on every decoration pass).
+  local b = vim.b[bufnr]
+  if
+    b.camouflage_enabled == nil
+    and b.camouflage_style == nil
+    and b.camouflage_mask_char == nil
+    and b.camouflage_mask_length == nil
+    and b.camouflage_highlight_group == nil
+  then
+    return base_config
+  end
+
   -- Create a copy of the base config
   local buf_config = vim.tbl_deep_extend('force', {}, base_config)
 
