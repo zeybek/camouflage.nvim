@@ -119,6 +119,11 @@ function M.render(bufnr, lnum)
     end
   end
 
+  -- Deterministic per-line id (1-based; extmark ids must be > 0). This is safe,
+  -- not a collision risk: the line was cleared above, ids are unique per
+  -- (buffer, namespace), and set_extmark with an existing id MOVES that mark
+  -- rather than erroring — so a line carries at most one badge mark and a
+  -- re-render is idempotent.
   ---@type vim.api.keyset.set_extmark
   local opts = {
     id = lnum + 1,

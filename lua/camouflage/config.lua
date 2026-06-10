@@ -296,6 +296,20 @@ local function apply_legacy_aliases(options)
   end
 end
 
+---Warn once when a cosmetic-only style is in effect, so it is not mistaken for
+---protective masking. Fires for style set via setup() opts OR a project file.
+---vim.notify_once dedupes by message, so it fires at most once per session.
+---@param options table
+local function warn_cosmetic_styles(options)
+  if options.style == 'scramble' then
+    vim.notify_once(
+      '[camouflage] style "scramble" is cosmetic, not protective: the mask is a '
+        .. "shuffle of the real characters and leaks the value's length and character set.",
+      vim.log.levels.WARN
+    )
+  end
+end
+
 ---@param opts CamouflageConfig|nil
 function M.setup(opts)
   local user_opts = validate_config(opts) or {}
@@ -311,6 +325,7 @@ function M.setup(opts)
   local project_config_opts = require('camouflage.project_config').load(effective_project_config)
   M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
   apply_legacy_aliases(M.options)
+  warn_cosmetic_styles(M.options)
 end
 
 ---Reload project config and rebuild effective options.
@@ -329,6 +344,7 @@ function M.reload_project_config()
 
   M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
   apply_legacy_aliases(M.options)
+  warn_cosmetic_styles(M.options)
   return true, status
 end
 
