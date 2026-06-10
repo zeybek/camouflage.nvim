@@ -30,7 +30,7 @@ describe('camouflage.pwned', function()
     end)
 
     it('should return true when dependencies are met', function()
-      -- On most systems with curl and sha1sum
+      -- Hashing is in-process now; the only remaining dependency is curl.
       assert.is_true(pwned.is_available())
     end)
   end)

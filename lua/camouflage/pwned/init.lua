@@ -116,10 +116,7 @@ end
 ---@param callback fun(result: PwnedCheckResult|nil)|nil Optional callback
 function M.check_current(callback)
   if not M.is_available() then
-    vim.notify(
-      '[camouflage] HIBP check not available (missing sha1sum/openssl or curl)',
-      vim.log.levels.WARN
-    )
+    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
     if callback then
       callback(nil)
     end
@@ -167,10 +164,7 @@ end
 ---@param callback fun(results: table<string, PwnedCheckResult>)|nil Optional callback
 function M.check_line(callback)
   if not M.is_available() then
-    vim.notify(
-      '[camouflage] HIBP check not available (missing sha1sum/openssl or curl)',
-      vim.log.levels.WARN
-    )
+    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
     if callback then
       callback({})
     end
@@ -222,10 +216,7 @@ end
 ---@param callback fun(results: table<string, PwnedCheckResult>)|nil Optional callback
 function M.check_buffer(callback)
   if not M.is_available() then
-    vim.notify(
-      '[camouflage] HIBP check not available (missing sha1sum/openssl or curl)',
-      vim.log.levels.WARN
-    )
+    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
     if callback then
       callback({})
     end

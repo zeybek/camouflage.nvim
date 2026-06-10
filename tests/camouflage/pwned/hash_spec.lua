@@ -16,23 +16,8 @@ describe('camouflage.pwned.hash', function()
   end)
 
   describe('is_available', function()
-    it('should return true when sha1sum or openssl is available', function()
-      -- Most systems have at least one
+    it('should always be available (pure-Lua hashing, no external tools)', function()
       assert.is_true(hash.is_available())
-    end)
-  end)
-
-  describe('has_sha1sum', function()
-    it('should return boolean', function()
-      local result = hash.has_sha1sum()
-      assert.is_boolean(result)
-    end)
-  end)
-
-  describe('has_openssl', function()
-    it('should return boolean', function()
-      local result = hash.has_openssl()
-      assert.is_boolean(result)
     end)
   end)
 
