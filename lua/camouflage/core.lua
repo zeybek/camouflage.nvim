@@ -8,6 +8,14 @@ local styles = require('camouflage.styles')
 local parsers = require('camouflage.parsers')
 local hooks = require('camouflage.hooks')
 local log = require('camouflage.log')
+local position = require('camouflage.position')
+
+-- Position math lives in the leaf module camouflage.position so yank/pwned can
+-- reuse it without depending on the whole decoration engine. These permanent
+-- aliases keep core.compute_line_offsets / core.index_to_position working for
+-- existing callers (reveal, yank, tests).
+M.compute_line_offsets = position.compute_line_offsets
+M.index_to_position = position.index_to_position
 
 ---Get the highlight group to use for masking
 ---@param cfg table Configuration
@@ -206,80 +214,6 @@ function M.clear_decorations(bufnr)
   if not ok then
     log.pcall_error('nvim_buf_clear_namespace', err, { bufnr = bufnr })
   end
-end
-
----Compute cumulative line offsets for O(1) index-to-position lookup
----@param lines string[]
----@return number[] Cumulative byte offsets where each line starts
-function M.compute_line_offsets(lines)
-  local offsets = {}
-  local current = 0
-  for i, line in ipairs(lines) do
-    offsets[i] = current
-    current = current + #line + 1 -- +1 for newline
-  end
-  offsets[#lines + 1] = current -- sentinel for end of file
-  return offsets
-end
-
----Binary search to find the line containing the given byte index
----@param offsets number[]
----@param index number
----@return number row 1-based line number
-local function binary_search_line(offsets, index)
-  local lo, hi = 1, #offsets - 1
-  while lo < hi do
-    local mid = math.floor((lo + hi + 1) / 2)
-    if offsets[mid] <= index then
-      lo = mid
-    else
-      hi = mid - 1
-    end
-  end
-  return lo
-end
-
----@param bufnr number
----@param index number
----@param lines string[]|nil
----@param line_offsets number[]|nil Pre-computed offsets from compute_line_offsets
----@return {row: number, col: number}|nil
-function M.index_to_position(bufnr, index, lines, line_offsets)
-  if not lines then
-    local ok, result = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
-    if not ok then
-      log.pcall_error('nvim_buf_get_lines', result, { bufnr = bufnr })
-      return nil
-    end
-    lines = result
-  end
-
-  if #lines == 0 then
-    return nil
-  end
-
-  -- Use pre-computed offsets with binary search for O(log n) lookup
-  if line_offsets then
-    local row = binary_search_line(line_offsets, index)
-    local col = index - line_offsets[row]
-    -- Clamp to line length
-    if col > #lines[row] then
-      col = #lines[row]
-    end
-    return { row = row - 1, col = col }
-  end
-
-  -- Fallback: linear scan (for backward compatibility)
-  local current = 0
-  for row, line in ipairs(lines) do
-    local line_end = current + #line
-    if index <= line_end then
-      return { row = row - 1, col = index - current }
-    end
-    current = line_end + 1
-  end
-
-  return { row = #lines - 1, col = #lines[#lines] }
 end
 
 ---Refresh decorations for current buffer

@@ -133,11 +133,14 @@ function M.parse(content, _bufnr)
               end
             end
 
+            -- value_start/value_end are 1-based inclusive Lua positions; the
+            -- engine contract is 0-based byte offsets with an exclusive end, so
+            -- convert here (the single emit site) for all three value paths.
             table.insert(variables, {
               key = token_lower,
               value = value,
-              start_index = value_start,
-              end_index = value_end + 1, -- end_index is exclusive
+              start_index = value_start - 1,
+              end_index = value_end, -- 0-based exclusive == 1-based inclusive last pos
               line_number = line_num - 1, -- 0-indexed
               is_nested = false,
               is_commented = false,

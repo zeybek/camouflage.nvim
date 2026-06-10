@@ -5,6 +5,7 @@ local M = {}
 local state = require('camouflage.state')
 local config = require('camouflage.config')
 local core = require('camouflage.core')
+local position = require('camouflage.position')
 local hooks = require('camouflage.hooks')
 local log = require('camouflage.log')
 
@@ -36,40 +37,8 @@ end
 function M.find_variable_at_cursor(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local variables = state.get_variables(bufnr)
-
-  if #variables == 0 then
-    return nil
-  end
-
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local cursor_row = cursor[1] - 1 -- Convert to 0-indexed
-  local cursor_col = cursor[2]
-
-  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
-  if not ok then
-    log.pcall_error('nvim_buf_get_lines', lines, { bufnr = bufnr })
-    return nil
-  end
-
-  local line_offsets = core.compute_line_offsets(lines)
-  local cursor_byte = line_offsets[cursor_row + 1] + cursor_col
-
-  -- First pass: exact match (cursor within value range)
-  for _, var in ipairs(variables) do
-    if cursor_byte >= var.start_index and cursor_byte <= var.end_index then
-      return var
-    end
-  end
-
-  -- Second pass: same line match (more lenient)
-  for _, var in ipairs(variables) do
-    local var_pos = core.index_to_position(bufnr, var.start_index, lines, line_offsets)
-    if var_pos and var_pos.row == cursor_row then
-      return var
-    end
-  end
-
-  return nil
+  -- Lenient: exact byte-range match, then any variable sharing the cursor row.
+  return position.find_variable_at_cursor(bufnr, variables, { same_line_fallback = true })
 end
 
 ---Schedule auto-clear of clipboard
