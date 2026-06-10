@@ -12,7 +12,28 @@ local log = require('camouflage.log')
 -- Compatibility: vim.uv exists in Neovim 0.10+, vim.loop in 0.9
 local uv = vim.uv or vim.loop
 
-local clear_timer = nil
+-- Per-register auto-clear timers: register -> { timer = uv_timer, secret = string|nil }
+local clear_timers = {}
+
+---Validate a register name (nil means "use the configured default").
+---@param register string|nil
+---@return boolean
+local function validate_register(register)
+  if register == nil then
+    return true
+  end
+  if type(register) == 'string' and register:match('^[a-zA-Z0-9"*+_/%-]$') then
+    return true
+  end
+  vim.notify(
+    string.format(
+      '[camouflage] Invalid register "%s" (use a-z, A-Z, 0-9, ", *, +, _, - or /)',
+      tostring(register)
+    ),
+    vim.log.levels.ERROR
+  )
+  return false
+end
 
 ---@class YankOpts
 ---@field register string|nil Register to use (default from config)
@@ -41,31 +62,44 @@ function M.find_variable_at_cursor(bufnr)
   return position.find_variable_at_cursor(bufnr, variables, { same_line_fallback = true })
 end
 
----Schedule auto-clear of clipboard
+---Schedule auto-clear of a register, scoped to that register so yanking a
+---second secret to a different register never cancels the first one's timer.
 ---@param register string Register to clear
 ---@param seconds number Seconds to wait before clearing
-function M.schedule_auto_clear(register, seconds)
-  -- Cancel previous timer
-  if clear_timer then
-    clear_timer:stop()
-    clear_timer:close()
-    clear_timer = nil
+---@param secret string|nil The yanked value; the register is cleared only if it
+---  still holds this exact value (so a later manual yank into the register is
+---  preserved). When nil, clears unconditionally (legacy 2-arg behavior).
+function M.schedule_auto_clear(register, seconds, secret)
+  -- Cancel only this register's existing timer.
+  local existing = clear_timers[register]
+  if existing then
+    existing.timer:stop()
+    existing.timer:close()
+    clear_timers[register] = nil
   end
 
   if not seconds or seconds <= 0 then
     return
   end
 
-  clear_timer = uv.new_timer()
-  clear_timer:start(
+  local timer = uv.new_timer()
+  clear_timers[register] = { timer = timer, secret = secret }
+  timer:start(
     seconds * 1000,
     0,
     vim.schedule_wrap(function()
-      vim.fn.setreg(register, '')
-      vim.notify('[camouflage] Clipboard cleared', vim.log.levels.INFO)
-      if clear_timer then
-        clear_timer:close()
-        clear_timer = nil
+      -- Only act if this timer still owns the register entry (a reschedule may
+      -- have replaced us between firing and running on the main loop).
+      local entry = clear_timers[register]
+      if not entry or entry.timer ~= timer then
+        return
+      end
+      clear_timers[register] = nil
+      timer:close()
+
+      if secret == nil or vim.fn.getreg(register) == secret then
+        vim.fn.setreg(register, '')
+        vim.notify('[camouflage] Clipboard cleared', vim.log.levels.INFO)
       end
     end)
   )
@@ -78,6 +112,9 @@ function M.do_yank(var, opts)
   opts = opts or {}
   local cfg = get_yank_config()
   local register = opts.register or cfg.default_register
+  if not validate_register(register) then
+    return
+  end
   local bufnr = vim.api.nvim_get_current_buf()
 
   -- HOOK: before_yank
@@ -100,7 +137,7 @@ function M.do_yank(var, opts)
 
   -- Schedule auto-clear
   if cfg.auto_clear_seconds and cfg.auto_clear_seconds > 0 then
-    M.schedule_auto_clear(register, cfg.auto_clear_seconds)
+    M.schedule_auto_clear(register, cfg.auto_clear_seconds, var.value)
   end
 
   -- HOOK: after_yank
@@ -188,6 +225,10 @@ end
 function M.yank(opts)
   opts = opts or {}
 
+  if not validate_register(opts.register) then
+    return
+  end
+
   -- Check if buffer has any variables
   local bufnr = vim.api.nvim_get_current_buf()
   local variables = state.get_variables(bufnr)
@@ -212,13 +253,13 @@ function M.yank(opts)
   end
 end
 
----Cancel auto-clear timer (for testing)
+---Cancel all pending auto-clear timers (for testing)
 ---@return nil
 function M.cancel_auto_clear()
-  if clear_timer then
-    clear_timer:stop()
-    clear_timer:close()
-    clear_timer = nil
+  for register, entry in pairs(clear_timers) do
+    entry.timer:stop()
+    entry.timer:close()
+    clear_timers[register] = nil
   end
 end
 

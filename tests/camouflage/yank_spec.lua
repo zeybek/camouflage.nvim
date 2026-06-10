@@ -402,4 +402,45 @@ describe('camouflage.yank', function()
       assert.equals('a', event_register)
     end)
   end)
+
+  describe('auto-clear', function()
+    it('clears the register after the delay when it still holds the secret', function()
+      vim.fn.setreg('a', 'secretA')
+      yank.schedule_auto_clear('a', 0.05, 'secretA')
+      vim.wait(400, function()
+        return vim.fn.getreg('a') == ''
+      end)
+      assert.equals('', vim.fn.getreg('a'))
+    end)
+
+    it('does not wipe the register when its contents have changed', function()
+      vim.fn.setreg('a', 'secretA')
+      yank.schedule_auto_clear('a', 0.05, 'secretA')
+      vim.fn.setreg('a', 'user typed this') -- user reused the register
+      vim.wait(200)
+      assert.equals('user typed this', vim.fn.getreg('a'))
+    end)
+
+    it('uses independent timers per register', function()
+      vim.fn.setreg('a', 'secretA')
+      vim.fn.setreg('z', 'secretZ')
+      yank.schedule_auto_clear('a', 0.05, 'secretA')
+      -- A second yank to a different register must not cancel the first timer.
+      yank.schedule_auto_clear('z', 0.05, 'secretZ')
+      vim.wait(400, function()
+        return vim.fn.getreg('a') == '' and vim.fn.getreg('z') == ''
+      end)
+      assert.equals('', vim.fn.getreg('a'))
+      assert.equals('', vim.fn.getreg('z'))
+    end)
+  end)
+
+  describe('register validation', function()
+    it('rejects an invalid register without copying or throwing', function()
+      vim.fn.setreg('z', 'original')
+      yank.do_yank({ key = 'A', value = 'secret' }, { register = '@bad' })
+      -- The default register is untouched and no error was raised.
+      assert.equals('original', vim.fn.getreg('z'))
+    end)
+  end)
 end)

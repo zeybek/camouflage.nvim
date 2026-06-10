@@ -8,13 +8,58 @@ local core = require('camouflage.core')
 local hooks = require('camouflage.hooks')
 local log = require('camouflage.log')
 
+-- Separate namespace for the reveal anchor extmark: state.namespace is cleared
+-- wholesale on every re-decoration, so the anchor must live elsewhere to keep
+-- tracking the revealed line as text above it is inserted/deleted.
+local anchor_ns = vim.api.nvim_create_namespace('camouflage_reveal_anchor')
+
 -- Reveal state
 local revealed_state = {
   bufnr = nil,
-  line = nil, -- 1-indexed
+  line = nil, -- 1-indexed (fallback; the anchor extmark is authoritative)
+  anchor_id = nil, -- extmark id tracking the revealed line through edits
   autocmd_id = nil,
   hook_id = nil, -- variable_detected hook to skip revealed line
 }
+
+---Resolve the currently revealed line (1-indexed) from the anchor extmark,
+---falling back to the stored integer if the anchor is gone.
+---@return number|nil
+local function current_revealed_line()
+  if
+    revealed_state.bufnr
+    and revealed_state.anchor_id
+    and vim.api.nvim_buf_is_valid(revealed_state.bufnr)
+  then
+    local mark = vim.api.nvim_buf_get_extmark_by_id(
+      revealed_state.bufnr,
+      anchor_ns,
+      revealed_state.anchor_id,
+      {}
+    )
+    if mark and mark[1] then
+      return mark[1] + 1
+    end
+  end
+  return revealed_state.line
+end
+
+---Set the reveal anchor extmark on a 0-indexed line.
+---@param bufnr number
+---@param line_0 number
+local function set_anchor(bufnr, line_0)
+  local ok, id = pcall(vim.api.nvim_buf_set_extmark, bufnr, anchor_ns, line_0, 0, {})
+  revealed_state.anchor_id = ok and id or nil
+end
+
+---Remove the reveal anchor extmark.
+---@param bufnr number|nil
+local function clear_anchor(bufnr)
+  if bufnr and revealed_state.anchor_id and vim.api.nvim_buf_is_valid(bufnr) then
+    pcall(vim.api.nvim_buf_del_extmark, bufnr, anchor_ns, revealed_state.anchor_id)
+  end
+  revealed_state.anchor_id = nil
+end
 
 -- Follow cursor state (global)
 local follow_state = {
@@ -37,6 +82,12 @@ end
 ---@param var table
 ---@return number|nil 1-indexed line number
 local function get_var_line(bufnr, var)
+  -- Builtin parsers always set line_number (0-indexed), so this is O(1) with no
+  -- buffer read — important because line_has_variables runs on every cursor move
+  -- in follow mode.
+  if var.line_number then
+    return var.line_number + 1
+  end
   local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
   if not ok then
     return nil
@@ -116,7 +167,7 @@ local function setup_reveal_hook()
   revealed_state.hook_id = hooks.on('variable_detected', function(bufnr, var)
     if revealed_state.bufnr == bufnr then
       local var_line = get_var_line(bufnr, var)
-      if var_line == revealed_state.line then
+      if var_line == current_revealed_line() then
         return false -- Skip masking this variable
       end
     end
@@ -160,7 +211,9 @@ local function setup_auto_hide(bufnr, revealed_line)
         end
 
         local cursor = vim.api.nvim_win_get_cursor(0)
-        if cursor[1] ~= revealed_line then
+        -- Compare against the anchor's current line so edits above the revealed
+        -- line don't spuriously trigger auto-hide.
+        if cursor[1] ~= current_revealed_line() then
           M.hide()
           return true
         end
@@ -186,7 +239,14 @@ function M.reveal_line()
   end
 
   -- Already revealed on this line?
-  if revealed_state.bufnr == bufnr and revealed_state.line == line then
+  if revealed_state.bufnr == bufnr and current_revealed_line() == line then
+    return
+  end
+
+  -- Only reveal lines that actually contain masked values. Checked before
+  -- hiding any existing reveal, so a no-op reveal leaves the current one intact.
+  if not line_has_variables(bufnr, line) then
+    vim.notify('[camouflage] No masked values on this line', vim.log.levels.WARN)
     return
   end
 
@@ -204,6 +264,7 @@ function M.reveal_line()
   -- Store state
   revealed_state.bufnr = bufnr
   revealed_state.line = line
+  set_anchor(bufnr, line_0)
 
   -- Setup hook to prevent re-masking
   setup_reveal_hook()
@@ -248,6 +309,7 @@ function M.hide()
 
   -- Clear state BEFORE re-applying (important for hook to work correctly)
   local was_bufnr = revealed_state.bufnr
+  clear_anchor(was_bufnr)
   revealed_state.bufnr = nil
   revealed_state.line = nil
 
@@ -269,7 +331,7 @@ function M.toggle()
   local bufnr = vim.api.nvim_get_current_buf()
   local cursor = vim.api.nvim_win_get_cursor(0)
 
-  if revealed_state.bufnr == bufnr and revealed_state.line == cursor[1] then
+  if revealed_state.bufnr == bufnr and current_revealed_line() == cursor[1] then
     M.hide()
   else
     M.reveal_line()
@@ -286,7 +348,7 @@ end
 ---@return { bufnr: number, line: number }|nil
 function M.get_revealed()
   if revealed_state.bufnr then
-    return { bufnr = revealed_state.bufnr, line = revealed_state.line }
+    return { bufnr = revealed_state.bufnr, line = current_revealed_line() }
   end
   return nil
 end
@@ -311,6 +373,7 @@ local function reveal_line_silent(bufnr, line)
   -- Store state
   revealed_state.bufnr = bufnr
   revealed_state.line = line
+  set_anchor(bufnr, line_0)
 
   -- Setup hook to prevent re-masking
   setup_reveal_hook()
@@ -343,6 +406,7 @@ local function hide_silent()
 
   -- Clear state BEFORE re-applying
   local was_bufnr = revealed_state.bufnr
+  clear_anchor(was_bufnr)
   revealed_state.bufnr = nil
   revealed_state.line = nil
 
@@ -369,7 +433,7 @@ local function on_follow_cursor_moved(bufnr)
   local line = cursor[1] -- 1-indexed
 
   -- Same line, same buffer? Skip
-  if revealed_state.bufnr == bufnr and revealed_state.line == line then
+  if revealed_state.bufnr == bufnr and current_revealed_line() == line then
     return
   end
 

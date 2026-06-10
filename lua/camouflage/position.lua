@@ -134,14 +134,28 @@ function M.find_variable_at_cursor(bufnr, variables, opts)
     end
   end
 
-  -- Second pass: same-line match (lenient, opt-in)
+  -- Second pass: same-line match (lenient, opt-in). Pick the variable on the
+  -- cursor's row whose value byte-range is nearest the cursor, so a line with
+  -- several secrets (e.g. user + password) yanks the closest one, not the first.
   if opts.same_line_fallback then
+    local best, best_dist
     for _, var in ipairs(variables) do
       local var_pos = M.index_to_position(bufnr, var.start_index, lines, line_offsets)
       if var_pos and var_pos.row == cursor_row then
-        return var
+        local dist
+        if cursor_byte < var.start_index then
+          dist = var.start_index - cursor_byte
+        elseif cursor_byte > var.end_index then
+          dist = cursor_byte - var.end_index
+        else
+          dist = 0
+        end
+        if not best_dist or dist < best_dist then
+          best, best_dist = var, dist
+        end
       end
     end
+    return best
   end
 
   return nil
