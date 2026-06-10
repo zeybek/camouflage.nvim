@@ -111,6 +111,7 @@ local M = {}
 ---@field enabled? boolean Enable repo config loading (default: true)
 ---@field filename? string Project config filename (default: ".camouflage.yaml")
 ---@field notify? boolean Show warnings for project config parse/validation issues (default: true)
+---@field secure? boolean Gate the project file behind vim.secure.read / :trust (default: false)
 ---@field watch_enabled? boolean Watch .camouflage.yaml for runtime changes (default: true)
 ---@field watch_backend? string "auto" | "autocmd" | "fs" | "both" (default: "auto")
 ---@field watch_debounce_ms? number Debounce for change events (default: 200)
@@ -242,6 +243,7 @@ M.defaults = {
     enabled = true,
     filename = '.camouflage.yaml',
     notify = true,
+    secure = false,
     watch_enabled = true,
     watch_backend = 'auto',
     watch_debounce_ms = 200,

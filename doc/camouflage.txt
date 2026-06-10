@@ -8,22 +8,23 @@ Version:  0.9.0 x-release-please-version
 CONTENTS                                                  *camouflage-contents*
 
   1. Introduction ............................ |camouflage-introduction|
-  2. Requirements ............................ |camouflage-requirements|
-  3. Installation ............................ |camouflage-installation|
-  4. Configuration ........................... |camouflage-configuration|
-  5. Commands ................................ |camouflage-commands|
-  6. API ..................................... |camouflage-api|
-  7. Buffer-local Configuration .............. |camouflage-buffer-local|
-  8. Supported Formats ....................... |camouflage-formats|
-  9. Custom Patterns ......................... |camouflage-custom-patterns|
- 10. Custom Parsers .......................... |camouflage-custom-parsers|
- 11. Styles .................................. |camouflage-styles|
- 12. Integrations ............................ |camouflage-integrations|
- 13. Project Config .......................... |camouflage-project-config|
- 14. Have I Been Pwned ....................... |camouflage-pwned|
- 15. JWT Expiry Hints ........................ |camouflage-expiry|
- 16. Custom Queries .......................... |camouflage-custom-queries|
- 17. Troubleshooting ......................... |camouflage-troubleshooting|
+  2. Security Model .......................... |camouflage-security-model|
+  3. Requirements ............................ |camouflage-requirements|
+  4. Installation ............................ |camouflage-installation|
+  5. Configuration ........................... |camouflage-configuration|
+  6. Commands ................................ |camouflage-commands|
+  7. API ..................................... |camouflage-api|
+  8. Buffer-local Configuration .............. |camouflage-buffer-local|
+  9. Supported Formats ....................... |camouflage-formats|
+ 10. Custom Patterns ......................... |camouflage-custom-patterns|
+ 11. Custom Parsers .......................... |camouflage-custom-parsers|
+ 12. Styles .................................. |camouflage-styles|
+ 13. Integrations ............................ |camouflage-integrations|
+ 14. Project Config .......................... |camouflage-project-config|
+ 15. Have I Been Pwned ....................... |camouflage-pwned|
+ 16. JWT Expiry Hints ........................ |camouflage-expiry|
+ 17. Custom Queries .......................... |camouflage-custom-queries|
+ 18. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -43,6 +44,32 @@ Features:
 - Zero file modification
 
 ==============================================================================
+SECURITY MODEL                                       *camouflage-security-model*
+
+camouflage hides sensitive values VISUALLY, by drawing over them with virtual
+text. It does NOT change the file and does NOT encrypt or remove anything.
+
+It PROTECTS AGAINST casual exposure of secrets on screen: shoulder-surfing,
+screen sharing, pair programming, screenshots, and demos.
+
+It does NOT protect against anything that reads the buffer or file contents
+directly, because the real text is still present underneath the mask:
+- search/grep tools, including Telescope `live_grep` result lines (only the
+  PREVIEW buffer is masked, not the matched result rows)
+- LSP servers, completion sources, and AI assistants
+- `:print`, `:substitute` previews, writing the file, and yanking with
+  `yy` / `"+y`
+- the `+` / `*` clipboard registers (use |:CamouflageYank|, which copies the
+  real value deliberately, with a confirm prompt and timed auto-clear)
+
+Per-repo `.camouflage.yaml` files are applied as data only (no code execution).
+If you open untrusted repositories, set `project_config.secure = true` to gate
+the file behind Neovim's `vim.secure` / `:trust` mechanism.
+
+The `scramble` style is COSMETIC, not protective: the mask is a shuffle of the
+real characters, so it leaks the value's length and character set.
+
+==============================================================================
 REQUIREMENTS                                          *camouflage-requirements*
 
 - Neovim >= 0.9.0
@@ -54,7 +81,7 @@ REQUIREMENTS                                          *camouflage-requirements*
 For Have I Been Pwned feature (|camouflage-pwned|):
 - Neovim >= 0.10.0 (requires `vim.system`)
 - `curl` (for API requests)
-- `sha1sum` or `openssl` (for password hashing)
+  (password hashing is done in-process; no external sha1sum/openssl needed)
 
 ==============================================================================
 INSTALLATION                                          *camouflage-installation*

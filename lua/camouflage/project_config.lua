@@ -192,7 +192,7 @@ end
 
 ---Load and validate a repo-level project config file.
 ---Returns a table suitable for deep-merging into user config.
----@param opts? { enabled?: boolean, filename?: string, notify?: boolean }
+---@param opts? { enabled?: boolean, filename?: string, notify?: boolean, secure?: boolean }
 ---@return table
 function M.load(opts)
   opts = opts or {}
@@ -212,14 +212,30 @@ function M.load(opts)
 
   state.path = path
 
-  local ok_read, lines = pcall(vim.fn.readfile, path)
-  if not ok_read or type(lines) ~= 'table' then
-    add_error('failed to read project config file')
-    maybe_notify_errors(opts.notify ~= false)
-    return {}
+  -- Trust gate (opt-in). The file is data-only and whitelist-sanitized, so it is
+  -- read directly by default (matching how data-config plugins like neoconf
+  -- behave). With project_config.secure = true, route it through
+  -- vim.secure.read so a never-trusted repo's config is not applied until the
+  -- user views and :trusts it.
+  local content
+  if opts.secure and vim.secure and vim.secure.read then
+    local ok_secure, data = pcall(vim.secure.read, path)
+    if not ok_secure or type(data) ~= 'string' then
+      add_error('project config not trusted (view it and run :trust to apply)')
+      maybe_notify_errors(opts.notify ~= false)
+      return {}
+    end
+    content = data
+  else
+    local ok_read, lines = pcall(vim.fn.readfile, path)
+    if not ok_read or type(lines) ~= 'table' then
+      add_error('failed to read project config file')
+      maybe_notify_errors(opts.notify ~= false)
+      return {}
+    end
+    content = table.concat(lines, '\n')
   end
 
-  local content = table.concat(lines, '\n')
   local ok_decode, decoded
   if vim.fn.exists('*yaml_decode') == 1 then
     ok_decode, decoded = pcall(vim.fn.yaml_decode, content)

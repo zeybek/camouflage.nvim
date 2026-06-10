@@ -24,8 +24,15 @@ dependencies = {
 
 build = {
   type = "builtin",
+  -- The builtin build installs only lua/**/*.lua, so runtime data dirs must be
+  -- listed here or a LuaRocks install silently loses them: queries/ (the shipped
+  -- TreeSitter .scm files loaded via runtimepath), schemas/, and the YAML
+  -- template read by :CamouflageInit (a non-.lua file under lua/camouflage).
   copy_directories = {
     "doc",
     "plugin",
+    "queries",
+    "schemas",
+    "lua/camouflage/templates",
   },
 }

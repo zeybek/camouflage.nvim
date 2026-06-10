@@ -79,6 +79,37 @@ describe('camouflage.project_config', function()
     assert.is_nil(config.get().mask_length)
   end)
 
+  it('does not apply an untrusted project config when secure is enabled', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({ 'version: 1', 'style: dotted' }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    -- Simulate an untrusted/denied file: vim.secure.read returns nil.
+    local original = vim.secure.read
+    vim.secure.read = function()
+      return nil
+    end
+    config.setup({ project_config = { secure = true } })
+    vim.secure.read = original
+
+    local status = project_config.status()
+    assert.is_false(status.loaded)
+    assert.is_true(#status.errors > 0)
+    -- The global default style is untouched (the repo file was not applied).
+    assert.equals('stars', config.get().style)
+  end)
+
+  it('applies the project config when secure is disabled (default)', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({ 'version: 1', 'style: dotted' }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    assert.equals('dotted', config.get().style)
+  end)
+
   it('should ignore unknown top-level keys', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

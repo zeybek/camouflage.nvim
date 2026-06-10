@@ -1,7 +1,6 @@
 describe('camouflage.yank', function()
   local yank
   local state
-  local config
   local test_counter = 0
 
   local function clear_camouflage_modules()
@@ -36,7 +35,6 @@ describe('camouflage.yank', function()
     })
     yank = require('camouflage.yank')
     state = require('camouflage.state')
-    config = require('camouflage.config')
   end)
 
   after_each(function()
