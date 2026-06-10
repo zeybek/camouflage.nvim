@@ -101,7 +101,10 @@ function M.setup()
     end,
   })
 
-  vim.api.nvim_create_autocmd('BufDelete', {
+  -- BufWipeout as well as BufDelete: unlisted preview buffers (telescope/snacks)
+  -- get state via init_buffer but never fire BufDelete, so without BufWipeout
+  -- their state leaks and a recycled bufnr could expose another file's values.
+  vim.api.nvim_create_autocmd({ 'BufDelete', 'BufWipeout' }, {
     group = group,
     callback = function(args)
       cleanup_timer(args.buf)
@@ -110,6 +113,18 @@ function M.setup()
         require('camouflage.checks.expiry').stop_auto_refresh(args.buf)
       end)
       state.remove_buffer(args.buf)
+    end,
+  })
+
+  -- Re-decorate buffers marked dirty by refresh_all when they are next shown,
+  -- regardless of auto_enable, so a config change reaches hidden masked buffers.
+  vim.api.nvim_create_autocmd({ 'BufWinEnter' }, {
+    group = group,
+    pattern = all_patterns,
+    callback = function(args)
+      if vim.api.nvim_buf_is_valid(args.buf) and state.is_dirty(args.buf) then
+        core.apply_decorations(args.buf)
+      end
     end,
   })
 

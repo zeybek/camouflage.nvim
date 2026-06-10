@@ -63,4 +63,43 @@ describe('camouflage end-to-end extmark placement', function()
 
     vim.api.nvim_buf_delete(bufnr, { force = true })
   end)
+
+  it('disables wrap while masked and restores it when masking stops', function()
+    require('camouflage').setup()
+    local bufnr = vim.api.nvim_create_buf(false, false)
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/camouflage_test/wrap.env')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'API_KEY=secret123' })
+    vim.api.nvim_set_current_buf(bufnr)
+    vim.wo.wrap = true
+
+    core.apply_decorations(bufnr)
+    assert.is_false(vim.wo.wrap)
+
+    -- Stop masking for this buffer; the original wrap value is restored.
+    config.setup({ enabled = false })
+    core.apply_decorations(bufnr)
+    assert.is_true(vim.wo.wrap)
+
+    vim.api.nvim_buf_delete(bufnr, { force = true })
+  end)
+
+  it('does not leave stale extmarks or variables when a buffer grows past max_lines', function()
+    config.setup({ max_lines = 3 })
+    local bufnr = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/camouflage_test/grow.env')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'API_KEY=secret123' })
+
+    core.apply_decorations(bufnr)
+    assert.is_true(#state.get_variables(bufnr) >= 1)
+
+    -- Grow past max_lines: decorations and stored variables must be cleared,
+    -- not left drifting.
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'a=1', 'b=2', 'c=3', 'd=4', 'e=5' })
+    core.apply_decorations(bufnr)
+    local marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+    assert.equals(0, #marks)
+    assert.equals(0, #state.get_variables(bufnr))
+
+    vim.api.nvim_buf_delete(bufnr, { force = true })
+  end)
 end)

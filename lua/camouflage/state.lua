@@ -65,6 +65,42 @@ function M.get_variables(bufnr)
   return buf_state and buf_state.variables or {}
 end
 
+---Empty the stored variables for a buffer WITHOUT creating state for it.
+---Used when decorations are cleared so yank/reveal/pwned don't act on stale,
+---now-unmasked data.
+---@param bufnr number
+function M.clear_variables(bufnr)
+  local buf_state = M.buffers[bufnr]
+  if buf_state then
+    buf_state.variables = {}
+  end
+end
+
+---Mark a masked buffer as needing re-decoration the next time it is displayed
+---(used by refresh_all for buffers not currently in a window).
+---@param bufnr number
+function M.mark_dirty(bufnr)
+  local buf_state = M.buffers[bufnr]
+  if buf_state then
+    buf_state.dirty = true
+  end
+end
+
+---@param bufnr number
+function M.clear_dirty(bufnr)
+  local buf_state = M.buffers[bufnr]
+  if buf_state then
+    buf_state.dirty = nil
+  end
+end
+
+---@param bufnr number
+---@return boolean
+function M.is_dirty(bufnr)
+  local buf_state = M.buffers[bufnr]
+  return buf_state ~= nil and buf_state.dirty == true
+end
+
 ---Clear all buffer state
 ---@return nil
 function M.clear()
