@@ -347,5 +347,33 @@ KEY3=value3
       assert.is_table(result)
       assert.equals(0, #result)
     end)
+
+    it('terminates on an empty-matching pattern instead of hanging', function()
+      -- '(%w*)' can match the empty string; the loop must still make progress.
+      local pattern_config = {
+        file_pattern = { '*.x' },
+        pattern = '(%w*)',
+        value_capture = 1,
+      }
+      local result = custom.parse('hello world', pattern_config)
+      assert.is_table(result)
+    end)
+
+    it('masks the value, not the key, when the value text also appears as the key', function()
+      local pattern_config = {
+        file_pattern = { '*.x' },
+        pattern = '(%w+)=(%w+)',
+        key_capture = 1,
+        value_capture = 2,
+      }
+      local content = 'token=token'
+      local result = custom.parse(content, pattern_config)
+
+      assert.equals(1, #result)
+      -- The masked range is the value occurrence (after '='), not the key.
+      assert.equals(6, result[1].start_index)
+      assert.equals(11, result[1].end_index)
+      assert.equals('token', content:sub(result[1].start_index + 1, result[1].end_index))
+    end)
   end)
 end)

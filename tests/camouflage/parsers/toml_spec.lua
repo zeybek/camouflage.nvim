@@ -122,5 +122,16 @@ disabled = false
       assert.equals(1, #result)
       assert.equals('database.password', result[1].key)
     end)
+
+    it('masks a basic string containing an escaped quote in full', function()
+      local content = 'pwd = "ab\\"cd"'
+      local result = toml_parser.parse(content)
+
+      assert.equals(1, #result)
+      assert.equals('pwd', result[1].key)
+      -- The escaped quote no longer terminates the string early.
+      assert.equals('ab\\"cd', result[1].value)
+      assert.equals('ab\\"cd', content:sub(result[1].start_index + 1, result[1].end_index))
+    end)
   end)
 end)

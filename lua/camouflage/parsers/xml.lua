@@ -190,6 +190,24 @@ function M.parse_inline_elements(
   end
 end
 
+---Find the next attribute at or after `from`, trying each quote char so a value
+---containing the other quote (attr="it's", attr='say "hi"') parses fully and
+---the closing quote always matches the opener. The () position capture gives the
+---value's exact 1-based start.
+---@param content string
+---@param from number
+---@return number?, number?, string?, number?, string? attr_start, attr_end, name, value_pos, value
+local function find_attribute(content, from)
+  local s1, e1, n1, p1, v1 = content:find('([%w_%-:]+)%s*=%s*"()([^"]*)"', from)
+  local s2, e2, n2, p2, v2 = content:find("([%w_%-:]+)%s*=%s*'()([^']*)'", from)
+  if s1 and (not s2 or s1 <= s2) then
+    return s1, e1, n1, p1, v1
+  elseif s2 then
+    return s2, e2, n2, p2, v2
+  end
+  return nil
+end
+
 ---Parse attributes like attr="value" or attr='value'
 ---@param content string
 ---@param variables ParsedVariable[]
@@ -197,38 +215,27 @@ function M.parse_attributes(content, variables)
   local current_pos = 1
 
   while current_pos <= #content do
-    -- Find attribute pattern: name="value" or name='value'
-    local attr_start, attr_end, attr_name, quote, attr_value =
-      content:find('([%w_%-:]+)%s*=%s*(["\'])([^"\']*)["\']', current_pos)
+    local attr_start, attr_end, attr_name, value_pos, attr_value =
+      find_attribute(content, current_pos)
 
     if not attr_start then
       break
     end
 
-    -- Check if this attribute is inside an XML declaration (<?xml ... ?>)
-    local is_in_declaration = M.is_in_xml_declaration(content, attr_start)
-
-    -- Skip XML declaration attributes
-    if not is_in_declaration then
+    -- Skip XML declaration attributes (<?xml ... ?>)
+    if not M.is_in_xml_declaration(content, attr_start) then
       -- Skip empty/whitespace values
       if attr_value and not attr_value:match('^%s*$') then
-        -- Calculate positions
-        local value_start = content:find(quote .. M.escape_pattern(attr_value) .. quote, attr_start)
-        if value_start then
-          value_start = value_start + 1 -- Skip opening quote
-          local value_end = value_start + #attr_value
-          local line_number = M.get_line_number(content, value_start)
-
-          table.insert(variables, {
-            key = attr_name,
-            value = attr_value,
-            start_index = value_start - 1, -- 0-indexed
-            end_index = value_end - 1, -- 0-indexed
-            line_number = line_number,
-            is_nested = false,
-            is_commented = false,
-          })
-        end
+        local value_end = value_pos + #attr_value
+        table.insert(variables, {
+          key = attr_name,
+          value = attr_value,
+          start_index = value_pos - 1, -- 0-indexed
+          end_index = value_end - 1, -- 0-indexed (exclusive)
+          line_number = M.get_line_number(content, value_pos),
+          is_nested = false,
+          is_commented = false,
+        })
       end
     end
 

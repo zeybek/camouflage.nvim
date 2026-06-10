@@ -237,7 +237,15 @@ end
 function M.parse_line(line)
   local trimmed = line:match('^%s*(.-)%s*$')
 
+  -- Strip leading block-sequence markers ('- ', possibly nested '- - ') so a
+  -- mapping inside a list item ('- password: x') is parsed. Offset math below
+  -- uses the original `line` (via line:find(':')), so stripping the prefix here
+  -- only affects the key match, not value positioning.
+  while trimmed:match('^%-%s+') do
+    trimmed = trimmed:gsub('^%-%s+', '', 1)
+  end
   if trimmed:match('^%-') then
+    -- bare '-', '-item', '---' etc.: not a 'key: value' mapping
     return nil
   end
 

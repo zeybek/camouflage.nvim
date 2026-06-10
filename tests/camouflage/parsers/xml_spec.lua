@@ -327,5 +327,18 @@ describe('camouflage.parsers.xml', function()
       assert.equals('password', result[1].key)
       assert.equals('secret123', result[1].value)
     end)
+
+    it('masks an attribute value containing the other quote char in full', function()
+      local content = '<a token="it\'s" other=\'say "hi"\'/>'
+      local result = xml_parser.parse(content)
+
+      local values = {}
+      for _, v in ipairs(result) do
+        values[v.key] = v.value
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+      end
+      assert.equals("it's", values['token'])
+      assert.equals('say "hi"', values['other'])
+    end)
   end)
 end)

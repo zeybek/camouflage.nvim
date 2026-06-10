@@ -39,6 +39,16 @@ describe('camouflage.parsers.dockerfile', function()
         assert.equals('my secret value', result[1].value)
       end)
 
+      it('masks a double-quoted value with an escaped quote in full', function()
+        local content = 'ENV SECRET="ab\\"cd"'
+        local result = dockerfile_parser.parse(content)
+
+        assert.equals(1, #result)
+        assert.equals('SECRET', result[1].key)
+        assert.equals('ab\\"cd', result[1].value)
+        assert.equals('ab\\"cd', content:sub(result[1].start_index + 1, result[1].end_index))
+      end)
+
       it('should parse multiple ENV pairs on one line', function()
         local content = 'ENV KEY1=value1 KEY2=value2 KEY3=value3'
         local result = dockerfile_parser.parse(content)
