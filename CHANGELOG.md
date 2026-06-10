@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/zeybek/camouflage.nvim/compare/v0.9.0...v0.10.0) (2026-06-10)
+
+
+### Features
+
+* audit remediation — security, correctness, performance & infra hardening ([a78a823](https://github.com/zeybek/camouflage.nvim/commit/a78a823560ade76ecfb15adaed3816d8f869d798))
+
 ## [0.9.0](https://github.com/zeybek/camouflage.nvim/compare/v0.8.0...v0.9.0) (2026-05-12)
 
 
