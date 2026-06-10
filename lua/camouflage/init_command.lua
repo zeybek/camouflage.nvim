@@ -19,12 +19,21 @@ end
 --- Read the template file
 ---@return string|nil content, string|nil error
 local function read_template()
-  local plugin_path = get_plugin_path()
-  if not plugin_path then
-    return nil, 'Could not determine plugin path'
+  -- Prefer a runtimepath lookup so it works regardless of install layout
+  -- (git clone vs LuaRocks/rocks.nvim), falling back to a path relative to this
+  -- file for unusual setups.
+  local template_path
+  local rtp = vim.api.nvim_get_runtime_file('lua/camouflage/templates/project_config.yaml', false)
+  if rtp and rtp[1] then
+    template_path = rtp[1]
+  else
+    local plugin_path = get_plugin_path()
+    if not plugin_path then
+      return nil, 'Could not determine plugin path'
+    end
+    template_path = plugin_path .. '/lua/camouflage/templates/project_config.yaml'
   end
 
-  local template_path = plugin_path .. '/lua/camouflage/templates/project_config.yaml'
   log.debug('Reading template from: %s', template_path)
 
   local ok, lines = pcall(vim.fn.readfile, template_path)

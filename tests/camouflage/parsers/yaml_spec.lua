@@ -233,5 +233,15 @@ database:
       assert.is_true(keys['database.credentials.private_key'].is_multiline)
       assert.equals('secret123', keys['database.credentials.password'].value)
     end)
+
+    it('masks a mapping inside a block-sequence item', function()
+      local content = 'items:\n  - password: secret123'
+      local result = yaml_parser.parse(content, nil)
+
+      assert.equals(1, #result)
+      assert.equals('secret123', result[1].value)
+      -- Offset stays correct despite the '- ' prefix (computed on the raw line).
+      assert.equals('secret123', content:sub(result[1].start_index + 1, result[1].end_index))
+    end)
   end)
 end)

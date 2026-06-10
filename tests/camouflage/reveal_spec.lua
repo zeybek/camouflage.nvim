@@ -253,4 +253,35 @@ describe('camouflage.reveal', function()
       assert.equals(1, revealed.line)
     end)
   end)
+
+  describe('line tracking', function()
+    it('tracks the revealed line through edits above it (extmark anchor)', function()
+      local bufnr = setup_test_buffer('one\ntwo\nAPI_KEY=secret123', '/tmp/test.env')
+      state.set_variables(bufnr, {
+        { key = 'API_KEY', value = 'secret123', start_index = 16, end_index = 24 },
+      })
+
+      vim.api.nvim_win_set_cursor(0, { 3, 0 })
+      reveal.reveal_line()
+      assert.equals(3, reveal.get_revealed().line)
+
+      -- Insert a line at the top: the revealed line is now line 4.
+      vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, { 'inserted' })
+      assert.equals(4, reveal.get_revealed().line)
+    end)
+  end)
+
+  describe('precondition', function()
+    it('does not reveal (or consume the slot) on a line with no masked values', function()
+      local bufnr = setup_test_buffer('API_KEY=secret123\nplain text line', '/tmp/test.env')
+      state.set_variables(bufnr, {
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 16 },
+      })
+
+      vim.api.nvim_win_set_cursor(0, { 2, 0 }) -- line with no variables
+      reveal.reveal_line()
+
+      assert.is_false(reveal.is_revealed())
+    end)
+  end)
 end)

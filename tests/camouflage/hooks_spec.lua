@@ -57,6 +57,69 @@ describe('camouflage.hooks', function()
       local id = hooks.once('before_decorate', function() end)
       assert.is_number(id)
     end)
+
+    it('does not skip the next listener when a once() listener fires', function()
+      -- Regression: once() removes its listener mid-dispatch; without a snapshot
+      -- the ipairs index shifts and the following listener is skipped.
+      local a, b = 0, 0
+      hooks.once('before_decorate', function()
+        a = a + 1
+      end)
+      hooks.on('before_decorate', function()
+        b = b + 1
+      end)
+      hooks.emit('before_decorate', 1, 'test.env')
+      assert.equals(1, a)
+      assert.equals(1, b)
+    end)
+  end)
+
+  describe('User autocmd payload', function()
+    it('redacts plaintext values from after_decorate but keeps them in-process', function()
+      local au = vim.api.nvim_create_autocmd('User', {
+        pattern = 'CamouflageAfterDecorate',
+        callback = function(args)
+          _G.__cmf_autocmd_data = args.data
+        end,
+      })
+      local listener_var
+      hooks.on('after_decorate', function(_, vars)
+        listener_var = vars[1]
+      end)
+
+      local vars = {
+        { key = 'PASSWORD', value = 'secret123', start_index = 9, end_index = 18, line_number = 0 },
+      }
+      hooks.emit('after_decorate', 0, vars)
+
+      -- In-process Lua listeners still receive the real value.
+      assert.equals('secret123', listener_var.value)
+
+      -- The public User autocmd payload is value-free.
+      local data = _G.__cmf_autocmd_data
+      assert.is_table(data.variables)
+      assert.equals('PASSWORD', data.variables[1].key)
+      assert.is_nil(data.variables[1].value)
+      assert.equals(9, data.variables[1].value_length)
+
+      vim.api.nvim_del_autocmd(au)
+      _G.__cmf_autocmd_data = nil
+    end)
+
+    it('before_decorate payload carries filename, not variables', function()
+      local au = vim.api.nvim_create_autocmd('User', {
+        pattern = 'CamouflageBeforeDecorate',
+        callback = function(args)
+          _G.__cmf_autocmd_data = args.data
+        end,
+      })
+      hooks.emit('before_decorate', 0, '/tmp/x.env')
+      local data = _G.__cmf_autocmd_data
+      assert.equals('/tmp/x.env', data.filename)
+      assert.is_nil(data.variables)
+      vim.api.nvim_del_autocmd(au)
+      _G.__cmf_autocmd_data = nil
+    end)
   end)
 
   describe('off', function()

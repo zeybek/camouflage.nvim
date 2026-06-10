@@ -119,8 +119,8 @@ describe('camouflage.parsers', function()
     end)
 
     it('should exclude project config file with custom filename', function()
-      local config = require('camouflage.config')
-      config.setup({ project_config = { filename = '.my-camouflage.yml' } })
+      local cfg = require('camouflage.config')
+      cfg.setup({ project_config = { filename = '.my-camouflage.yml' } })
       parsers.clear_cache()
 
       local parser, name = parsers.find_parser_for_file('.my-camouflage.yml')

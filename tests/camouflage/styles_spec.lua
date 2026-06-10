@@ -22,12 +22,15 @@ describe('camouflage.styles', function()
         assert.equals('#####', result)
       end)
 
-      it('should respect mask_length from config', function()
+      it('shows mask_length mask chars but pads to cover the full value', function()
         config.setup({ mask_length = 8 })
 
+        -- 8 mask chars, then spaces padding out to the value's display width so
+        -- the tail of a value longer than mask_length cannot show through.
         local result = styles.generate_hidden_text('stars', 20, 'verylongpassword')
 
-        assert.equals('********', result)
+        assert.equals('********' .. string.rep(' ', 12), result)
+        assert.equals(20, vim.fn.strdisplaywidth(result))
       end)
     end)
 
@@ -38,12 +41,13 @@ describe('camouflage.styles', function()
         assert.equals('••••••••••', result)
       end)
 
-      it('should respect mask_length from config', function()
+      it('shows mask_length dots but pads to cover the full value', function()
         config.setup({ mask_length = 5 })
 
         local result = styles.generate_hidden_text('dotted', 10, 'secretpass')
 
-        assert.equals('•••••', result)
+        assert.equals('•••••' .. string.rep(' ', 5), result)
+        assert.equals(10, vim.fn.strdisplaywidth(result))
       end)
     end)
 
@@ -62,11 +66,33 @@ describe('camouflage.styles', function()
         assert.equals('***MASKED***', result)
       end)
 
-      it('should ignore length parameter', function()
+      it('returns hidden_text unchanged when it already covers the value', function()
         local result1 = styles.generate_hidden_text('text', 5, 'short')
-        local result2 = styles.generate_hidden_text('text', 100, 'verylongtext')
+        local result2 = styles.generate_hidden_text('text', 10, 'secretpass')
 
         assert.equals(result1, result2)
+        assert.equals('************************', result1)
+      end)
+
+      it('pads the text style to cover a value wider than hidden_text', function()
+        config.setup({ hidden_text = 'MASK' })
+
+        local result = styles.generate_hidden_text('text', 10, 'verylongvalue')
+
+        assert.equals('MASK' .. string.rep(' ', 6), result)
+        assert.equals(10, vim.fn.strdisplaywidth(result))
+      end)
+    end)
+
+    describe('multibyte values', function()
+      it('sizes the mask by display cells, not bytes', function()
+        -- 'café' is 5 bytes but 4 display cells; the mask must be 4 cells wide
+        -- so it does not spill over the following text.
+        local width = vim.fn.strdisplaywidth('café')
+        local result = styles.generate_hidden_text('stars', width, 'café')
+
+        assert.equals('****', result)
+        assert.equals(width, vim.fn.strdisplaywidth(result))
       end)
     end)
 
@@ -152,6 +178,29 @@ describe('camouflage.styles', function()
         assert.is_true(chars[c] and chars[c] > 0)
         chars[c] = chars[c] - 1
       end
+    end)
+
+    it('shuffles whole UTF-8 characters without corrupting them', function()
+      local text = 'héllo wörld'
+      local result = styles.scramble_text(text)
+
+      -- Same number of characters and same display width (no mojibake / byte
+      -- splitting), with first and last characters preserved.
+      assert.equals(vim.fn.strchars(text), vim.fn.strchars(result))
+      assert.equals(vim.fn.strdisplaywidth(text), vim.fn.strdisplaywidth(result))
+      local orig = vim.fn.split(text, '\\zs')
+      local got = vim.fn.split(result, '\\zs')
+      assert.equals(orig[1], got[1])
+      assert.equals(orig[#orig], got[#got])
+    end)
+
+    it('does not perturb the global RNG', function()
+      math.randomseed(12345)
+      local before = math.random()
+      math.randomseed(12345)
+      styles.scramble_text('mysecretpassword')
+      local after = math.random()
+      assert.equals(before, after)
     end)
   end)
 

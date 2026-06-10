@@ -62,6 +62,21 @@ function M.setup()
     end
   end
 
+  -- Include file patterns from parsers registered at runtime via
+  -- register_parser; without this their files never trigger auto-masking.
+  for _, entry in ipairs(parsers.list()) do
+    if entry.source == 'user' and entry.file_patterns then
+      local patterns = entry.file_patterns
+      if type(patterns) == 'string' then
+        patterns = { patterns }
+      end
+      for _, p in ipairs(patterns) do
+        table.insert(all_patterns, '*/' .. p)
+        table.insert(all_patterns, p)
+      end
+    end
+  end
+
   vim.api.nvim_create_autocmd({ 'BufEnter' }, {
     group = group,
     pattern = all_patterns,
@@ -101,7 +116,10 @@ function M.setup()
     end,
   })
 
-  vim.api.nvim_create_autocmd('BufDelete', {
+  -- BufWipeout as well as BufDelete: unlisted preview buffers (telescope/snacks)
+  -- get state via init_buffer but never fire BufDelete, so without BufWipeout
+  -- their state leaks and a recycled bufnr could expose another file's values.
+  vim.api.nvim_create_autocmd({ 'BufDelete', 'BufWipeout' }, {
     group = group,
     callback = function(args)
       cleanup_timer(args.buf)
@@ -109,7 +127,24 @@ function M.setup()
       pcall(function()
         require('camouflage.checks.expiry').stop_auto_refresh(args.buf)
       end)
+      -- Drop accumulated check results (pwned/expiry) so the per-line store does
+      -- not grow without bound and a recycled bufnr never inherits stale badges.
+      pcall(function()
+        require('camouflage.checks').clear_buffer(args.buf)
+      end)
       state.remove_buffer(args.buf)
+    end,
+  })
+
+  -- Re-decorate buffers marked dirty by refresh_all when they are next shown,
+  -- regardless of auto_enable, so a config change reaches hidden masked buffers.
+  vim.api.nvim_create_autocmd({ 'BufWinEnter' }, {
+    group = group,
+    pattern = all_patterns,
+    callback = function(args)
+      if vim.api.nvim_buf_is_valid(args.buf) and state.is_dirty(args.buf) then
+        core.apply_decorations(args.buf)
+      end
     end,
   })
 

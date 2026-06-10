@@ -31,6 +31,33 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Zero file modification**: All masking is purely visual
 - **Extensible**: Register custom parsers for unsupported formats via a public API
 
+## Security Model
+
+camouflage hides sensitive values **visually**, by drawing over them with
+virtual text. It does **not** change the file, and it does **not** encrypt or
+remove anything.
+
+**It protects against** casual exposure of secrets on screen: shoulder-surfing,
+screen sharing, pair programming, screenshots, and demos.
+
+**It does not protect against** anything that reads the buffer or file contents
+directly, because the real text is still there underneath the mask:
+
+- search results and grep tools, including Telescope `live_grep` result lines
+  (only the **preview** buffer is masked, not the matched result rows)
+- LSP servers, completion sources, and AI assistants
+- `:%print`, `:substitute` previews, `:w`/`:saveas`, and yanking with `yy`/`"+y`
+- the `+`/`*` clipboard registers (use `:CamouflageYank`, which copies the real
+  value deliberately with a confirm prompt and timed auto-clear)
+
+For per-repo `.camouflage.yaml` files, masking config is applied as data only
+(no code execution). If you don't trust the repositories you open, set
+`project_config.secure = true` to gate the file behind Neovim's
+`vim.secure`/`:trust` mechanism.
+
+The `scramble` style is **cosmetic, not protective**: the mask is a shuffle of
+the real characters, so it leaks the value's length and character set.
+
 ## Installation
 
 ### [lazy.nvim](https://github.com/folke/lazy.nvim)

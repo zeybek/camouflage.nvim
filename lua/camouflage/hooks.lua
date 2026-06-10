@@ -46,11 +46,52 @@ M.EVENTS = {
   AFTER_FOLLOW_STOP = 'after_follow_stop',
 }
 
--- Autocmd event names (for User events)
+---Build an allowlisted, value-free copy of detected variables for the public
+---User autocmd payload. Allowlist (copy known-safe fields) rather than blocklist
+---(strip value) so any future ParsedVariable field is private by default — only
+---in-process Lua listeners (hooks.on / config hooks) ever see plaintext values.
+---@param variables table[]|any
+---@return table[]|any
+local function redact_variables(variables)
+  if type(variables) ~= 'table' then
+    return variables
+  end
+  local out = {}
+  for i, var in ipairs(variables) do
+    out[i] = {
+      key = var.key,
+      start_index = var.start_index,
+      end_index = var.end_index,
+      line_number = var.line_number,
+      is_nested = var.is_nested,
+      is_commented = var.is_commented,
+      is_multiline = var.is_multiline,
+      value_length = type(var.value) == 'string' and #var.value or nil,
+    }
+  end
+  return out
+end
+
+-- User autocmd specs, keyed by event. Each builds its own payload from the
+-- emit() arguments, so before_decorate (bufnr, filename) and after_decorate
+-- (bufnr, variables) no longer share one mislabeled shape.
+-- variable_detected is intentionally absent (too frequent).
 local AUTOCMD_EVENTS = {
-  before_decorate = 'CamouflageBeforeDecorate',
-  after_decorate = 'CamouflageAfterDecorate',
-  -- variable_detected intentionally omitted (too frequent)
+  before_decorate = {
+    pattern = 'CamouflageBeforeDecorate',
+    payload = function(bufnr, filename)
+      return { bufnr = bufnr, filename = filename }
+    end,
+  },
+  after_decorate = {
+    pattern = 'CamouflageAfterDecorate',
+    payload = function(bufnr, variables)
+      local filename = (bufnr and vim.api.nvim_buf_is_valid(bufnr))
+          and vim.api.nvim_buf_get_name(bufnr)
+        or nil
+      return { bufnr = bufnr, filename = filename, variables = redact_variables(variables) }
+    end,
+  },
 }
 
 ---@class CamouflageListener
@@ -165,30 +206,37 @@ function M.emit(event, ...)
     end
   end
 
-  -- 2. Call all registered listeners
-  for _, listener in ipairs(listeners[event] or {}) do
-    local ok, result = pcall(listener.callback, ...)
-    if ok then
-      table.insert(results, result)
-    else
-      vim.notify(
-        string.format('[camouflage] Listener error (%s#%d): %s', event, listener.id, result),
-        vim.log.levels.WARN
-      )
+  -- 2. Call all registered listeners.
+  -- Iterate a shallow snapshot so a listener that removes itself (once) or
+  -- another listener (off) mid-dispatch cannot shift the array and skip the
+  -- next listener. Every listener present at emit start runs exactly once.
+  local current = listeners[event]
+  if current then
+    local snapshot = {}
+    for i = 1, #current do
+      snapshot[i] = current[i]
+    end
+    for _, listener in ipairs(snapshot) do
+      local ok, result = pcall(listener.callback, ...)
+      if ok then
+        table.insert(results, result)
+      else
+        vim.notify(
+          string.format('[camouflage] Listener error (%s#%d): %s', event, listener.id, result),
+          vim.log.levels.WARN
+        )
+      end
     end
   end
 
-  -- 3. Fire vim autocmd (for before_decorate and after_decorate)
-  local autocmd_event = AUTOCMD_EVENTS[event]
-  if autocmd_event then
-    local args = { ... }
+  -- 3. Fire the public User autocmd (before_decorate / after_decorate only).
+  -- The payload carries keys + byte positions + value_length but never the
+  -- plaintext values, so listening plugins cannot harvest secrets.
+  local autocmd_spec = AUTOCMD_EVENTS[event]
+  if autocmd_spec then
     vim.api.nvim_exec_autocmds('User', {
-      pattern = autocmd_event,
-      data = {
-        bufnr = args[1],
-        filename = args[2],
-        variables = args[2], -- for after_decorate, second arg is variables
-      },
+      pattern = autocmd_spec.pattern,
+      data = autocmd_spec.payload(...),
     })
   end
 

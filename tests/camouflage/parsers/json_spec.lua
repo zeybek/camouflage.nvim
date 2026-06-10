@@ -182,5 +182,33 @@ describe('camouflage.parsers.json', function()
       -- depending on how the regex handles spaces
       assert.is_table(result)
     end)
+
+    it('should mask duplicate key names across different objects', function()
+      -- Regression: pairs() iteration order is unrelated to document order, so
+      -- the old monotonic forward search could leave the second occurrence of a
+      -- repeated key name unmasked. Every occurrence must now be located.
+      local content = '{"a":{"password":"AAA"},"b":{"password":"BBB"},"c":{"password":"CCC"}}'
+      local result = json_parser.parse(content)
+
+      assert.equals(3, #result)
+      local seen = {}
+      for _, v in ipairs(result) do
+        seen[v.value] = true
+        -- Each occurrence is positioned on its own value, not another's.
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+      end
+      assert.is_true(seen['AAA'])
+      assert.is_true(seen['BBB'])
+      assert.is_true(seen['CCC'])
+    end)
+
+    it('should position values on their own bytes (offset contract)', function()
+      local content = '{\n  "api_key": "secret123",\n  "port": 5432\n}'
+      local result = json_parser.parse(content)
+
+      for _, v in ipairs(result) do
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+      end
+    end)
   end)
 end)

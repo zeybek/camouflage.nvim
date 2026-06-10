@@ -15,6 +15,7 @@ local M = {}
 local config = require('camouflage.config')
 local state = require('camouflage.state')
 local parsers = require('camouflage.parsers')
+local position = require('camouflage.position')
 local check = require('camouflage.pwned.check')
 local ui = require('camouflage.pwned.ui')
 local cache = require('camouflage.pwned.cache')
@@ -79,27 +80,16 @@ local function get_ui_config()
   }
 end
 
----Find variable at cursor position
+---Find variable at cursor position.
+---Delegates to the shared position helper with strict matching: the cursor's
+---line-local column is converted to a buffer-global byte offset before being
+---compared against start_index/end_index, and there is no same-line fallback,
+---so a check is never run against a secret the cursor is not actually on.
 ---@param bufnr number Buffer number
----@param cursor_line number 0-indexed cursor line
----@param cursor_col number 0-indexed cursor column
 ---@return ParsedVariable|nil
-local function find_variable_at_cursor(bufnr, cursor_line, cursor_col)
+local function find_variable_at_cursor(bufnr)
   local variables = get_variables_for_pwned(bufnr)
-  if #variables == 0 then
-    return nil
-  end
-
-  for _, var in ipairs(variables) do
-    if var.line_number == cursor_line then
-      -- Check if cursor is within variable range
-      if cursor_col >= var.start_index and cursor_col <= var.end_index then
-        return var
-      end
-    end
-  end
-
-  return nil
+  return position.find_variable_at_cursor(bufnr, variables, { same_line_fallback = false })
 end
 
 ---Find all variables on a line
@@ -126,10 +116,7 @@ end
 ---@param callback fun(result: PwnedCheckResult|nil)|nil Optional callback
 function M.check_current(callback)
   if not M.is_available() then
-    vim.notify(
-      '[camouflage] HIBP check not available (missing sha1sum/openssl or curl)',
-      vim.log.levels.WARN
-    )
+    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
     if callback then
       callback(nil)
     end
@@ -137,11 +124,8 @@ function M.check_current(callback)
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
-  local cursor = vim.api.nvim_win_get_cursor(0)
-  local cursor_line = cursor[1] - 1 -- Convert to 0-indexed
-  local cursor_col = cursor[2]
 
-  local var = find_variable_at_cursor(bufnr, cursor_line, cursor_col)
+  local var = find_variable_at_cursor(bufnr)
   if not var then
     vim.notify('[camouflage] No masked variable under cursor', vim.log.levels.INFO)
     if callback then
@@ -180,10 +164,7 @@ end
 ---@param callback fun(results: table<string, PwnedCheckResult>)|nil Optional callback
 function M.check_line(callback)
   if not M.is_available() then
-    vim.notify(
-      '[camouflage] HIBP check not available (missing sha1sum/openssl or curl)',
-      vim.log.levels.WARN
-    )
+    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
     if callback then
       callback({})
     end
@@ -235,10 +216,7 @@ end
 ---@param callback fun(results: table<string, PwnedCheckResult>)|nil Optional callback
 function M.check_buffer(callback)
   if not M.is_available() then
-    vim.notify(
-      '[camouflage] HIBP check not available (missing sha1sum/openssl or curl)',
-      vim.log.levels.WARN
-    )
+    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
     if callback then
       callback({})
     end

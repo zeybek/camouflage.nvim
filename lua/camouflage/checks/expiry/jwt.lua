@@ -99,6 +99,48 @@ function M.decode(value)
   }
 end
 
+---Extract the bare host from an `iss` claim, which may be a full URL or a bare
+---host (Google legacy tokens use `accounts.google.com` with no scheme).
+---@param iss string
+---@return string
+local function iss_host(iss)
+  local s = iss:lower()
+  s = s:gsub('^%a[%w+.%-]*://', '') -- strip scheme
+  s = s:gsub('[/?#].*$', '') -- cut path/query/fragment
+  s = s:gsub('^[^@]*@', '') -- strip userinfo
+  s = s:gsub(':%d+$', '') -- strip port
+  return s
+end
+
+---Whether host equals domain or is a subdomain of it (dot-suffix).
+---@param host string
+---@param domain string
+---@return boolean
+local function host_matches(host, domain)
+  return host == domain or host:sub(-(#domain + 1)) == '.' .. domain
+end
+
+-- Ordered provider matchers. Anchored host comparison (exact or dot-suffix)
+-- instead of substring find, so a hostile issuer like
+-- `https://github.com.evil.example` is not mislabelled as GitHub.
+local PROVIDERS = {
+  { name = 'Google', domain = 'accounts.google.com' },
+  { name = 'Firebase', domain = 'securetoken.google.com' },
+  { name = 'Firebase', domain = 'firebaseapp.com' },
+  { name = 'Auth0', domain = 'auth0.com' },
+  { name = 'Microsoft', domain = 'login.microsoftonline.com' },
+  { name = 'Microsoft', domain = 'sts.windows.net' },
+  { name = 'GitHub Actions', domain = 'token.actions.githubusercontent.com' },
+  { name = 'GitHub', domain = 'github.com' },
+  { name = 'Okta', domain = 'okta.com' },
+  {
+    name = 'Cognito',
+    fn = function(host)
+      return host:match('^cognito%-idp%.') ~= nil and host_matches(host, 'amazonaws.com')
+    end,
+  },
+}
+
 ---Map a known `iss` claim value to a human-friendly provider name.
 ---@param iss string|nil
 ---@return string|nil
@@ -106,27 +148,18 @@ function M.provider_name(iss)
   if type(iss) ~= 'string' or #iss == 0 then
     return nil
   end
-  local lower = iss:lower()
-  if lower:find('accounts.google.com', 1, true) then
-    return 'Google'
-  elseif lower:find('.auth0.com', 1, true) then
-    return 'Auth0'
-  elseif lower:find('cognito-idp', 1, true) then
-    return 'Cognito'
-  elseif
-    lower:find('login.microsoftonline.com', 1, true) or lower:find('sts.windows.net', 1, true)
-  then
-    return 'Microsoft'
-  elseif lower:find('token.actions.githubusercontent.com', 1, true) then
-    return 'GitHub Actions'
-  elseif lower:find('github.com', 1, true) then
-    return 'GitHub'
-  elseif lower:find('okta.com', 1, true) then
-    return 'Okta'
-  elseif
-    lower:find('firebaseapp.com', 1, true) or lower:find('securetoken.google.com', 1, true)
-  then
-    return 'Firebase'
+  local host = iss_host(iss)
+  if host == '' then
+    return nil
+  end
+  for _, p in ipairs(PROVIDERS) do
+    if p.fn then
+      if p.fn(host) then
+        return p.name
+      end
+    elseif host_matches(host, p.domain) then
+      return p.name
+    end
   end
   return nil
 end

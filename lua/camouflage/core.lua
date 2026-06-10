@@ -8,6 +8,14 @@ local styles = require('camouflage.styles')
 local parsers = require('camouflage.parsers')
 local hooks = require('camouflage.hooks')
 local log = require('camouflage.log')
+local position = require('camouflage.position')
+
+-- Position math lives in the leaf module camouflage.position so yank/pwned can
+-- reuse it without depending on the whole decoration engine. These permanent
+-- aliases keep core.compute_line_offsets / core.index_to_position working for
+-- existing callers (reveal, yank, tests).
+M.compute_line_offsets = position.compute_line_offsets
+M.index_to_position = position.index_to_position
 
 ---Get the highlight group to use for masking
 ---@param cfg table Configuration
@@ -20,52 +28,99 @@ local function get_highlight_group(cfg)
   return cfg.highlight_group
 end
 
+---Disable 'wrap' on every window showing the buffer (extmark overlays glitch
+---with wrap on), saving each window's original value so it can be restored.
+---Only touches windows whose wrap is currently on, and saves the marker once,
+---so it never clobbers a user's deliberate `:set nowrap`.
+---@param bufnr number
+local function disable_wrap(bufnr)
+  for _, win in ipairs(vim.fn.win_findbuf(bufnr)) do
+    if vim.api.nvim_get_option_value('wrap', { win = win }) then
+      if not pcall(vim.api.nvim_win_get_var, win, 'camouflage_saved_wrap') then
+        vim.api.nvim_win_set_var(win, 'camouflage_saved_wrap', true)
+      end
+      vim.api.nvim_set_option_value('wrap', false, { win = win })
+    end
+  end
+end
+
+---Restore 'wrap' on windows where camouflage previously turned it off.
+---@param bufnr number
+local function restore_wrap(bufnr)
+  for _, win in ipairs(vim.fn.win_findbuf(bufnr)) do
+    local ok, saved = pcall(vim.api.nvim_win_get_var, win, 'camouflage_saved_wrap')
+    if ok and saved then
+      vim.api.nvim_set_option_value('wrap', true, { win = win })
+      pcall(vim.api.nvim_win_del_var, win, 'camouflage_saved_wrap')
+    end
+  end
+end
+
+---Reset state after clearing decorations on a no-mask path: drop stale
+---variables (so yank/reveal/pwned can't act on now-unmasked data) and restore
+---window wrap.
+---@param bufnr number
+local function reset_mask_state(bufnr)
+  state.clear_variables(bufnr)
+  restore_wrap(bufnr)
+end
+
+M.restore_wrap = restore_wrap
+
 ---Apply decorations to mask sensitive values in a buffer
 ---@param bufnr number Buffer number
 ---@param override_filename string|nil Optional filename for buffers without names (e.g., snacks preview)
 function M.apply_decorations(bufnr, override_filename)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
-  -- Check is_enabled first to avoid unnecessary API calls
-  if not config.is_enabled() then
-    M.clear_decorations(bufnr)
+  -- Always clear first so a no-mask outcome (disabled, too large, no parser, no
+  -- variables) never leaves stale extmarks drifting over the buffer.
+  M.clear_decorations(bufnr)
+
+  -- Buffer-local config (vim.b.camouflage_*) overrides the global config; with
+  -- no overrides this returns the shared config table at no extra cost.
+  local cfg = config.get_for_buffer(bufnr)
+  if not cfg.enabled then
+    reset_mask_state(bufnr)
     return
   end
-
-  local cfg = config.get()
   local line_count = vim.api.nvim_buf_line_count(bufnr)
   if cfg.max_lines and line_count > cfg.max_lines then
+    reset_mask_state(bufnr)
     return
   end
-
-  M.clear_decorations(bufnr)
 
   local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
   if not ok then
     log.pcall_error('nvim_buf_get_lines', lines, { bufnr = bufnr })
+    reset_mask_state(bufnr)
     return
   end
   local content = table.concat(lines, '\n')
 
   local filename = override_filename or vim.api.nvim_buf_get_name(bufnr)
   if filename == '' then
+    reset_mask_state(bufnr)
     return
   end
 
   -- Find parser once and pass it to parse() to avoid redundant lookup
   local parser, parser_name = parsers.find_parser_for_file(filename)
   if not parser then
+    reset_mask_state(bufnr)
     return
   end
 
   -- HOOK: before_decorate
   local should_continue = hooks.emit('before_decorate', bufnr, filename)
   if should_continue == false then
+    reset_mask_state(bufnr)
     return
   end
 
   local variables = parsers.parse(filename, content, bufnr, parser, parser_name)
   if #variables == 0 then
+    reset_mask_state(bufnr)
     return
   end
 
@@ -79,10 +134,12 @@ function M.apply_decorations(bufnr, override_filename)
   end
 
   if #filtered_variables == 0 then
+    reset_mask_state(bufnr)
     return
   end
 
   state.set_variables(bufnr, filtered_variables)
+  state.clear_dirty(bufnr)
 
   -- Pre-compute line offsets for O(1) index lookups
   local line_offsets = M.compute_line_offsets(lines)
@@ -91,12 +148,7 @@ function M.apply_decorations(bufnr, override_filename)
     M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
   end
 
-  -- Disable wrap to prevent visual glitches with extmarks
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_buf(win) == bufnr then
-      vim.api.nvim_set_option_value('wrap', false, { win = win })
-    end
-  end
+  disable_wrap(bufnr)
 
   -- HOOK: after_decorate
   hooks.emit('after_decorate', bufnr, filtered_variables)
@@ -125,8 +177,9 @@ function M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
   if var.is_multiline and start_pos.row ~= end_pos.row then
     M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos, hl_group)
   else
-    -- Single line value
-    local masked_text = styles.generate_hidden_text(cfg.style, #var.value, var.value)
+    -- Single line value (mask sized by display cells, not bytes)
+    local masked_text =
+      styles.generate_hidden_text(cfg.style, vim.fn.strdisplaywidth(var.value), var.value)
     local ok, err =
       pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, start_pos.row, start_pos.col, {
         end_row = end_pos.row,
@@ -182,7 +235,8 @@ function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos
       goto continue
     end
 
-    local masked_text = styles.generate_hidden_text(cfg.style, col_end - col_start, line_content)
+    local masked_text =
+      styles.generate_hidden_text(cfg.style, vim.fn.strdisplaywidth(line_content), line_content)
     local ok, err = pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, row, col_start, {
       end_row = row,
       end_col = col_end,
@@ -208,96 +262,39 @@ function M.clear_decorations(bufnr)
   end
 end
 
----Compute cumulative line offsets for O(1) index-to-position lookup
----@param lines string[]
----@return number[] Cumulative byte offsets where each line starts
-function M.compute_line_offsets(lines)
-  local offsets = {}
-  local current = 0
-  for i, line in ipairs(lines) do
-    offsets[i] = current
-    current = current + #line + 1 -- +1 for newline
-  end
-  offsets[#lines + 1] = current -- sentinel for end of file
-  return offsets
-end
-
----Binary search to find the line containing the given byte index
----@param offsets number[]
----@param index number
----@return number row 1-based line number
-local function binary_search_line(offsets, index)
-  local lo, hi = 1, #offsets - 1
-  while lo < hi do
-    local mid = math.floor((lo + hi + 1) / 2)
-    if offsets[mid] <= index then
-      lo = mid
-    else
-      hi = mid - 1
-    end
-  end
-  return lo
-end
-
----@param bufnr number
----@param index number
----@param lines string[]|nil
----@param line_offsets number[]|nil Pre-computed offsets from compute_line_offsets
----@return {row: number, col: number}|nil
-function M.index_to_position(bufnr, index, lines, line_offsets)
-  if not lines then
-    local ok, result = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
-    if not ok then
-      log.pcall_error('nvim_buf_get_lines', result, { bufnr = bufnr })
-      return nil
-    end
-    lines = result
-  end
-
-  if #lines == 0 then
-    return nil
-  end
-
-  -- Use pre-computed offsets with binary search for O(log n) lookup
-  if line_offsets then
-    local row = binary_search_line(line_offsets, index)
-    local col = index - line_offsets[row]
-    -- Clamp to line length
-    if col > #lines[row] then
-      col = #lines[row]
-    end
-    return { row = row - 1, col = col }
-  end
-
-  -- Fallback: linear scan (for backward compatibility)
-  local current = 0
-  for row, line in ipairs(lines) do
-    local line_end = current + #line
-    if index <= line_end then
-      return { row = row - 1, col = index - current }
-    end
-    current = line_end + 1
-  end
-
-  return { row = #lines - 1, col = #lines[#lines] }
-end
-
 ---Refresh decorations for current buffer
 ---@return nil
 function M.refresh()
   M.apply_decorations(vim.api.nvim_get_current_buf())
 end
 
----Refresh decorations for all buffers in visible windows
+---Refresh decorations everywhere a config change must take effect.
+---Visible supported buffers are re-decorated now (deduped so a buffer shown in
+---two windows parses once); masked-but-hidden buffers are only marked dirty and
+---re-decorate when next displayed (see the BufWinEnter handler) — re-parsing
+---every loaded buffer on each config change would be needlessly expensive.
+---Also sweeps state for buffers that are no longer valid.
 ---@return nil
 function M.refresh_all()
+  local seen = {}
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     local bufnr = vim.api.nvim_win_get_buf(win)
-    local filename = vim.api.nvim_buf_get_name(bufnr)
-    -- apply_decorations now handles parser lookup internally,
-    -- but we still need is_supported check to avoid processing unsupported buffers
-    if parsers.is_supported(filename) then
-      M.apply_decorations(bufnr)
+    if not seen[bufnr] then
+      seen[bufnr] = true
+      local filename = vim.api.nvim_buf_get_name(bufnr)
+      -- apply_decorations handles parser lookup internally, but is_supported
+      -- avoids processing unrelated buffers.
+      if parsers.is_supported(filename) then
+        M.apply_decorations(bufnr)
+      end
+    end
+  end
+
+  for bufnr in pairs(state.buffers) do
+    if not vim.api.nvim_buf_is_valid(bufnr) then
+      state.remove_buffer(bufnr) -- backstop for buffers that never fired BufWipeout
+    elseif not seen[bufnr] and state.is_buffer_masked(bufnr) then
+      state.mark_dirty(bufnr)
     end
   end
 end

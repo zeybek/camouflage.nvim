@@ -26,6 +26,11 @@
       "type": "boolean",
       "description": "Automatically apply masking when entering supported buffers"
     },
+    "debounce_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Delay in ms before re-masking after a buffer change (0 = immediate)"
+    },
     "style": {
       "type": "string",
       "enum": [
@@ -311,6 +316,26 @@
         "line_hl": {
           "type": "string",
           "description": "Line highlight group"
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "description": "Canonical per-check namespace; checks.pwned mirrors the top-level pwned key.",
+      "additionalProperties": true,
+      "properties": {
+        "pwned": {
+          "$ref": "#/properties/pwned"
+        },
+        "expiry": {
+          "type": "object",
+          "description": "JWT expiry hint settings",
+          "additionalProperties": true
+        },
+        "badges": {
+          "type": "object",
+          "description": "Badge renderer settings",
+          "additionalProperties": true
         }
       }
     },

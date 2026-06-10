@@ -183,7 +183,7 @@ reveal:
 # =============================================================================
 
 # Check passwords against the HIBP breach database
-# Requires: Neovim 0.10+, curl, sha1sum/openssl
+# Requires: Neovim 0.10+, curl
 # Privacy: Uses k-anonymity (only first 5 chars of SHA-1 hash sent)
 pwned:
   # Enable the feature

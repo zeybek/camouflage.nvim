@@ -118,6 +118,22 @@ describe('camouflage.checks.expiry.jwt provider_name', function()
     assert.is_nil(jwt.provider_name('https://unknown.example.com'))
   end)
 
+  it('does not match spoofed issuers that merely contain a known domain', function()
+    -- Anchored host matching: a substring match would mislabel these as GitHub.
+    assert.is_nil(jwt.provider_name('https://github.com.evil.example'))
+    assert.is_nil(jwt.provider_name('https://evilgithub.com'))
+    assert.is_nil(jwt.provider_name('https://attacker.example/github.com'))
+  end)
+
+  it('matches subdomains of tenant providers (dot-suffix)', function()
+    assert.equals('Auth0', jwt.provider_name('https://tenant.auth0.com'))
+    assert.equals('Okta', jwt.provider_name('https://dev-12345.okta.com'))
+  end)
+
+  it('matches a bare host issuer without a scheme', function()
+    assert.equals('Google', jwt.provider_name('accounts.google.com'))
+  end)
+
   it('returns nil for empty/nil input', function()
     assert.is_nil(jwt.provider_name(nil))
     assert.is_nil(jwt.provider_name(''))

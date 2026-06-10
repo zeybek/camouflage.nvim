@@ -4,6 +4,15 @@ local M = {}
 
 local DEFAULT_FILENAME = '.camouflage.yaml'
 
+-- Documented config keys whose default value is nil, so their type cannot be
+-- inferred from camouflage.config.defaults. Listed here with their expected Lua
+-- type so the loader accepts them instead of rejecting them as "unknown".
+---@type table<string, string>
+M.NULLABLE_KEYS = {
+  colors = 'table',
+  mask_length = 'number',
+}
+
 ---@class CamouflageProjectConfigStatus
 ---@field loaded boolean
 ---@field path string|nil
@@ -183,7 +192,7 @@ end
 
 ---Load and validate a repo-level project config file.
 ---Returns a table suitable for deep-merging into user config.
----@param opts? { enabled?: boolean, filename?: string, notify?: boolean }
+---@param opts? { enabled?: boolean, filename?: string, notify?: boolean, secure?: boolean }
 ---@return table
 function M.load(opts)
   opts = opts or {}
@@ -203,14 +212,30 @@ function M.load(opts)
 
   state.path = path
 
-  local ok_read, lines = pcall(vim.fn.readfile, path)
-  if not ok_read or type(lines) ~= 'table' then
-    add_error('failed to read project config file')
-    maybe_notify_errors(opts.notify ~= false)
-    return {}
+  -- Trust gate (opt-in). The file is data-only and whitelist-sanitized, so it is
+  -- read directly by default (matching how data-config plugins like neoconf
+  -- behave). With project_config.secure = true, route it through
+  -- vim.secure.read so a never-trusted repo's config is not applied until the
+  -- user views and :trusts it.
+  local content
+  if opts.secure and vim.secure and vim.secure.read then
+    local ok_secure, data = pcall(vim.secure.read, path)
+    if not ok_secure or type(data) ~= 'string' then
+      add_error('project config not trusted (view it and run :trust to apply)')
+      maybe_notify_errors(opts.notify ~= false)
+      return {}
+    end
+    content = data
+  else
+    local ok_read, lines = pcall(vim.fn.readfile, path)
+    if not ok_read or type(lines) ~= 'table' then
+      add_error('failed to read project config file')
+      maybe_notify_errors(opts.notify ~= false)
+      return {}
+    end
+    content = table.concat(lines, '\n')
   end
 
-  local content = table.concat(lines, '\n')
   local ok_decode, decoded
   if vim.fn.exists('*yaml_decode') == 1 then
     ok_decode, decoded = pcall(vim.fn.yaml_decode, content)
@@ -237,10 +262,28 @@ function M.load(opts)
     if key ~= 'version' then
       if key == 'project_config' then
         add_error('key "project_config" is reserved and cannot be set in project config file')
-      elseif defaults[key] == nil then
+      elseif defaults[key] ~= nil then
+        if has_compatible_type(value, defaults[key], key) then
+          sanitized[key] = value
+        end
+      elseif M.NULLABLE_KEYS[key] then
+        -- Documented keys whose default is nil (so type can't be inferred from
+        -- defaults); validate against the declared type instead of rejecting.
+        local expected = M.NULLABLE_KEYS[key]
+        if type(value) == expected then
+          sanitized[key] = value
+        else
+          add_error(
+            string.format(
+              'type mismatch for key "%s" (expected %s, got %s)',
+              key,
+              expected,
+              type(value)
+            )
+          )
+        end
+      else
         add_error(string.format('unknown project config key "%s"', key))
-      elseif has_compatible_type(value, defaults[key], key) then
-        sanitized[key] = value
       end
     end
   end

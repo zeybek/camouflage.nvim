@@ -10,7 +10,7 @@ test: ## Run tests
 	@$(NVIM) --headless -u tests/minimal_init.lua -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal_init.lua'}"
 
 lint: ## Run luacheck
-	@luacheck lua/ --globals vim
+	@luacheck lua/ tests/
 
 format: ## Format code with stylua
 	@stylua lua/ tests/ --config-path stylua.toml

@@ -3,6 +3,7 @@
 local M = {}
 
 local config = require('camouflage.config')
+local util = require('camouflage.parsers.util')
 
 ---@class HeredocState
 ---@field key string The key for the heredoc value
@@ -270,10 +271,16 @@ function M.parse_key_value(line_content, original_line, line_start)
   local key, value
   local quote_offset = 0
 
-  -- Try quoted string value first: key = "value"
-  key, value = line_content:match('^%s*([a-zA-Z_][a-zA-Z0-9_%-]*)%s*=%s*"([^"]*)"')
-  if key and value then
-    quote_offset = 1
+  -- Try quoted string value first: key = "value" (escape-aware so \" inside the
+  -- string does not terminate it early).
+  local qkey, qpos = line_content:match('^%s*([a-zA-Z_][a-zA-Z0-9_%-]*)%s*=%s*()"')
+  if qkey and qpos then
+    local close = util.find_unescaped(line_content, '"', qpos + 1)
+    if close then
+      key = qkey
+      value = line_content:sub(qpos + 1, close - 1)
+      quote_offset = 1
+    end
   end
 
   -- Try unquoted value: key = 123 or key = true or key = var.something

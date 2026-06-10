@@ -227,16 +227,48 @@ local function setup_snacks_integration()
     decorate_buffer(buf, win)
   end
 
-  -- Detect snacks picker and attach to preview buffer
-  vim.api.nvim_create_autocmd({ 'WinNew', 'BufWinEnter', 'WinEnter', 'CursorMoved' }, {
+  local function schedule_scan()
+    vim.defer_fn(function()
+      local win = find_preview_window()
+      if win then
+        attach_to_buffer(vim.api.nvim_win_get_buf(win), win)
+      end
+    end, 20)
+  end
+
+  -- The old integration ran on a global, pattern-less CursorMoved (plus WinNew /
+  -- BufWinEnter / WinEnter), so every cursor move in any buffer scheduled a
+  -- window scan. Scope it to open snacks picker sessions instead: the picker's
+  -- input/list buffers get a snacks_picker_* filetype, and the preview buffer is
+  -- swapped into the preview window via BufWinEnter (carrying the PREVIEW
+  -- buffer, not the picker) — so a session counter, not a per-event filetype
+  -- check, is what keeps preview navigation covered at zero steady-state cost.
+  local snacks_sessions = 0
+
+  vim.api.nvim_create_autocmd('FileType', {
+    group = state.augroup,
+    pattern = { 'snacks_picker_input', 'snacks_picker_list' },
+    callback = function(args)
+      snacks_sessions = snacks_sessions + 1
+      vim.api.nvim_create_autocmd('BufWipeout', {
+        group = state.augroup,
+        buffer = args.buf,
+        once = true,
+        callback = function()
+          snacks_sessions = math.max(0, snacks_sessions - 1)
+        end,
+      })
+      schedule_scan()
+    end,
+  })
+
+  vim.api.nvim_create_autocmd({ 'BufWinEnter', 'WinEnter', 'CursorMoved' }, {
     group = state.augroup,
     callback = function()
-      vim.defer_fn(function()
-        local win = find_preview_window()
-        if win then
-          attach_to_buffer(vim.api.nvim_win_get_buf(win), win)
-        end
-      end, 20)
+      if snacks_sessions <= 0 then
+        return
+      end
+      schedule_scan()
     end,
   })
 end

@@ -16,7 +16,7 @@ describe('camouflage.treesitter queries', function()
         local ok, query = pcall(vim.treesitter.query.get, lang, 'camouflage')
         if not ok or not query then
           -- Check fallback exists
-          local fallback_ok, fallback = pcall(vim.treesitter.query.parse, lang, '(_) @test')
+          local fallback_ok = pcall(vim.treesitter.query.parse, lang, '(_) @test')
           -- At minimum, the language should be parseable
           assert.is_true(fallback_ok or treesitter.has_parser(lang) == false)
         end

@@ -42,8 +42,30 @@ function M.parse(content, pattern_config)
 
       -- Only add if we have a valid value
       if value and #value > 0 then
-        -- Find the position of the value in the line
-        local value_pos = line:find(value, match_start, true)
+        -- Locate the value within the line. When the key capture precedes the
+        -- value capture, search from after the key occurrence so a value that
+        -- also appears in the key (e.g. 'token=token') masks the VALUE, not the
+        -- key. Otherwise (no key, or value capture comes first) keep the simple
+        -- search from the match start.
+        local from = match_start
+        local raw_key = pattern_config.key_capture and captures[pattern_config.key_capture] or nil
+        if
+          raw_key
+          and pattern_config.value_capture
+          and pattern_config.key_capture < pattern_config.value_capture
+        then
+          local kpos = line:find(raw_key, match_start, true)
+          if kpos then
+            from = kpos + #raw_key
+          end
+        end
+
+        local value_pos = line:find(value, from, true)
+        -- The located value must fall within this match; otherwise fall back.
+        if not value_pos or value_pos + #value - 1 > match_end then
+          value_pos = line:find(value, match_start, true)
+        end
+
         if value_pos then
           table.insert(variables, {
             key = key,
@@ -57,8 +79,10 @@ function M.parse(content, pattern_config)
         end
       end
 
-      -- Move to next potential match
-      search_start = match_end + 1
+      -- Move to next potential match. max() guarantees forward progress even
+      -- when the pattern matched the empty string (match_end = match_start - 1),
+      -- which would otherwise loop forever and hang the editor.
+      search_start = math.max(match_end + 1, match_start + 1)
     end
 
     current_index = current_index + #line + 1

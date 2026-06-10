@@ -144,5 +144,37 @@ password mixedsecret
       assert.equals('user', result[1].value)
       assert.equals('secret', result[2].value)
     end)
+
+    it('should emit 0-based end-exclusive byte offsets', function()
+      -- Regression: netrc previously emitted 1-based indices, leaving the first
+      -- character of every credential unmasked. Assert exact offsets so the
+      -- convention can never silently drift again.
+      local content = 'machine x login admin password s3cr3t'
+      local result = netrc_parser.parse(content)
+
+      assert.equals(2, #result)
+      -- "admin" occupies 1-based columns 17..21 -> 0-based [16, 21)
+      assert.equals('admin', result[1].value)
+      assert.equals(16, result[1].start_index)
+      assert.equals(21, result[1].end_index)
+      assert.equals('admin', content:sub(result[1].start_index + 1, result[1].end_index))
+      -- "s3cr3t" occupies 1-based columns 32..37 -> 0-based [31, 37)
+      assert.equals('s3cr3t', result[2].value)
+      assert.equals(31, result[2].start_index)
+      assert.equals(37, result[2].end_index)
+      assert.equals('s3cr3t', content:sub(result[2].start_index + 1, result[2].end_index))
+    end)
+
+    it('should keep offsets exact for quoted values', function()
+      local content = 'machine s login "ab cd" password "ef gh"'
+      local result = netrc_parser.parse(content)
+
+      assert.equals(2, #result)
+      -- value content excludes the surrounding quotes
+      assert.equals('ab cd', result[1].value)
+      assert.equals('ab cd', content:sub(result[1].start_index + 1, result[1].end_index))
+      assert.equals('ef gh', result[2].value)
+      assert.equals('ef gh', content:sub(result[2].start_index + 1, result[2].end_index))
+    end)
   end)
 end)

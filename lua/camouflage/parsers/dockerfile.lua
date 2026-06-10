@@ -3,6 +3,7 @@
 local M = {}
 
 local config = require('camouflage.config')
+local util = require('camouflage.parsers.util')
 
 ---@param content string
 ---@param bufnr number|nil Buffer number for TreeSitter parsing
@@ -281,8 +282,8 @@ function M.parse_key_value_pairs(str, allow_dots)
       local char = str:sub(i, i)
 
       if char == '"' then
-        -- Double quoted string
-        local end_quote = str:find('"', i + 1, true)
+        -- Double quoted string (escape-aware: \" does not terminate it)
+        local end_quote = util.find_unescaped(str, '"', i + 1)
         if end_quote then
           raw_value = str:sub(i, end_quote)
           value = str:sub(i + 1, end_quote - 1)

@@ -3,6 +3,7 @@
 local M = {}
 
 local config = require('camouflage.config')
+local util = require('camouflage.parsers.util')
 
 ---@param content string
 ---@param bufnr number|nil Buffer number for TreeSitter parsing
@@ -146,7 +147,9 @@ end
 ---@return string value, number quote_offset
 function M.parse_value(raw_value)
   if raw_value:match('^"') and not raw_value:match('^"""') then
-    local end_quote = raw_value:find('"', 2)
+    -- Basic strings allow \" escapes; terminate on the first UNescaped quote so
+    -- a value like "ab\"cd" is masked in full.
+    local end_quote = util.find_unescaped(raw_value, '"', 2)
     if end_quote then
       return raw_value:sub(2, end_quote - 1), 1
     end

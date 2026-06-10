@@ -182,5 +182,15 @@ api_key = "secret"
       assert.equals(7, result[1].start_index)
       assert.equals(12, result[1].end_index)
     end)
+
+    it('masks a quoted value containing an escaped quote in full', function()
+      local content = 'password = "ab\\"cd"'
+      local result = hcl_parser.parse(content, nil)
+
+      assert.equals(1, #result)
+      assert.equals('password', result[1].key)
+      assert.equals('ab\\"cd', result[1].value)
+      assert.equals('ab\\"cd', content:sub(result[1].start_index + 1, result[1].end_index))
+    end)
   end)
 end)

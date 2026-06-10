@@ -111,6 +111,7 @@ local M = {}
 ---@field enabled? boolean Enable repo config loading (default: true)
 ---@field filename? string Project config filename (default: ".camouflage.yaml")
 ---@field notify? boolean Show warnings for project config parse/validation issues (default: true)
+---@field secure? boolean Gate the project file behind vim.secure.read / :trust (default: false)
 ---@field watch_enabled? boolean Watch .camouflage.yaml for runtime changes (default: true)
 ---@field watch_backend? string "auto" | "autocmd" | "fs" | "both" (default: "auto")
 ---@field watch_debounce_ms? number Debounce for change events (default: 200)
@@ -242,6 +243,7 @@ M.defaults = {
     enabled = true,
     filename = '.camouflage.yaml',
     notify = true,
+    secure = false,
     watch_enabled = true,
     watch_backend = 'auto',
     watch_debounce_ms = 200,
@@ -282,17 +284,30 @@ local function validate_config(opts)
   return opts
 end
 
----Mirror legacy top-level keys (pwned.*) into the new checks.* namespace so
----both `setup({ pwned = {...} })` and `setup({ checks = { pwned = {...} } })`
----continue to work. Idempotent.
+---Reconcile the legacy top-level `pwned` key with the canonical `checks.pwned`
+---namespace. Both names are aliased to ONE shared table (new namespace wins on
+---conflict), so cfg.pwned and cfg.checks.pwned can never drift — in particular,
+---`checks = { pwned = { enabled = false } }` now actually disables the feature.
+---Idempotent.
 ---@param options table
 local function apply_legacy_aliases(options)
   options.checks = options.checks or {}
-  if options.pwned then
-    options.checks.pwned =
-      vim.tbl_deep_extend('force', {}, options.checks.pwned or {}, options.pwned)
-  else
-    options.checks.pwned = options.checks.pwned or {}
+  local merged = vim.tbl_deep_extend('force', {}, options.pwned or {}, options.checks.pwned or {})
+  options.pwned = merged
+  options.checks.pwned = merged
+end
+
+---Warn once when a cosmetic-only style is in effect, so it is not mistaken for
+---protective masking. Fires for style set via setup() opts OR a project file.
+---vim.notify_once dedupes by message, so it fires at most once per session.
+---@param options table
+local function warn_cosmetic_styles(options)
+  if options.style == 'scramble' then
+    vim.notify_once(
+      '[camouflage] style "scramble" is cosmetic, not protective: the mask is a '
+        .. "shuffle of the real characters and leaks the value's length and character set.",
+      vim.log.levels.WARN
+    )
   end
 end
 
@@ -311,6 +326,7 @@ function M.setup(opts)
   local project_config_opts = require('camouflage.project_config').load(effective_project_config)
   M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
   apply_legacy_aliases(M.options)
+  warn_cosmetic_styles(M.options)
 end
 
 ---Reload project config and rebuild effective options.
@@ -329,6 +345,7 @@ function M.reload_project_config()
 
   M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
   apply_legacy_aliases(M.options)
+  warn_cosmetic_styles(M.options)
   return true, status
 end
 
@@ -337,35 +354,59 @@ function M.get()
   return vim.tbl_isempty(M.options) and M.defaults or M.options
 end
 
+---Get the effective config table for a named check (e.g. 'pwned'), the
+---canonical accessor for the checks.* namespace. Always returns a table.
+---@param name string
+---@return table
+function M.get_check(name)
+  local checks = M.get().checks or {}
+  return checks[name] or {}
+end
+
+---Set a dotted config key. Returns whether the value was applied; warns (rather
+---than silently no-op'ing) when an intermediate path segment is missing or is
+---not a table.
 ---@param key string
 ---@param value any
+---@return boolean applied
 function M.set(key, value)
   local keys = vim.split(key, '.', { plain = true })
   local tbl = M.options
   for i = 1, #keys - 1 do
-    tbl = tbl[keys[i]]
-    if tbl == nil then
-      return
+    local nxt = tbl[keys[i]]
+    if type(nxt) ~= 'table' then
+      vim.notify(
+        string.format(
+          '[camouflage] config.set: invalid key path "%s" ("%s" is %s)',
+          key,
+          table.concat(vim.list_slice(keys, 1, i), '.'),
+          nxt == nil and 'nil' or type(nxt)
+        ),
+        vim.log.levels.WARN
+      )
+      return false
     end
+    tbl = nxt
   end
-  if tbl ~= nil then
-    local last_key = keys[#keys]
-    local old_value = tbl[last_key]
 
-    -- Only update and refresh if value actually changed
-    if old_value ~= value then
-      tbl[last_key] = value
+  local last_key = keys[#keys]
+  local old_value = tbl[last_key]
 
-      -- Hot reload: refresh all buffers when config changes
-      -- Use vim.schedule to avoid issues during startup
-      vim.schedule(function()
-        local ok, core = pcall(require, 'camouflage.core')
-        if ok and core.refresh_all then
-          core.refresh_all()
-        end
-      end)
-    end
+  -- Only update and refresh if value actually changed
+  if old_value ~= value then
+    tbl[last_key] = value
+
+    -- Hot reload: refresh all buffers when config changes
+    -- Use vim.schedule to avoid issues during startup
+    vim.schedule(function()
+      local ok, core = pcall(require, 'camouflage.core')
+      if ok and core.refresh_all then
+        core.refresh_all()
+      end
+    end)
   end
+
+  return true
 end
 
 ---@return boolean
@@ -393,6 +434,19 @@ function M.get_for_buffer(bufnr)
 
   -- Check if buffer is valid
   if not vim.api.nvim_buf_is_valid(bufnr) then
+    return base_config
+  end
+
+  -- Fast path: with no buffer-local overrides, return the shared config without
+  -- the deep copy below (this runs on every decoration pass).
+  local b = vim.b[bufnr]
+  if
+    b.camouflage_enabled == nil
+    and b.camouflage_style == nil
+    and b.camouflage_mask_char == nil
+    and b.camouflage_mask_length == nil
+    and b.camouflage_highlight_group == nil
+  then
     return base_config
   end
 

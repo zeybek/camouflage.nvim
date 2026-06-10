@@ -260,6 +260,10 @@ function M.parse(bufnr, lang, content)
 
   local root = trees[1]:root()
 
+  -- Compute line offsets ONCE, not per captured value: the old code re-split the
+  -- whole content and re-summed line lengths inside the loop (O(values x lines)).
+  local offsets = require('camouflage.offsets').from_content(content)
+
   local variables = {}
   local current_key = nil
   local current_key_text = nil
@@ -283,19 +287,9 @@ function M.parse(bufnr, lang, content)
       if M.is_value_type(lang, node_type) then
         local start_row, start_col, end_row, end_col = node:range()
 
-        -- Calculate byte offsets
-        local lines = vim.split(content, '\n', { plain = true })
-        local start_index = 0
-        for i = 1, start_row do
-          start_index = start_index + #lines[i] + 1
-        end
-        start_index = start_index + start_col
-
-        local end_index = 0
-        for i = 1, end_row do
-          end_index = end_index + #lines[i] + 1
-        end
-        end_index = end_index + end_col
+        -- Byte offsets via the precomputed line table (node rows are 0-based).
+        local start_index = offsets[start_row + 1] + start_col
+        local end_index = offsets[end_row + 1] + end_col
 
         -- Get actual value (remove quotes for strings)
         local value = node_text

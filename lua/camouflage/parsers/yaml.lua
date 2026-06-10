@@ -186,11 +186,17 @@ function M.process_line(line, line_num, line_start, key_stack, max_depth, includ
   end
 
   if parsed.has_value and parsed.value then
-    local value_offset = is_commented and line:find(parsed.value, line:find(':') + 1)
-      or parsed.value_offset
+    -- parse_line ran on line_content (the comment prefix stripped). Its
+    -- value_offset is a 1-based column within line_content, so shift it by the
+    -- stripped-prefix length to map back onto the original line. Computing this
+    -- arithmetically (instead of searching for parsed.value) avoids treating the
+    -- secret as a Lua pattern, which mis-anchored or aborted the parse on values
+    -- containing magic characters like '(' or '%'.
+    local prefix_len = is_commented and (#line - #line_content) or 0
+    local value_offset = parsed.value_offset
 
     if value_offset then
-      local value_start = line_start + value_offset - 1
+      local value_start = line_start + prefix_len + value_offset - 1
       local value_end = value_start + #parsed.value
 
       return {
@@ -231,7 +237,15 @@ end
 function M.parse_line(line)
   local trimmed = line:match('^%s*(.-)%s*$')
 
+  -- Strip leading block-sequence markers ('- ', possibly nested '- - ') so a
+  -- mapping inside a list item ('- password: x') is parsed. Offset math below
+  -- uses the original `line` (via line:find(':')), so stripping the prefix here
+  -- only affects the key match, not value positioning.
+  while trimmed:match('^%-%s+') do
+    trimmed = trimmed:gsub('^%-%s+', '', 1)
+  end
   if trimmed:match('^%-') then
+    -- bare '-', '-item', '---' etc.: not a 'key: value' mapping
     return nil
   end
 

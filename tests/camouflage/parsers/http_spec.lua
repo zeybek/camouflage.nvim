@@ -140,11 +140,14 @@ Authorization: Bearer {{api_key}}
     end)
 
     it('should skip empty values', function()
-      local content = [[
-@empty =
-@valid = value
-@also_empty =   
-]]
+      -- Built via concat so the intentional trailing spaces on the last line do
+      -- not show up as trailing whitespace inside a string literal (luacheck).
+      local content = table.concat({
+        '@empty =',
+        '@valid = value',
+        '@also_empty =' .. string.rep(' ', 3),
+        '',
+      }, '\n')
       local result = http_parser.parse(content)
 
       assert.equals(1, #result)
