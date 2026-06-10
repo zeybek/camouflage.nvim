@@ -4,6 +4,15 @@ local M = {}
 
 local DEFAULT_FILENAME = '.camouflage.yaml'
 
+-- Documented config keys whose default value is nil, so their type cannot be
+-- inferred from camouflage.config.defaults. Listed here with their expected Lua
+-- type so the loader accepts them instead of rejecting them as "unknown".
+---@type table<string, string>
+M.NULLABLE_KEYS = {
+  colors = 'table',
+  mask_length = 'number',
+}
+
 ---@class CamouflageProjectConfigStatus
 ---@field loaded boolean
 ---@field path string|nil
@@ -237,10 +246,28 @@ function M.load(opts)
     if key ~= 'version' then
       if key == 'project_config' then
         add_error('key "project_config" is reserved and cannot be set in project config file')
-      elseif defaults[key] == nil then
+      elseif defaults[key] ~= nil then
+        if has_compatible_type(value, defaults[key], key) then
+          sanitized[key] = value
+        end
+      elseif M.NULLABLE_KEYS[key] then
+        -- Documented keys whose default is nil (so type can't be inferred from
+        -- defaults); validate against the declared type instead of rejecting.
+        local expected = M.NULLABLE_KEYS[key]
+        if type(value) == expected then
+          sanitized[key] = value
+        else
+          add_error(
+            string.format(
+              'type mismatch for key "%s" (expected %s, got %s)',
+              key,
+              expected,
+              type(value)
+            )
+          )
+        end
+      else
         add_error(string.format('unknown project config key "%s"', key))
-      elseif has_compatible_type(value, defaults[key], key) then
-        sanitized[key] = value
       end
     end
   end
