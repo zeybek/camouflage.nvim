@@ -63,12 +63,19 @@ describe('camouflage.checks.badges', function()
       text = '[expires 2h]',
       hl_group = 'DiagnosticWarn',
     })
+    checks.set_result(bufnr, 0, 'weak_secret', {
+      severity = 'warning',
+      text = '[weak: short]',
+      hl_group = 'DiagnosticWarn',
+    })
     local mark = get_mark(bufnr, 0)
-    -- order: pwned first, separator, expiry second
-    assert.equals(3, #mark[4].virt_text)
+    -- order: pwned, weak_secret, expiry
+    assert.equals(5, #mark[4].virt_text)
     assert.equals('[PWNED]', mark[4].virt_text[1][1])
     assert.equals(' ', mark[4].virt_text[2][1])
-    assert.equals('[expires 2h]', mark[4].virt_text[3][1])
+    assert.equals('[weak: short]', mark[4].virt_text[3][1])
+    assert.equals(' ', mark[4].virt_text[4][1])
+    assert.equals('[expires 2h]', mark[4].virt_text[5][1])
     -- pwned has higher severity -> its sign wins
     -- Neovim pads single-char sign_text to width 2
     assert.equals('!', vim.trim(mark[4].sign_text))

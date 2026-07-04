@@ -367,6 +367,91 @@
           "description": "JWT expiry hint settings",
           "additionalProperties": true
         },
+        "weak_secret": {
+          "type": "object",
+          "description": "Offline weak-secret heuristic settings",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable the weak-secret quality check"
+            },
+            "min_length": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "General minimum length for weak-secret heuristics"
+            },
+            "min_sensitive_length": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum length for values under sensitive keys"
+            },
+            "entropy_threshold": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Shannon entropy threshold for token-like values"
+            },
+            "sensitive_key_patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Lua patterns identifying sensitive keys"
+            },
+            "ignored_key_patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Lua patterns for keys skipped by the check"
+            },
+            "ignored_value_patterns": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Lua patterns for values skipped by the check"
+            },
+            "common_values": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Common weak/default values"
+            },
+            "show_sign": {
+              "type": "boolean",
+              "description": "Show a sign column indicator"
+            },
+            "sign_text": {
+              "type": "string",
+              "description": "Sign column text"
+            },
+            "sign_hl": {
+              "type": "string",
+              "description": "Sign highlight group"
+            },
+            "show_virtual_text": {
+              "type": "boolean",
+              "description": "Show weak-secret badge virtual text"
+            },
+            "virtual_text_format": {
+              "type": "string",
+              "description": "Badge text format with one reason placeholder"
+            },
+            "virtual_text_hl": {
+              "type": "string",
+              "description": "Badge highlight group"
+            },
+            "line_hl": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Whole-line highlight group"
+            }
+          }
+        },
         "badges": {
           "type": "object",
           "description": "Badge renderer settings",

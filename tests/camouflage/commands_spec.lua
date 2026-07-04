@@ -32,6 +32,11 @@ describe('camouflage.commands', function()
     assert.is_not_nil(commands['CamouflageAudit'])
   end)
 
+  it('should create CamouflageWeakSecretToggle command', function()
+    local commands = vim.api.nvim_get_commands({})
+    assert.is_not_nil(commands['CamouflageWeakSecretToggle'])
+  end)
+
   it('should create CamouflageYank command', function()
     local commands = vim.api.nvim_get_commands({})
     assert.is_not_nil(commands['CamouflageYank'])
@@ -70,6 +75,28 @@ describe('camouflage.commands', function()
       end)
 
       vim.notify = original_notify
+    end)
+  end)
+
+  describe('CamouflageWeakSecretToggle', function()
+    it('should toggle enabled state and clear weak-secret badges when disabled', function()
+      local config = require('camouflage.config')
+      local checks = require('camouflage.checks')
+      local store = require('camouflage.checks.store')
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'PASSWORD=password' })
+      checks.set_result(bufnr, 0, 'weak_secret', { severity = 'warning', text = '[weak: default]' })
+
+      local original_notify = vim.notify
+      vim.notify = function() end
+
+      vim.cmd('CamouflageWeakSecretToggle')
+
+      vim.notify = original_notify
+
+      assert.is_false(config.get_check('weak_secret').enabled)
+      assert.is_nil(store.get(bufnr, 0, 'weak_secret'))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
   end)
 

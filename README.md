@@ -23,6 +23,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Reveal & Yank**: Temporarily reveal or copy masked values
 - **Follow Cursor Mode**: Auto-reveal current line as you navigate
 - **Workspace Audit**: Scan supported files into quickfix/location list without exposing values
+- **Weak Secret Check**: Offline badges for obvious defaults, placeholders, short values, repeated values, and low-entropy tokens
 - **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+ with `vim.system`, plus `curl`)
 - **JWT Expiry Hints**: Decode `exp` claim and show "expires in 2h" badges
 - **Hot Reload**: Config changes apply immediately
@@ -143,6 +144,16 @@ require('camouflage').setup({
     destination = 'quickfix', -- 'quickfix' | 'loclist'
   },
 
+  checks = {
+    weak_secret = {
+      enabled = true,
+      min_sensitive_length = 12,
+      entropy_threshold = 3.0,
+      ignored_key_patterns = {},
+      ignored_value_patterns = {},
+    },
+  },
+
   reveal = {
     follow_cursor = false,   -- Auto-reveal current line
   },
@@ -173,6 +184,7 @@ require('camouflage').setup({
 | `:CamouflageRefresh` | Refresh decorations |
 | `:CamouflageAudit [path]` | Scan workspace/path and populate quickfix |
 | `:CamouflageAudit! [path]` | Scan workspace/path and populate location list |
+| `:CamouflageWeakSecretToggle` | Toggle offline weak-secret badges |
 | `:CamouflagePwnedCheck` | Check if value under cursor is pwned |
 | `:CamouflagePwnedCheckBuffer` | Check all values in buffer |
 | `:CamouflageExpiryToggle` | Toggle JWT expiry check on/off |
@@ -186,6 +198,12 @@ require('camouflage').setup({
 `:CamouflageAudit [path]` scans supported files under the current project root or optional path using the same parser registry as live masking. Results are written to quickfix by default; `:CamouflageAudit! [path]` writes to the current window's location list.
 
 Audit results include file, line, column, parser, key, and value length metadata, but never the plaintext value. The audit engine does not run HIBP or any other network check.
+
+## Weak Secret Check
+
+The weak-secret check runs locally during masking and flags high-confidence weak values such as `password`, placeholders, repeated characters, short sensitive values, simple sequences, and low-entropy token-like strings. It uses key context, so benign values like `PORT=5432` are not treated like passwords.
+
+Badges render through the same central badge pipeline as HIBP and JWT expiry. The result text and metadata include the reason, key, and value length, but never the plaintext value. Use `checks.weak_secret.ignored_key_patterns` or `checks.weak_secret.ignored_value_patterns` to suppress noisy project-specific cases.
 
 ## Supported File Formats
 

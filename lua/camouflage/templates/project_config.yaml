@@ -164,6 +164,47 @@ audit:
   notify: true
 
 # =============================================================================
+# CHECKS
+# =============================================================================
+
+checks:
+  # Offline weak-secret heuristic badges.
+  # Privacy: values are checked locally only and never sent over the network.
+  weak_secret:
+    enabled: true
+    min_length: 8
+    min_sensitive_length: 12
+    entropy_threshold: 3.0
+    sensitive_key_patterns:
+      - password
+      - passwd
+      - passphrase
+      - secret
+      - token
+      - api[_%-]*key
+      - access[_%-]*key
+      - private[_%-]*key
+      - client[_%-]*secret
+      - auth[_%-]*token
+      - credential
+    ignored_key_patterns: []
+    ignored_value_patterns: []
+    common_values:
+      - password
+      - password123
+      - secret
+      - changeme
+      - admin
+      - default
+      - test
+      - qwerty
+    show_sign: false
+    show_virtual_text: true
+    virtual_text_format: '[weak: %s]'
+    virtual_text_hl: DiagnosticWarn
+    # line_hl: CamouflageWeakSecret
+
+# =============================================================================
 # YANK (COPY) FEATURE
 # =============================================================================
 

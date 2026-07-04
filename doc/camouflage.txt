@@ -22,10 +22,11 @@ CONTENTS                                                  *camouflage-contents*
  13. Integrations ............................ |camouflage-integrations|
  14. Project Config .......................... |camouflage-project-config|
  15. Workspace Audit ......................... |camouflage-audit|
- 16. Have I Been Pwned ....................... |camouflage-pwned|
- 17. JWT Expiry Hints ........................ |camouflage-expiry|
- 18. Custom Queries .......................... |camouflage-custom-queries|
- 19. Troubleshooting ......................... |camouflage-troubleshooting|
+ 16. Weak Secret Check ....................... |camouflage-weak-secret|
+ 17. Have I Been Pwned ....................... |camouflage-pwned|
+ 18. JWT Expiry Hints ........................ |camouflage-expiry|
+ 19. Custom Queries .......................... |camouflage-custom-queries|
+ 20. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -41,6 +42,7 @@ Features:
 - Multiple masking styles: stars, dotted, text, scramble
 - Have I Been Pwned integration for password breach checking
 - Workspace audit into quickfix/location list
+- Offline weak-secret quality badges
 - Buffer-local configuration overrides
 - Telescope and Snacks.nvim preview integration
 - Zero file modification
@@ -190,6 +192,17 @@ Call the setup function with your options: >lua
       notify = true,              -- Notify after completion
     },
 
+    -- Offline weak-secret heuristics
+    checks = {
+      weak_secret = {
+        enabled = true,
+        min_sensitive_length = 12,
+        entropy_threshold = 3.0,
+        ignored_key_patterns = {},
+        ignored_value_patterns = {},
+      },
+    },
+
     -- Have I Been Pwned (requires Neovim 0.10+ with vim.system, plus curl)
     pwned = {
       enabled = true,             -- Enable the feature
@@ -314,6 +327,10 @@ COMMANDS                                                  *camouflage-commands*
   Results are written to quickfix by default. Use `!` to write to the current
   window's location list. Audit entries include file, line, column, parser, and
   key metadata, but never plaintext values.
+
+                                             *:CamouflageWeakSecretToggle*
+:CamouflageWeakSecretToggle
+  Toggle the offline weak-secret quality check on/off.
 
                                                          *:CamouflageParsers*
 :CamouflageParsers
@@ -1035,7 +1052,7 @@ Project config files support most configuration options:
 - style, mask_char, mask_length, hidden_text
 - highlight_group, colors
 - patterns, parsers
-- integrations, yank, reveal, audit, pwned
+- integrations, yank, reveal, audit, pwned, checks
 
 Note: The `project_config` key itself cannot be set in project config files.
 
@@ -1136,6 +1153,74 @@ API ~
   local result = require('camouflage.audit').run({ root = vim.fn.getcwd() })
   -- result.findings contains redacted metadata only, never `value`.
 <
+
+==============================================================================
+WEAK SECRET CHECK                                    *camouflage-weak-secret*
+
+The weak-secret check is an offline, deterministic quality hint for masked
+values. It flags high-confidence weak values such as common defaults,
+placeholders, repeated characters, simple sequences, short values under
+sensitive keys, and low-entropy token-like strings.
+
+It uses key context to reduce noise. For example, `PASSWORD=password` is
+flagged by default, while `PORT=5432` is ignored.
+
+Privacy ~
+                                             *camouflage-weak-secret-privacy*
+The check never performs network I/O and never stores plaintext values in check
+results. Badge text contains only the reason, such as `[weak: default]`, and
+result metadata contains key, value length, reason, and optional entropy score.
+
+Configuration ~
+                                              *camouflage-weak-secret-config*
+>lua
+  require('camouflage').setup({
+    checks = {
+      weak_secret = {
+        enabled = true,
+        min_length = 8,
+        min_sensitive_length = 12,
+        entropy_threshold = 3.0,
+        sensitive_key_patterns = {
+          'password',
+          'passwd',
+          'passphrase',
+          'secret',
+          'token',
+          'api[_%-]*key',
+          'access[_%-]*key',
+          'private[_%-]*key',
+          'client[_%-]*secret',
+          'auth[_%-]*token',
+          'credential',
+        },
+        ignored_key_patterns = {},
+        ignored_value_patterns = {},
+        common_values = { 'password', 'password123', 'secret', 'changeme' },
+        show_sign = false,
+        show_virtual_text = true,
+        virtual_text_format = '[weak: %s]',
+        virtual_text_hl = 'DiagnosticWarn',
+        line_hl = nil,
+      },
+    },
+  })
+<
+
+Patterns are Lua patterns. Invalid patterns are skipped with a warning so
+masking and decoration continue.
+
+Commands ~
+                                             *camouflage-weak-secret-commands*
+:CamouflageWeakSecretToggle
+  Toggle weak-secret badges on/off. Disabling clears existing weak-secret
+  results from loaded buffers.
+
+False-positive control ~
+                                      *camouflage-weak-secret-false-positives*
+Use `ignored_key_patterns` for noisy keys and `ignored_value_patterns` for
+project-specific values that are intentionally weak placeholders. Suppression
+does not affect masking, HIBP, or JWT expiry checks.
 
 ==============================================================================
 HAVE I BEEN PWNED                                           *camouflage-pwned*
