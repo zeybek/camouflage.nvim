@@ -21,6 +21,9 @@ local listener_id_variable = nil
 ---@type table<string, boolean>
 local warned_patterns = {}
 
+---@type table<table, table<string, boolean>>
+local common_value_cache = setmetatable({}, { __mode = 'k' })
+
 local DEFAULT_COMMON_VALUES = {
   'password',
   'password1',
@@ -162,6 +165,10 @@ end
 ---@param values string[]|nil
 ---@return table<string, boolean>
 local function to_lookup(values)
+  if type(values) == 'table' and common_value_cache[values] then
+    return common_value_cache[values]
+  end
+
   local lookup = {}
   if type(values) == 'table' then
     for _, value in ipairs(values) do
@@ -169,6 +176,10 @@ local function to_lookup(values)
         lookup[normalize_value(value)] = true
       end
     end
+  end
+
+  if type(values) == 'table' then
+    common_value_cache[values] = lookup
   end
   return lookup
 end
