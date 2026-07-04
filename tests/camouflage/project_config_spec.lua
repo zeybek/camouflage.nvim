@@ -1,7 +1,10 @@
 describe('camouflage.project_config', function()
+  local plugin_root = vim.fn.getcwd()
   local project_config
   local config
   local original_cwd
+
+  package.path = plugin_root .. '/lua/?.lua;' .. plugin_root .. '/lua/?/init.lua;' .. package.path
 
   local function clear_camouflage_modules()
     for name, _ in pairs(package.loaded) do
@@ -159,5 +162,29 @@ describe('camouflage.project_config', function()
     assert.equals(2, #patterns)
     assert.equals('json', patterns[1].parser)
     assert.equals('yaml', patterns[2].parser)
+  end)
+
+  it('should load audit configuration', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'audit:',
+      "  ignore_patterns: ['tmp/**', 'fixtures/**']",
+      '  max_files_per_chunk: 2',
+      '  destination: loclist',
+      '  open: false',
+      '  notify: false',
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local audit = config.get().audit
+
+    assert.same({ 'tmp/**', 'fixtures/**' }, audit.ignore_patterns)
+    assert.equals(2, audit.max_files_per_chunk)
+    assert.equals('loclist', audit.destination)
+    assert.is_false(audit.open)
+    assert.is_false(audit.notify)
   end)
 end)

@@ -102,6 +102,13 @@ local M = {}
 ---@field separator? string Text inserted between adjacent badges (default: ' ')
 ---@field separator_hl? string Highlight for the separator (default: 'Comment')
 
+---@class CamouflageAuditConfig
+---@field ignore_patterns? string[] Root-relative globs or basename globs skipped by workspace audit
+---@field max_files_per_chunk? integer Number of discovered files processed per scheduled async chunk
+---@field destination? string "quickfix" | "loclist" (default: "quickfix")
+---@field open? boolean Open quickfix/location-list after findings are written
+---@field notify? boolean Show audit completion notifications
+
 ---@class CamouflageChecksConfig
 ---@field badges? CamouflageBadgesConfig
 ---@field pwned? CamouflagePwnedConfig
@@ -139,6 +146,7 @@ local M = {}
 ---@field pwned? CamouflagePwnedConfig Pwned passwords check configuration
 ---@field custom_patterns? CamouflageCustomPatternConfig[] Custom patterns for unsupported file types
 ---@field project_config? CamouflageProjectConfigLoaderConfig Repo-level project config loading
+---@field audit? CamouflageAuditConfig Workspace audit configuration
 ---@field checks? CamouflageChecksConfig Per-check configuration (pwned, expiry, ...)
 
 ---@type CamouflageConfig
@@ -217,6 +225,13 @@ M.defaults = {
     line_hl = 'CamouflagePwned',
   },
   custom_patterns = {},
+  audit = {
+    ignore_patterns = { '.git', '.git/**', 'node_modules', 'node_modules/**' },
+    max_files_per_chunk = 50,
+    destination = 'quickfix',
+    open = true,
+    notify = true,
+  },
   checks = {
     badges = {
       position = 'right_align',

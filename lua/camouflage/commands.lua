@@ -69,6 +69,42 @@ function M.setup()
     vim.notify('[camouflage] refreshed', vim.log.levels.INFO)
   end, { desc = 'Refresh Camouflage decorations' })
 
+  vim.api.nvim_create_user_command('CamouflageAudit', function(opts)
+    local audit = require('camouflage.audit')
+    local cfg = require('camouflage.config').get().audit or {}
+    local destination = opts.bang and 'loclist' or (cfg.destination or 'quickfix')
+
+    audit.run({
+      path = opts.args ~= '' and opts.args or nil,
+      async = true,
+      destination = destination,
+      on_complete = function(result)
+        audit.set_list(result, {
+          destination = destination,
+          open = cfg.open ~= false,
+        })
+
+        if cfg.notify ~= false then
+          if #result.findings == 0 then
+            vim.notify('[camouflage] audit found no masked values', vim.log.levels.INFO)
+          else
+            local suffix = #result.errors > 0 and string.format(' (%d errors)', #result.errors)
+              or ''
+            vim.notify(
+              string.format('[camouflage] audit found %d masked values%s', #result.findings, suffix),
+              vim.log.levels.INFO
+            )
+          end
+        end
+      end,
+    })
+  end, {
+    desc = 'Audit workspace for masked values',
+    bang = true,
+    nargs = '?',
+    complete = 'file',
+  })
+
   vim.api.nvim_create_user_command('CamouflageStatus', function()
     local camouflage = require('camouflage')
     local state = require('camouflage.state')

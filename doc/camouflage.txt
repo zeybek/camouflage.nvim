@@ -21,10 +21,11 @@ CONTENTS                                                  *camouflage-contents*
  12. Styles .................................. |camouflage-styles|
  13. Integrations ............................ |camouflage-integrations|
  14. Project Config .......................... |camouflage-project-config|
- 15. Have I Been Pwned ....................... |camouflage-pwned|
- 16. JWT Expiry Hints ........................ |camouflage-expiry|
- 17. Custom Queries .......................... |camouflage-custom-queries|
- 18. Troubleshooting ......................... |camouflage-troubleshooting|
+ 15. Workspace Audit ......................... |camouflage-audit|
+ 16. Have I Been Pwned ....................... |camouflage-pwned|
+ 17. JWT Expiry Hints ........................ |camouflage-expiry|
+ 18. Custom Queries .......................... |camouflage-custom-queries|
+ 19. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -39,6 +40,7 @@ Features:
 - Nested key support for JSON, YAML, and XML
 - Multiple masking styles: stars, dotted, text, scramble
 - Have I Been Pwned integration for password breach checking
+- Workspace audit into quickfix/location list
 - Buffer-local configuration overrides
 - Telescope and Snacks.nvim preview integration
 - Zero file modification
@@ -179,6 +181,15 @@ Call the setup function with your options: >lua
       },
     },
 
+    -- Workspace audit
+    audit = {
+      ignore_patterns = { '.git/**', 'node_modules/**' },
+      max_files_per_chunk = 50,
+      destination = 'quickfix',   -- 'quickfix' | 'loclist'
+      open = true,                -- Open list after findings
+      notify = true,              -- Notify after completion
+    },
+
     -- Have I Been Pwned (requires Neovim 0.10+ with vim.system, plus curl)
     pwned = {
       enabled = true,             -- Enable the feature
@@ -270,6 +281,16 @@ patterns ~
     File patterns and their associated parsers.
     See |camouflage-formats| for default patterns.
 
+audit ~
+    Type: `table`
+    Workspace audit configuration. See |camouflage-audit|.
+    Fields:
+    - `ignore_patterns`: root-relative or basename globs skipped by audit
+    - `max_files_per_chunk`: async chunk size for command scans
+    - `destination`: `'quickfix'` or `'loclist'`
+    - `open`: open the list after findings are written
+    - `notify`: show completion notifications
+
 ==============================================================================
 COMMANDS                                                  *camouflage-commands*
 
@@ -286,6 +307,13 @@ COMMANDS                                                  *camouflage-commands*
                                                          *:CamouflageRefresh*
 :CamouflageRefresh
   Refresh decorations for all visible buffers.
+
+                                                        *:CamouflageAudit*
+:CamouflageAudit[!] [path]
+  Scan supported files under the current project root or optional [path].
+  Results are written to quickfix by default. Use `!` to write to the current
+  window's location list. Audit entries include file, line, column, parser, and
+  key metadata, but never plaintext values.
 
                                                          *:CamouflageParsers*
 :CamouflageParsers
@@ -631,6 +659,7 @@ Other API functions: ~
 - `camouflage.unregister_parser(name)` — remove a parser (builtins allowed)
 - `camouflage.list_parsers()` — list all registered parsers
 - `camouflage.get_parser(name)` — fetch a parser by name
+- `require('camouflage.audit').run(opts)` — run a redacted workspace audit
 - `:CamouflageParsers` — inspect current registry
 
 Runtime registrations that include `file_patterns` refresh automatic masking
@@ -1006,7 +1035,7 @@ Project config files support most configuration options:
 - style, mask_char, mask_length, hidden_text
 - highlight_group, colors
 - patterns, parsers
-- integrations, yank, reveal, pwned
+- integrations, yank, reveal, audit, pwned
 
 Note: The `project_config` key itself cannot be set in project config files.
 
@@ -1058,6 +1087,54 @@ API ~
   -- Get watcher status
   local watch_status = camouflage.project_config_watch_status()
   -- { enabled = true, backend = 'auto', root_count = 1, roots = {...} }
+<
+
+==============================================================================
+WORKSPACE AUDIT                                           *camouflage-audit*
+
+Workspace audit scans supported files under a project root or explicit path
+using the same parser registry as live masking. It does not create buffers,
+apply extmarks, run hooks, or call network checks.
+
+Commands ~
+                                                 *camouflage-audit-commands*
+:CamouflageAudit [path]      Scan into quickfix
+:CamouflageAudit! [path]     Scan into the current window's location list
+
+If [path] is omitted, camouflage resolves the current project root from the
+nearest `.camouflage.yaml`, nearest `.git` directory, or current working
+directory.
+
+Privacy ~
+                                                  *camouflage-audit-privacy*
+Audit findings include file path, line, column, parser name, key, nested or
+commented metadata, and value length. Plaintext values are stripped before
+results are returned or written to quickfix/location-list. HIBP and other
+network checks are not run during audit.
+
+Configuration ~
+                                                   *camouflage-audit-config*
+>lua
+  require('camouflage').setup({
+    audit = {
+      ignore_patterns = { '.git/**', 'node_modules/**' },
+      max_files_per_chunk = 50,
+      destination = 'quickfix', -- 'quickfix' | 'loclist'
+      open = true,
+      notify = true,
+    },
+  })
+<
+
+`ignore_patterns` are root-relative or basename globs. They are not full
+`.gitignore` semantics; use explicit patterns for directories you want audit
+to skip.
+
+API ~
+                                                      *camouflage-audit-api*
+>lua
+  local result = require('camouflage.audit').run({ root = vim.fn.getcwd() })
+  -- result.findings contains redacted metadata only, never `value`.
 <
 
 ==============================================================================
