@@ -9,10 +9,10 @@ local M = {}
 
 local API_URL = 'https://api.pwnedpasswords.com/range/'
 
----Check if curl is available
+---Check if HIBP network checks can run in this Neovim process.
 ---@return boolean
 function M.is_available()
-  return vim.fn.executable('curl') == 1
+  return type(vim.system) == 'function' and vim.fn.executable('curl') == 1
 end
 
 ---@alias PwnedSuffixes table<string, number> Map of hash suffix to breach count
@@ -45,7 +45,7 @@ function M.check_prefix(prefix, callback)
   local wrapped_callback = vim.schedule_wrap(callback)
 
   if not M.is_available() then
-    wrapped_callback('curl not available', nil)
+    wrapped_callback('HIBP check unavailable (requires vim.system and curl)', nil)
     return
   end
 

@@ -20,6 +20,8 @@ local check = require('camouflage.pwned.check')
 local ui = require('camouflage.pwned.ui')
 local cache = require('camouflage.pwned.cache')
 
+local UNAVAILABLE_MESSAGE = '[camouflage] HIBP check not available (requires vim.system and curl)'
+
 ---Get variables for pwned checking
 ---If camouflage has parsed variables, use those (performance optimization)
 ---Otherwise, parse the file ourselves (for when camouflage is disabled)
@@ -116,7 +118,7 @@ end
 ---@param callback fun(result: PwnedCheckResult|nil)|nil Optional callback
 function M.check_current(callback)
   if not M.is_available() then
-    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
+    vim.notify(UNAVAILABLE_MESSAGE, vim.log.levels.WARN)
     if callback then
       callback(nil)
     end
@@ -164,7 +166,7 @@ end
 ---@param callback fun(results: table<string, PwnedCheckResult>)|nil Optional callback
 function M.check_line(callback)
   if not M.is_available() then
-    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
+    vim.notify(UNAVAILABLE_MESSAGE, vim.log.levels.WARN)
     if callback then
       callback({})
     end
@@ -216,7 +218,7 @@ end
 ---@param callback fun(results: table<string, PwnedCheckResult>)|nil Optional callback
 function M.check_buffer(callback)
   if not M.is_available() then
-    vim.notify('[camouflage] HIBP check not available (curl not found)', vim.log.levels.WARN)
+    vim.notify(UNAVAILABLE_MESSAGE, vim.log.levels.WARN)
     if callback then
       callback({})
     end

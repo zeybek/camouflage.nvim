@@ -179,7 +179,7 @@ Call the setup function with your options: >lua
       },
     },
 
-    -- Have I Been Pwned (requires Neovim 0.10+)
+    -- Have I Been Pwned (requires Neovim 0.10+ with vim.system, plus curl)
     pwned = {
       enabled = true,             -- Enable the feature
       auto_check = true,          -- Check on BufEnter
@@ -304,7 +304,8 @@ COMMANDS                                                  *camouflage-commands*
                                                       *:CamouflagePwnedCheck*
 :CamouflagePwnedCheck
   Check if the value under cursor has been found in data breaches
-  using the Have I Been Pwned API. Requires Neovim 0.10+.
+  using the Have I Been Pwned API. Requires Neovim 0.10+ with `vim.system`
+  and `curl`.
 
                                                   *:CamouflagePwnedCheckLine*
 :CamouflagePwnedCheckLine
@@ -422,8 +423,8 @@ camouflage.pwned_clear()
 
                                                *camouflage.pwned_is_available()*
 camouflage.pwned_is_available()
-  Returns `true` if the pwned feature is available (Neovim 0.10+ and
-  required CLI tools are installed).
+  Returns `true` if the pwned feature is available (`vim.system` exists and
+  `curl` is installed).
 
                                           *camouflage.project_config_status()*
 camouflage.project_config_status()
@@ -632,6 +633,11 @@ Other API functions: ~
 - `camouflage.get_parser(name)` — fetch a parser by name
 - `:CamouflageParsers` — inspect current registry
 
+Runtime registrations that include `file_patterns` refresh automatic masking
+immediately after registration. Existing matching buffers are re-checked, and
+future BufEnter/TextChanged events use the new patterns without restarting
+Neovim.
+
 ==============================================================================
 SUPPORTED FORMATS                                          *camouflage-formats*
 
@@ -709,6 +715,8 @@ Netrc files ~
 XML files ~
   Extensions: .xml
   Supports element content and attributes
+  TreeSitter-backed attribute keys use `parent.path@attribute` so attributes
+  and child elements with the same name stay distinct.
   Useful for Maven settings.xml, pom.xml, Spring configs
   Example: >xml
     <settings>
@@ -1062,7 +1070,8 @@ in data breaches.
 Requirements ~
 - Neovim >= 0.10.0 (uses `vim.system`)
 - `curl` for API requests
-- `sha1sum` or `openssl` for password hashing
+- Password hashing is done in-process; no `sha1sum` or `openssl` dependency is
+  required.
 
 Privacy ~
                                                    *camouflage-pwned-privacy*

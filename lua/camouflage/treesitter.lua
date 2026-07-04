@@ -229,6 +229,174 @@ function M.is_value_type(lang, node_type)
   return false
 end
 
+---@param text string|nil
+---@return string|nil
+local function normalize_key_text(text)
+  if type(text) ~= 'string' then
+    return nil
+  end
+  text = text:match('^%s*(.-)%s*$')
+  if text:match('^".*"$') or text:match("^'.*'$") then
+    text = text:sub(2, -2)
+  end
+  return text
+end
+
+---@param node userdata
+---@param field string
+---@return userdata|nil
+local function first_field_node(node, field)
+  local ok, nodes = pcall(function()
+    return node:field(field)
+  end)
+  if ok and nodes and nodes[1] then
+    return nodes[1]
+  end
+  return nil
+end
+
+---@param node userdata
+---@param node_type string
+---@return userdata|nil
+local function first_child_of_type(node, node_type)
+  for i = 0, node:child_count() - 1 do
+    local child = node:child(i)
+    if child and child:type() == node_type then
+      return child
+    end
+  end
+  return nil
+end
+
+---@param pair userdata
+---@param bufnr number
+---@return string|nil
+local function pair_key_text(pair, bufnr)
+  local key_node = first_field_node(pair, 'key')
+  if not key_node then
+    return nil
+  end
+  return normalize_key_text(vim.treesitter.get_node_text(key_node, bufnr))
+end
+
+---@param lang string
+---@param key_node userdata
+---@param bufnr number
+---@return string|nil key_path
+---@return boolean is_nested
+local function derive_pair_key_path(lang, key_node, bufnr)
+  if lang ~= 'json' and lang ~= 'yaml' then
+    return nil, false
+  end
+
+  local pair_types = lang == 'json' and { pair = true }
+    or { block_mapping_pair = true, flow_pair = true }
+
+  local parts = {}
+  local node = key_node
+  while node do
+    if pair_types[node:type()] then
+      local key = pair_key_text(node, bufnr)
+      if key and key ~= '' then
+        table.insert(parts, 1, key)
+      end
+    end
+    node = node:parent()
+  end
+
+  if #parts == 0 then
+    return nil, false
+  end
+  return table.concat(parts, '.'), #parts > 1
+end
+
+---@param element userdata
+---@param bufnr number
+---@return string|nil
+local function xml_element_name(element, bufnr)
+  local stag = first_child_of_type(element, 'STag')
+  if not stag then
+    return nil
+  end
+  local name = first_child_of_type(stag, 'Name')
+  if not name then
+    return nil
+  end
+  return normalize_key_text(vim.treesitter.get_node_text(name, bufnr))
+end
+
+---@param node userdata
+---@return userdata|nil
+local function xml_enclosing_element(node)
+  while node do
+    if node:type() == 'element' then
+      return node
+    end
+    node = node:parent()
+  end
+  return nil
+end
+
+---@param element userdata
+---@param bufnr number
+---@return string[]
+local function xml_element_path(element, bufnr)
+  local parts = {}
+  local node = element
+  while node do
+    if node:type() == 'element' then
+      local name = xml_element_name(node, bufnr)
+      if name and name ~= '' then
+        table.insert(parts, 1, name)
+      end
+    end
+    node = node:parent()
+  end
+  return parts
+end
+
+---@param key_node userdata
+---@param key_text string
+---@param bufnr number
+---@return string|nil key_path
+---@return boolean is_nested
+local function derive_xml_key_path(key_node, key_text, bufnr)
+  local element = xml_enclosing_element(key_node)
+  if not element then
+    return nil, false
+  end
+
+  local parts = xml_element_path(element, bufnr)
+  local parent = key_node:parent()
+  if parent and parent:type() == 'Attribute' then
+    if #parts == 0 then
+      return key_text, false
+    end
+    return table.concat(parts, '.') .. '@' .. key_text, true
+  end
+
+  if #parts == 0 then
+    return nil, false
+  end
+  return table.concat(parts, '.'), #parts > 1
+end
+
+---@param lang string
+---@param key_node userdata
+---@param fallback_key string
+---@param bufnr number
+---@return string key_path
+---@return boolean is_nested
+local function derive_key_path(lang, key_node, fallback_key, bufnr)
+  local key_path, is_nested
+  if lang == 'json' or lang == 'yaml' then
+    key_path, is_nested = derive_pair_key_path(lang, key_node, bufnr)
+  elseif lang == 'xml' then
+    key_path, is_nested = derive_xml_key_path(key_node, fallback_key, bufnr)
+  end
+  return key_path or fallback_key, is_nested == true
+end
+
 ---Parse a buffer using TreeSitter and extract key-value pairs
 ---@param bufnr number Buffer number
 ---@param lang string Language name
@@ -276,10 +444,7 @@ function M.parse(bufnr, lang, content)
       -- Store key for next value
       current_key = node
       current_key_text = node_text
-      -- Remove quotes from JSON keys
-      if lang == 'json' and current_key_text:match('^".*"$') then
-        current_key_text = current_key_text:sub(2, -2)
-      end
+      current_key_text = normalize_key_text(current_key_text)
     elseif capture_name == 'value' and current_key then
       local node_type = node:type()
 
@@ -316,13 +481,14 @@ function M.parse(bufnr, lang, content)
 
         -- Skip empty values
         if value ~= '' and not value:match('^%s*$') then
+          local key_path, is_nested = derive_key_path(lang, current_key, current_key_text, bufnr)
           table.insert(variables, {
-            key = current_key_text,
+            key = key_path,
             value = value,
             start_index = start_index,
             end_index = end_index,
             line_number = start_row,
-            is_nested = false, -- TODO: detect nesting
+            is_nested = is_nested,
             is_commented = false,
           })
         end

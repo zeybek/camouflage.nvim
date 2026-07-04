@@ -22,7 +22,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
 - **Reveal & Yank**: Temporarily reveal or copy masked values
 - **Follow Cursor Mode**: Auto-reveal current line as you navigate
-- **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+)
+- **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+ with `vim.system`, plus `curl`)
 - **JWT Expiry Hints**: Decode `exp` claim and show "expires in 2h" badges
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
@@ -189,6 +189,9 @@ require('camouflage').setup({
 | Dockerfile | `Dockerfile`, `Containerfile`, `*.dockerfile` | No |
 
 For unsupported formats, you can define [custom patterns](https://github.com/zeybek/camouflage.nvim/wiki/Custom-Patterns).
+Runtime parser registrations with `file_patterns` are picked up by automatic masking immediately after registration.
+
+When TreeSitter is available, JSON/YAML/XML nested keys are reported with their full path. XML attributes use `parent.path@attribute` so attributes and child elements with the same name stay distinct.
 
 ## Documentation
 

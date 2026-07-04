@@ -11,6 +11,16 @@ end
 describe('camouflage.pwned', function()
   local pwned
 
+  local function with_system_unavailable(fn)
+    local original_system = vim.system
+    vim.system = nil
+    local ok, err = pcall(fn)
+    vim.system = original_system
+    if not ok then
+      error(err, 0)
+    end
+  end
+
   before_each(function()
     pwned = require('camouflage.pwned')
   end)
@@ -30,8 +40,40 @@ describe('camouflage.pwned', function()
     end)
 
     it('should return true when dependencies are met', function()
-      -- Hashing is in-process now; the only remaining dependency is curl.
+      -- Hashing is in-process; network checks need curl and vim.system.
       assert.is_true(pwned.is_available())
+    end)
+
+    it('returns false when vim.system is unavailable', function()
+      with_system_unavailable(function()
+        assert.is_false(pwned.is_available())
+      end)
+    end)
+  end)
+
+  describe('unavailable runtime', function()
+    it('public check entrypoints exit through callbacks without throwing', function()
+      with_system_unavailable(function()
+        local current_result = 'unset'
+        local line_result = 'unset'
+        local buffer_result = 'unset'
+
+        assert.has_no.errors(function()
+          pwned.check_current(function(result)
+            current_result = result
+          end)
+          pwned.check_line(function(results)
+            line_result = results
+          end)
+          pwned.check_buffer(function(results)
+            buffer_result = results
+          end)
+        end)
+
+        assert.is_nil(current_result)
+        assert.same({}, line_result)
+        assert.same({}, buffer_result)
+      end)
     end)
   end)
 
