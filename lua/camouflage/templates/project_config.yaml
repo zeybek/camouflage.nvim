@@ -143,6 +143,27 @@ integrations:
     disable_in_masked: true
 
 # =============================================================================
+# WORKSPACE AUDIT
+# =============================================================================
+
+# Configuration for :CamouflageAudit
+audit:
+  # Root-relative or basename globs skipped by workspace audit
+  ignore_patterns: ['.git', '.git/**', 'node_modules', 'node_modules/**']
+
+  # Number of files processed per scheduled command chunk
+  max_files_per_chunk: 50
+
+  # Default list target: 'quickfix' or 'loclist'
+  destination: quickfix
+
+  # Open quickfix/location-list after findings are written
+  open: true
+
+  # Show audit completion notifications
+  notify: true
+
+# =============================================================================
 # YANK (COPY) FEATURE
 # =============================================================================
 

@@ -218,6 +218,41 @@
         }
       }
     },
+    "audit": {
+      "type": "object",
+      "description": "Workspace audit configuration",
+      "additionalProperties": false,
+      "properties": {
+        "ignore_patterns": {
+          "type": "array",
+          "description": "Root-relative or basename globs skipped by workspace audit",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_files_per_chunk": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of files processed per scheduled audit chunk"
+        },
+        "destination": {
+          "type": "string",
+          "enum": [
+            "quickfix",
+            "loclist"
+          ],
+          "description": "Default list target for audit command results"
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Open quickfix/location-list after findings are written"
+        },
+        "notify": {
+          "type": "boolean",
+          "description": "Show audit completion notifications"
+        }
+      }
+    },
     "yank": {
       "type": "object",
       "description": "Configuration for copying unmasked values",

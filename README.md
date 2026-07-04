@@ -22,6 +22,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
 - **Reveal & Yank**: Temporarily reveal or copy masked values
 - **Follow Cursor Mode**: Auto-reveal current line as you navigate
+- **Workspace Audit**: Scan supported files into quickfix/location list without exposing values
 - **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+ with `vim.system`, plus `curl`)
 - **JWT Expiry Hints**: Decode `exp` claim and show "expires in 2h" badges
 - **Hot Reload**: Config changes apply immediately
@@ -137,6 +138,11 @@ require('camouflage').setup({
   debounce_ms = 150,
   max_lines = 5000,
 
+  audit = {
+    ignore_patterns = { '.git/**', 'node_modules/**' },
+    destination = 'quickfix', -- 'quickfix' | 'loclist'
+  },
+
   reveal = {
     follow_cursor = false,   -- Auto-reveal current line
   },
@@ -165,6 +171,8 @@ require('camouflage').setup({
 | `:CamouflageFollowCursor` | Toggle follow cursor mode |
 | `:CamouflageStatus` | Show status and masked count |
 | `:CamouflageRefresh` | Refresh decorations |
+| `:CamouflageAudit [path]` | Scan workspace/path and populate quickfix |
+| `:CamouflageAudit! [path]` | Scan workspace/path and populate location list |
 | `:CamouflagePwnedCheck` | Check if value under cursor is pwned |
 | `:CamouflagePwnedCheckBuffer` | Check all values in buffer |
 | `:CamouflageExpiryToggle` | Toggle JWT expiry check on/off |
@@ -172,6 +180,12 @@ require('camouflage').setup({
 | `:CamouflageParsers` | List registered parsers (debug) |
 
 > **[Full commands list](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)** on the wiki.
+
+## Workspace Audit
+
+`:CamouflageAudit [path]` scans supported files under the current project root or optional path using the same parser registry as live masking. Results are written to quickfix by default; `:CamouflageAudit! [path]` writes to the current window's location list.
+
+Audit results include file, line, column, parser, key, and value length metadata, but never the plaintext value. The audit engine does not run HIBP or any other network check.
 
 ## Supported File Formats
 

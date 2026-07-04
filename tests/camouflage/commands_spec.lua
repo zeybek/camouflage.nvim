@@ -27,6 +27,11 @@ describe('camouflage.commands', function()
     assert.is_not_nil(commands['CamouflageStatus'])
   end)
 
+  it('should create CamouflageAudit command', function()
+    local commands = vim.api.nvim_get_commands({})
+    assert.is_not_nil(commands['CamouflageAudit'])
+  end)
+
   it('should create CamouflageYank command', function()
     local commands = vim.api.nvim_get_commands({})
     assert.is_not_nil(commands['CamouflageYank'])
