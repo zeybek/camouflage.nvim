@@ -8,6 +8,26 @@ M.version = '0.10.0'
 
 local initialized = false
 
+---Refresh static masking autocmds after parser registry changes.
+---@return nil
+local function refresh_after_parser_registry_change()
+  local state_ok, state = pcall(require, 'camouflage.state')
+  local static_autocmds_exist = state_ok
+    and #vim.api.nvim_get_autocmds({ group = state.augroup }) > 0
+
+  if not initialized and not static_autocmds_exist then
+    return
+  end
+
+  local ok, autocmds = pcall(require, 'camouflage.autocmds')
+  if not ok then
+    return
+  end
+
+  autocmds.setup()
+  autocmds.apply_to_loaded_buffers()
+end
+
 ---Setup nvim-cmp integration to disable completion in masked buffers
 ---@return nil
 local function setup_cmp_integration()
@@ -553,6 +573,7 @@ function M.register_parser(spec)
   end
 
   require('camouflage.parsers').register(spec)
+  refresh_after_parser_registry_change()
 end
 
 ---Register a simple pattern-based parser. Shorthand for custom Lua-pattern matching.
@@ -588,6 +609,7 @@ end
 ---@param name string
 function M.unregister_parser(name)
   require('camouflage.parsers').unregister(name)
+  refresh_after_parser_registry_change()
 end
 
 ---List all registered parsers.

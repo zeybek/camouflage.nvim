@@ -23,6 +23,13 @@ describe('camouflage.reveal follow_cursor', function()
     return bufnr
   end
 
+  local function follow_cursor_autocmd_count()
+    return #vim.api.nvim_get_autocmds({
+      group = state.runtime_augroup,
+      event = 'CursorMoved',
+    })
+  end
+
   before_each(function()
     clear_camouflage_modules()
     require('camouflage').setup({
@@ -82,6 +89,30 @@ describe('camouflage.reveal follow_cursor', function()
       assert.is_true(reveal.is_revealed())
       local revealed = reveal.get_revealed()
       assert.equals(1, revealed.line)
+    end)
+
+    it('keeps its autocmd when static camouflage autocmds are reconfigured', function()
+      local bufnr = setup_test_buffer('API_KEY=secret\nDEBUG=true', '/tmp/test.env')
+      state.set_variables(bufnr, {
+        { key = 'API_KEY', value = 'secret', start_index = 8, end_index = 13 },
+        { key = 'DEBUG', value = 'true', start_index = 21, end_index = 24 },
+      })
+
+      vim.api.nvim_win_set_cursor(0, { 1, 0 })
+      reveal.start_follow_cursor()
+      assert.is_true(reveal.is_follow_cursor_enabled())
+      assert.equals(1, follow_cursor_autocmd_count())
+
+      require('camouflage.autocmds').setup()
+
+      assert.is_true(reveal.is_follow_cursor_enabled())
+      assert.equals(1, follow_cursor_autocmd_count())
+
+      vim.api.nvim_win_set_cursor(0, { 2, 0 })
+      vim.api.nvim_exec_autocmds('CursorMoved', { buffer = bufnr })
+
+      assert.is_true(reveal.is_revealed())
+      assert.equals(2, reveal.get_revealed().line)
     end)
   end)
 

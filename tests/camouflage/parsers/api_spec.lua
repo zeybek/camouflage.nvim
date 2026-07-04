@@ -1,11 +1,28 @@
 local camouflage = require('camouflage')
 local parsers = require('camouflage.parsers')
 local config = require('camouflage.config')
+local state = require('camouflage.state')
 
 describe('camouflage parser public API', function()
+  local function count_bufenter_pattern(pattern)
+    local count = 0
+    for _, autocmd in
+      ipairs(vim.api.nvim_get_autocmds({
+        group = state.augroup,
+        event = 'BufEnter',
+      }))
+    do
+      if autocmd.pattern == pattern then
+        count = count + 1
+      end
+    end
+    return count
+  end
+
   before_each(function()
     config.setup()
     parsers.setup()
+    require('camouflage.autocmds').setup()
   end)
 
   describe('register_parser', function()
@@ -33,6 +50,35 @@ describe('camouflage parser public API', function()
       local parser, name = parsers.find_parser_for_file('app.kdl')
       assert.is_not_nil(parser)
       assert.equals('kdl', name)
+    end)
+
+    it('refreshes automatic masking patterns after setup', function()
+      assert.equals(0, count_bufenter_pattern('*.kdl'))
+
+      camouflage.register_parser({
+        name = 'kdl',
+        file_patterns = { '*.kdl' },
+        parser = {
+          parse = function()
+            return {}
+          end,
+        },
+      })
+
+      assert.is_true(count_bufenter_pattern('*.kdl') > 0)
+
+      local first_count = count_bufenter_pattern('*.kdl')
+      camouflage.register_parser({
+        name = 'kdl',
+        file_patterns = { '*.kdl' },
+        parser = {
+          parse = function()
+            return {}
+          end,
+        },
+      })
+
+      assert.equals(first_count, count_bufenter_pattern('*.kdl'))
     end)
 
     it('higher priority wins on conflict', function()
@@ -84,6 +130,20 @@ describe('camouflage parser public API', function()
       assert.equals(1, #result)
       assert.equals('abc123', result[1].value)
     end)
+
+    it('refreshes automatic masking patterns after setup', function()
+      assert.equals(0, count_bufenter_pattern('*.tok'))
+
+      camouflage.register_pattern({
+        name = 'token_lines',
+        file_patterns = { '*.tok' },
+        pattern = '^(%w+)=(%S+)$',
+        key_capture = 1,
+        value_capture = 2,
+      })
+
+      assert.is_true(count_bufenter_pattern('*.tok') > 0)
+    end)
   end)
 
   describe('unregister_parser', function()
@@ -101,6 +161,23 @@ describe('camouflage parser public API', function()
 
       camouflage.unregister_parser('tmp')
       assert.is_nil(parsers.get('tmp'))
+    end)
+
+    it('refreshes automatic masking patterns after removing a user parser', function()
+      camouflage.register_parser({
+        name = 'tmp',
+        file_patterns = { '*.tmp' },
+        parser = {
+          parse = function()
+            return {}
+          end,
+        },
+      })
+      assert.is_true(count_bufenter_pattern('*.tmp') > 0)
+
+      camouflage.unregister_parser('tmp')
+
+      assert.equals(0, count_bufenter_pattern('*.tmp'))
     end)
 
     it('can remove a builtin parser', function()

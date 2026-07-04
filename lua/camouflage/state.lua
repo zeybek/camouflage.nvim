@@ -4,6 +4,7 @@ local M = {}
 
 M.namespace = vim.api.nvim_create_namespace('camouflage')
 M.augroup = vim.api.nvim_create_augroup('camouflage', { clear = true })
+M.runtime_augroup = vim.api.nvim_create_augroup('camouflage_runtime', { clear = true })
 
 ---@class BufferState
 ---@field enabled boolean

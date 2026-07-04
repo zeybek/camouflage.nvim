@@ -94,6 +94,7 @@ describe('camouflage.treesitter', function()
   describe('parse with treesitter (integration)', function()
     local json_parser_available = ts.has_parser('json')
     local yaml_parser_available = ts.has_parser('yaml')
+    local xml_parser_available = ts.has_parser('xml')
 
     if json_parser_available then
       it('should parse JSON content', function()
@@ -113,6 +114,34 @@ describe('camouflage.treesitter', function()
           assert.equals(1, #result)
           assert.equals('key', result[1].key)
           assert.equals('value', result[1].value)
+        end
+      end)
+
+      it('should expose nested JSON key paths', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local lines = {
+          '{',
+          '  "database": {',
+          '    "connection": { "password": "secret" }',
+          '  }',
+          '}',
+        }
+        local content = table.concat(lines, '\n')
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+        vim.api.nvim_set_option_value('filetype', 'json', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'json', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          local by_key = {}
+          for _, v in ipairs(result) do
+            by_key[v.key] = v
+            assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          end
+          assert.equals('secret', by_key['database.connection.password'].value)
+          assert.is_true(by_key['database.connection.password'].is_nested)
         end
       end)
     end
@@ -153,8 +182,34 @@ describe('camouflage.treesitter', function()
           for _, v in ipairs(result) do
             keys[v.key] = v.value
           end
-          assert.equals('hidden123', keys['secret'])
-          assert.equals('sk-999', keys['api_key'])
+          assert.equals('hidden123', keys['config.secret'])
+          assert.equals('sk-999', keys['config.api_key'])
+        end
+      end)
+
+      it('should expose nested YAML block key paths', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local lines = {
+          'database:',
+          '  connection:',
+          '    password: secret',
+        }
+        local content = table.concat(lines, '\n')
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+        vim.api.nvim_set_option_value('filetype', 'yaml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'yaml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          local by_key = {}
+          for _, v in ipairs(result) do
+            by_key[v.key] = v
+            assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          end
+          assert.equals('secret', by_key['database.connection.password'].value)
+          assert.is_true(by_key['database.connection.password'].is_nested)
         end
       end)
 
@@ -190,8 +245,35 @@ describe('camouflage.treesitter', function()
           assert.is_table(result)
           -- Should only capture 'inner', not 'outer' (which has flow_mapping value)
           assert.equals(1, #result)
-          assert.equals('inner', result[1].key)
+          assert.equals('outer.inner', result[1].key)
           assert.equals('value', result[1].value)
+        end
+      end)
+    end
+
+    if xml_parser_available then
+      it('should expose nested XML element and attribute key paths', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local content =
+          '<settings><database host="localhost" password="dbpass"><password>secret</password></database></settings>'
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { content })
+        vim.api.nvim_set_option_value('filetype', 'xml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'xml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          local by_key = {}
+          for _, v in ipairs(result) do
+            by_key[v.key] = v
+            assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          end
+          assert.equals('localhost', by_key['settings.database@host'].value)
+          assert.equals('dbpass', by_key['settings.database@password'].value)
+          assert.equals('secret', by_key['settings.database.password'].value)
+          assert.is_true(by_key['settings.database@password'].is_nested)
+          assert.is_true(by_key['settings.database.password'].is_nested)
         end
       end)
     end

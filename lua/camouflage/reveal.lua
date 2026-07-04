@@ -218,7 +218,7 @@ local function setup_auto_hide(bufnr, revealed_line)
           return true
         end
       end,
-      group = state.augroup,
+      group = state.runtime_augroup,
     }
   )
 end
@@ -468,7 +468,7 @@ function M.start_follow_cursor()
 
   -- Create global autocmd for cursor movement
   follow_state.autocmd_id = vim.api.nvim_create_autocmd({ 'CursorMoved', 'CursorMovedI' }, {
-    group = state.augroup,
+    group = state.runtime_augroup,
     callback = function(args)
       on_follow_cursor_moved(args.buf)
     end,
