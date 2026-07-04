@@ -436,9 +436,27 @@ describe('camouflage.yank', function()
   describe('register validation', function()
     it('rejects an invalid register without copying or throwing', function()
       vim.fn.setreg('z', 'original')
-      yank.do_yank({ key = 'A', value = 'secret' }, { register = '@bad' })
+
+      local notify_called = false
+      local notify_level = nil
+      local original_notify = vim.notify
+      vim.notify = function(_, level)
+        notify_called = true
+        notify_level = level
+      end
+
+      local ok, err = pcall(function()
+        yank.do_yank({ key = 'A', value = 'secret' }, { register = '@bad' })
+      end)
+      vim.notify = original_notify
+      if not ok then
+        error(err, 0)
+      end
+
       -- The default register is untouched and no error was raised.
       assert.equals('original', vim.fn.getreg('z'))
+      assert.is_true(notify_called)
+      assert.equals(vim.log.levels.ERROR, notify_level)
     end)
   end)
 end)
