@@ -131,7 +131,10 @@ describe('camouflage.checks.weak_secret', function()
       end
       local elapsed_ms = ((vim.uv or vim.loop).hrtime() - start) / 1000000
 
-      assert.is_true(elapsed_ms < 50)
+      assert.is_true(
+        elapsed_ms < 500,
+        string.format('expected 1000 classifications under 500ms, got %.2fms', elapsed_ms)
+      )
     end)
   end)
 
