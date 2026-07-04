@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/zeybek/camouflage.nvim/compare/v0.10.0...v0.10.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* remediate review findings ([#26](https://github.com/zeybek/camouflage.nvim/issues/26)) ([ed34c54](https://github.com/zeybek/camouflage.nvim/commit/ed34c54e6d34f45bf3f99cb8a89688f509c5529a))
+
 ## [0.10.0](https://github.com/zeybek/camouflage.nvim/compare/v0.9.0...v0.10.0) (2026-06-10)
 
 
