@@ -28,7 +28,7 @@ end
 
 -- Order in which checks appear in the badge bar (left → right).
 -- Unlisted checks render after these, alphabetically.
-local CHECK_ORDER = { 'pwned', 'expiry' }
+local CHECK_ORDER = { 'pwned', 'weak_secret', 'expiry' }
 
 local SEVERITY_RANK = { error = 3, warning = 2, info = 1 }
 

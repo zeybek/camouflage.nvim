@@ -412,6 +412,12 @@ function M.setup(opts)
     expiry.setup()
   end
 
+  -- Setup weak-secret quality check
+  local weak_secret_ok, weak_secret = pcall(require, 'camouflage.checks.weak_secret')
+  if weak_secret_ok then
+    weak_secret.setup()
+  end
+
   initialized = true
 
   -- Start runtime project config watchers

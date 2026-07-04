@@ -187,4 +187,27 @@ describe('camouflage.project_config', function()
     assert.is_false(audit.open)
     assert.is_false(audit.notify)
   end)
+
+  it('should load weak-secret check configuration', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'checks:',
+      '  weak_secret:',
+      '    enabled: false',
+      '    min_sensitive_length: 16',
+      "    ignored_key_patterns: ['^TEST_']",
+      "    ignored_value_patterns: ['^example$']",
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local weak_secret = config.get().checks.weak_secret
+
+    assert.is_false(weak_secret.enabled)
+    assert.equals(16, weak_secret.min_sensitive_length)
+    assert.same({ '^TEST_' }, weak_secret.ignored_key_patterns)
+    assert.same({ '^example$' }, weak_secret.ignored_value_patterns)
+  end)
 end)

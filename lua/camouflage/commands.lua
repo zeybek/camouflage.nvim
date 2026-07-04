@@ -64,6 +64,25 @@ function M.setup()
     end
   end, { desc = 'Toggle JWT expiry check on/off' })
 
+  vim.api.nvim_create_user_command('CamouflageWeakSecretToggle', function()
+    local cfg = require('camouflage.config')
+    local current = cfg.get_check('weak_secret')
+    local new_enabled = current.enabled == false
+    cfg.set('checks.weak_secret.enabled', new_enabled)
+    local weak_secret = require('camouflage.checks.weak_secret')
+    if new_enabled then
+      weak_secret.setup()
+      vim.schedule(function()
+        require('camouflage.autocmds').apply_to_loaded_buffers()
+      end)
+      vim.notify('[camouflage] weak secret check enabled', vim.log.levels.INFO)
+    else
+      weak_secret.teardown()
+      weak_secret.clear_all()
+      vim.notify('[camouflage] weak secret check disabled', vim.log.levels.INFO)
+    end
+  end, { desc = 'Toggle weak secret check on/off' })
+
   vim.api.nvim_create_user_command('CamouflageRefresh', function()
     require('camouflage').refresh()
     vim.notify('[camouflage] refreshed', vim.log.levels.INFO)

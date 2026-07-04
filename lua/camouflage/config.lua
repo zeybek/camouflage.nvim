@@ -97,6 +97,23 @@ local M = {}
 ---@field hl_warning? string Highlight when within warn_threshold (default: 'DiagnosticWarn')
 ---@field hl_expired? string Highlight when expired (default: 'DiagnosticError')
 
+---@class CamouflageWeakSecretConfig
+---@field enabled? boolean Feature toggle (default: true)
+---@field min_length? integer General minimum length used by future heuristics (default: 8)
+---@field min_sensitive_length? integer Minimum length for sensitive keys (default: 12)
+---@field entropy_threshold? number Shannon entropy threshold for token-like values (default: 3.0)
+---@field sensitive_key_patterns? string[] Lua patterns that mark a key as secret-like
+---@field ignored_key_patterns? string[] Lua patterns for keys to skip
+---@field ignored_value_patterns? string[] Lua patterns for values to skip
+---@field common_values? string[] Common/default weak values
+---@field show_sign? boolean Show sign column indicator
+---@field sign_text? string Sign text
+---@field sign_hl? string Sign highlight group
+---@field show_virtual_text? boolean Show badge virtual text
+---@field virtual_text_format? string Badge text format with one `%s` reason placeholder
+---@field virtual_text_hl? string Badge highlight group
+---@field line_hl? string|nil Whole-line highlight group
+
 ---@class CamouflageBadgesConfig
 ---@field position? string Where badges render: 'right_align' | 'eol' | 'inline' (default: 'right_align')
 ---@field separator? string Text inserted between adjacent badges (default: ' ')
@@ -113,6 +130,7 @@ local M = {}
 ---@field badges? CamouflageBadgesConfig
 ---@field pwned? CamouflagePwnedConfig
 ---@field expiry? CamouflageExpiryConfig
+---@field weak_secret? CamouflageWeakSecretConfig
 
 ---@class CamouflageProjectConfigLoaderConfig
 ---@field enabled? boolean Enable repo config loading (default: true)
@@ -252,6 +270,53 @@ M.defaults = {
       hl_valid = 'Comment',
       hl_warning = 'DiagnosticWarn',
       hl_expired = 'DiagnosticError',
+    },
+    weak_secret = {
+      enabled = true,
+      min_length = 8,
+      min_sensitive_length = 12,
+      entropy_threshold = 3.0,
+      sensitive_key_patterns = {
+        'password',
+        'passwd',
+        'passphrase',
+        'secret',
+        'token',
+        'api[_%-]*key',
+        'access[_%-]*key',
+        'private[_%-]*key',
+        'client[_%-]*secret',
+        'auth[_%-]*token',
+        'credential',
+      },
+      ignored_key_patterns = {},
+      ignored_value_patterns = {},
+      common_values = {
+        'password',
+        'password1',
+        'password123',
+        'secret',
+        'secret123',
+        'changeme',
+        'changeit',
+        'admin',
+        'default',
+        'test',
+        'testing',
+        'demo',
+        'dummy',
+        'qwerty',
+        'letmein',
+        'welcome',
+        'hunter2',
+      },
+      show_sign = false,
+      sign_text = '!',
+      sign_hl = 'DiagnosticWarn',
+      show_virtual_text = true,
+      virtual_text_format = '[weak: %s]',
+      virtual_text_hl = 'DiagnosticWarn',
+      line_hl = nil,
     },
   },
   project_config = {
