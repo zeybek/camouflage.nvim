@@ -55,8 +55,8 @@ describe('camouflage.yank', function()
       local bufnr = setup_test_buffer('API_KEY=secret123\nDEBUG=true', '/tmp/test.env')
       -- Set variables manually for testing
       state.set_variables(bufnr, {
-        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 16 },
-        { key = 'DEBUG', value = 'true', start_index = 24, end_index = 27 },
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17 },
+        { key = 'DEBUG', value = 'true', start_index = 24, end_index = 28 },
       })
       -- Position cursor on an empty line (if we had one)
       vim.api.nvim_win_set_cursor(0, { 1, 0 }) -- At 'A' of API_KEY
@@ -68,7 +68,7 @@ describe('camouflage.yank', function()
     it('returns variable when cursor is on masked value', function()
       local bufnr = setup_test_buffer('API_KEY=secret123', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 16 },
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17 },
       })
       vim.api.nvim_win_set_cursor(0, { 1, 10 }) -- On 'secret123'
       local result = yank.find_variable_at_cursor()
@@ -79,10 +79,23 @@ describe('camouflage.yank', function()
     it('returns variable when cursor is on same line', function()
       local bufnr = setup_test_buffer('API_KEY=secret123', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 16 },
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17 },
       })
       vim.api.nvim_win_set_cursor(0, { 1, 0 }) -- At beginning of line
       local result = yank.find_variable_at_cursor()
+      assert.is_not_nil(result)
+      assert.equals('API_KEY', result.key)
+    end)
+
+    it('returns nearest same-line variable when cursor is just after the value', function()
+      local bufnr = setup_test_buffer('API_KEY=secret123,', '/tmp/test.env')
+      state.set_variables(bufnr, {
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17 },
+      })
+      vim.api.nvim_win_set_cursor(0, { 1, 17 }) -- comma after the value
+
+      local result = yank.find_variable_at_cursor()
+
       assert.is_not_nil(result)
       assert.equals('API_KEY', result.key)
     end)
@@ -123,7 +136,7 @@ describe('camouflage.yank', function()
     it('uses cursor when on variable', function()
       local bufnr = setup_test_buffer('API_KEY=secret123', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 16 },
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17 },
       })
       vim.api.nvim_win_set_cursor(0, { 1, 10 })
 
@@ -146,7 +159,7 @@ describe('camouflage.yank', function()
     it('shows picker when not on variable line', function()
       local bufnr = setup_test_buffer('# Comment\nAPI_KEY=secret123', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'API_KEY', value = 'secret123', start_index = 18, end_index = 26 },
+        { key = 'API_KEY', value = 'secret123', start_index = 18, end_index = 27 },
       })
       vim.api.nvim_win_set_cursor(0, { 1, 0 }) -- On comment line
 
@@ -168,7 +181,7 @@ describe('camouflage.yank', function()
     it('forces picker with force_picker option', function()
       local bufnr = setup_test_buffer('API_KEY=secret123', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 16 },
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17 },
       })
       vim.api.nvim_win_set_cursor(0, { 1, 10 }) -- On the value
 
@@ -210,9 +223,9 @@ describe('camouflage.yank', function()
     it('shows all variables in picker', function()
       local bufnr = setup_test_buffer('A=1\nB=2\nC=3', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'A', value = '1', start_index = 2, end_index = 2 },
-        { key = 'B', value = '2', start_index = 6, end_index = 6 },
-        { key = 'C', value = '3', start_index = 10, end_index = 10 },
+        { key = 'A', value = '1', start_index = 2, end_index = 3 },
+        { key = 'B', value = '2', start_index = 6, end_index = 7 },
+        { key = 'C', value = '3', start_index = 10, end_index = 11 },
       })
 
       local picker_items = nil
@@ -235,7 +248,7 @@ describe('camouflage.yank', function()
     it('does not show values in picker items', function()
       local bufnr = setup_test_buffer('SECRET=mysecretvalue', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'SECRET', value = 'mysecretvalue', start_index = 7, end_index = 19 },
+        { key = 'SECRET', value = 'mysecretvalue', start_index = 7, end_index = 20 },
       })
 
       local formatted_item = nil
@@ -257,7 +270,7 @@ describe('camouflage.yank', function()
     it('handles user cancellation', function()
       local bufnr = setup_test_buffer('A=1', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'A', value = '1', start_index = 2, end_index = 2 },
+        { key = 'A', value = '1', start_index = 2, end_index = 3 },
       })
 
       local original_select = vim.ui.select
@@ -291,7 +304,7 @@ describe('camouflage.yank', function()
 
       local bufnr = setup_test_buffer('A=1', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'A', value = '1', start_index = 2, end_index = 2 },
+        { key = 'A', value = '1', start_index = 2, end_index = 3 },
       })
 
       local confirm_shown = false
@@ -328,7 +341,7 @@ describe('camouflage.yank', function()
 
       local bufnr = setup_test_buffer('A=secret', '/tmp/test.env')
       state.set_variables(bufnr, {
-        { key = 'A', value = 'secret', start_index = 2, end_index = 7 },
+        { key = 'A', value = 'secret', start_index = 2, end_index = 8 },
       })
 
       local original_select = vim.ui.select

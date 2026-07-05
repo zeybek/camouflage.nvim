@@ -129,7 +129,7 @@ function M.find_variable_at_cursor(bufnr, variables, opts)
 
   -- First pass: exact match (cursor within value byte range)
   for _, var in ipairs(variables) do
-    if cursor_byte >= var.start_index and cursor_byte <= var.end_index then
+    if cursor_byte >= var.start_index and cursor_byte < var.end_index then
       return var
     end
   end
@@ -145,8 +145,8 @@ function M.find_variable_at_cursor(bufnr, variables, opts)
         local dist
         if cursor_byte < var.start_index then
           dist = var.start_index - cursor_byte
-        elseif cursor_byte > var.end_index then
-          dist = cursor_byte - var.end_index
+        elseif cursor_byte >= var.end_index then
+          dist = cursor_byte - (var.end_index - 1)
         else
           dist = 0
         end
