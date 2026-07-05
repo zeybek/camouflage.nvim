@@ -18,16 +18,17 @@ CONTENTS                                                  *camouflage-contents*
   9. Supported Formats ....................... |camouflage-formats|
  10. Custom Patterns ......................... |camouflage-custom-patterns|
  11. Custom Parsers .......................... |camouflage-custom-parsers|
- 12. Styles .................................. |camouflage-styles|
- 13. Integrations ............................ |camouflage-integrations|
- 14. Project Config .......................... |camouflage-project-config|
- 15. Workspace Audit ......................... |camouflage-audit|
- 16. Rule-Based Policy ....................... |camouflage-policy|
- 17. Weak Secret Check ....................... |camouflage-weak-secret|
- 18. Have I Been Pwned ....................... |camouflage-pwned|
- 19. JWT Expiry Hints ........................ |camouflage-expiry|
- 20. Custom Queries .......................... |camouflage-custom-queries|
- 21. Troubleshooting ......................... |camouflage-troubleshooting|
+ 12. Custom Checks ........................... |camouflage-custom-checks|
+ 13. Styles .................................. |camouflage-styles|
+ 14. Integrations ............................ |camouflage-integrations|
+ 15. Project Config .......................... |camouflage-project-config|
+ 16. Workspace Audit ......................... |camouflage-audit|
+ 17. Rule-Based Policy ....................... |camouflage-policy|
+ 18. Weak Secret Check ....................... |camouflage-weak-secret|
+ 19. Have I Been Pwned ....................... |camouflage-pwned|
+ 20. JWT Expiry Hints ........................ |camouflage-expiry|
+ 21. Custom Queries .......................... |camouflage-custom-queries|
+ 22. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -45,6 +46,7 @@ Features:
 - Workspace audit into quickfix/location list
 - Rule-based data-only policy for ignore/force-mask rules
 - Offline weak-secret quality badges
+- Public Lua check registration API
 - Buffer-local configuration overrides
 - Telescope and Snacks.nvim preview integration
 - Zero file modification
@@ -483,6 +485,25 @@ camouflage.list_parsers()
 camouflage.get_parser({name})
   Return the parser table registered under {name}, or nil.
 
+                                                   *camouflage.register_check()*
+camouflage.register_check({spec})
+  Register a trusted Lua check. See |camouflage-custom-checks| for details.
+
+  Parameters: ~
+    {spec}  Table with: name, run, async?, priority?, default_enabled?
+
+                                                 *camouflage.unregister_check()*
+camouflage.unregister_check({name})
+  Remove a registered check and clear its rendered badge results.
+
+                                                     *camouflage.list_checks()*
+camouflage.list_checks()
+  Return registered checks sorted by priority descending, then name.
+
+                                                      *camouflage.get_check()*
+camouflage.get_check({name})
+  Return the registered check entry under {name}, or nil.
+
                                                      *camouflage.pwned_check()*
 camouflage.pwned_check()
   Check if the value under cursor has been pwned. Requires Neovim 0.10+.
@@ -716,6 +737,112 @@ Runtime registrations that include `file_patterns` refresh automatic masking
 immediately after registration. Existing matching buffers are re-checked, and
 future BufEnter/TextChanged events use the new patterns without restarting
 Neovim.
+
+==============================================================================
+CUSTOM CHECKS                                      *camouflage-custom-checks*
+
+Custom checks let trusted Lua code inspect parsed variables during masking and
+render redacted badges through the shared check badge pipeline.
+
+Synchronous check example ~
+>lua
+  require('camouflage').register_check({
+    name = 'local_policy',
+    priority = 60,
+    run = function(ctx)
+      if ctx.var.key:match('TOKEN') and ctx.var.value == 'changeme' then
+        return {
+          severity = 'warning',
+          text = '[policy]',
+          hl_group = 'DiagnosticWarn',
+          data = { reason = 'placeholder', key = ctx.var.key },
+        }
+      end
+    end,
+  })
+<
+
+Async check example ~
+Async checks must opt in with `async = true` and call `done(result)`. Old
+completions are ignored if the buffer changed, the buffer was deleted, the
+check was unregistered, or a newer decoration run superseded the old run.
+>lua
+  require('camouflage').register_check({
+    name = 'remote_policy',
+    async = true,
+    run = function(ctx, done)
+      vim.defer_fn(function()
+        done({ severity = 'info', text = '[checked]' })
+      end, 10)
+    end,
+  })
+<
+
+Spec fields ~
+  name             string, required. Must be a stable check name.
+  run              function, required. Sync form is `run(ctx)`.
+                   Async form is `run(ctx, done)`.
+  async            boolean, optional. Defaults to false.
+  priority         integer, optional. Higher priority runs first.
+  default_enabled  boolean, optional. Defaults to true.
+
+Context fields ~
+  bufnr        Buffer number.
+  filename     Buffer filename used for parser selection.
+  parser_name  Parser name.
+  var          Parsed variable. `ctx.var.value` is plaintext.
+  config       Effective data table from `checks.<name>`.
+  run_id       Decoration run id.
+  check_name   Registered check name.
+
+Result fields ~
+  severity   Required: `info`, `warning`, or `error`.
+  text       Badge text. Keep this redacted.
+  hl_group   Virtual text highlight group.
+  sign_text  Optional sign column text.
+  sign_hl    Optional sign highlight group.
+  line_hl    Optional whole-line highlight group.
+  priority   Optional result priority metadata.
+  data       Optional data-only metadata. Keep this redacted.
+
+Privacy and trust ~
+Registered check functions are trusted Lua code. They receive plaintext values
+in `ctx.var.value`, just like parsers and local hooks. Do not register checks
+from untrusted repositories. Project config can only pass data under
+`checks.<name>`; it cannot register executable check code.
+
+camouflage drops a check result when `text` or `data` directly contains the
+exact plaintext value. This catches accidental leaks but is not a full data
+loss prevention system, so checks should intentionally return only redacted
+text and metadata.
+
+Configuration ~
+Registered checks read data options from `checks.<name>`. The `enabled` key
+can disable a registered check, and other keys are passed as `ctx.config`.
+>lua
+  require('camouflage').setup({
+    checks = {
+      local_policy = {
+        enabled = false,
+        label = 'team',
+      },
+    },
+  })
+<
+
+Observability ~
+With `debug = true`, custom check logs include check names, run counts,
+failures, and sync/async elapsed time without logging plaintext values.
+
+API ~
+>lua
+  local camouflage = require('camouflage')
+
+  camouflage.register_check(spec)
+  camouflage.unregister_check('local_policy')
+  camouflage.list_checks()
+  camouflage.get_check('local_policy')
+<
 
 ==============================================================================
 SUPPORTED FORMATS                                          *camouflage-formats*
@@ -1088,6 +1215,8 @@ Project config files support most configuration options:
 - integrations, yank, reveal, audit, policy, pwned, checks
 
 Note: The `project_config` key itself cannot be set in project config files.
+Project config may set data-only options for registered checks under
+`checks.<name>`, but it cannot register executable check functions.
 
 Watching for changes ~
                                             *camouflage-project-config-watch*

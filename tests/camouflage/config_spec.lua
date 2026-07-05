@@ -161,6 +161,21 @@ describe('camouflage.config', function()
       assert.equals('[weak: %s]', weak_secret.virtual_text_format)
       assert.is_table(weak_secret.sensitive_key_patterns)
     end)
+
+    it('returns custom registered-check configuration by name', function()
+      config.setup({
+        checks = {
+          local_policy = {
+            enabled = false,
+            label = 'team',
+          },
+        },
+      })
+
+      local local_policy = config.get_check('local_policy')
+      assert.is_false(local_policy.enabled)
+      assert.equals('team', local_policy.label)
+    end)
   end)
 
   describe('checks.pwned canonical namespace', function()

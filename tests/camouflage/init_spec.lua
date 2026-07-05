@@ -127,4 +127,31 @@ describe('camouflage.init', function()
       end)
     end)
   end)
+
+  describe('check API', function()
+    before_each(function()
+      clear_camouflage_modules()
+      camouflage = require('camouflage')
+    end)
+
+    it('should expose register, unregister, list, and get functions', function()
+      assert.is_function(camouflage.register_check)
+      assert.is_function(camouflage.unregister_check)
+      assert.is_function(camouflage.list_checks)
+      assert.is_function(camouflage.get_check)
+    end)
+
+    it('should register checks through the public API', function()
+      local entry = camouflage.register_check({
+        name = 'api_check',
+        run = function() end,
+      })
+
+      assert.equals('api_check', entry.name)
+      assert.equals('api_check', camouflage.get_check('api_check').name)
+      assert.equals(1, #camouflage.list_checks())
+      assert.is_true(camouflage.unregister_check('api_check'))
+      assert.is_nil(camouflage.get_check('api_check'))
+    end)
+  end)
 end)

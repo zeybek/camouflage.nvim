@@ -10,6 +10,7 @@ local hooks = require('camouflage.hooks')
 local log = require('camouflage.log')
 local position = require('camouflage.position')
 local policy = require('camouflage.policy')
+local check_registry = require('camouflage.checks.registry')
 
 -- Position math lives in the leaf module camouflage.position so yank/pwned can
 -- reuse it without depending on the whole decoration engine. These permanent
@@ -91,6 +92,7 @@ function M.apply_decorations(bufnr, override_filename)
   -- Always clear first so a no-mask outcome (disabled, too large, no parser, no
   -- variables) never leaves stale extmarks drifting over the buffer.
   M.clear_decorations(bufnr)
+  local check_run_id = check_registry.begin_decorate(bufnr)
 
   -- Buffer-local config (vim.b.camouflage_*) overrides the global config; with
   -- no overrides this returns the shared config table at no extra cost.
@@ -172,6 +174,15 @@ function M.apply_decorations(bufnr, override_filename)
     policy_stats = policy_result.stats,
   })
   state.clear_dirty(bufnr)
+
+  check_registry.run({
+    bufnr = bufnr,
+    filename = filename,
+    parser_name = parser_name,
+    variables = filtered_variables,
+    config = cfg,
+    run_id = check_run_id,
+  })
 
   -- Pre-compute line offsets for O(1) index lookups
   local line_offsets = M.compute_line_offsets(lines)

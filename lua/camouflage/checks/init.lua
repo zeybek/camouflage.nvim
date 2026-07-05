@@ -9,6 +9,7 @@ local M = {}
 
 M.store = require('camouflage.checks.store')
 M.badges = require('camouflage.checks.badges')
+M.registry = require('camouflage.checks.registry')
 
 ---Set or clear a check's result on a single line and re-render.
 ---@param bufnr integer

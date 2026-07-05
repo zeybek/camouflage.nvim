@@ -285,4 +285,29 @@ describe('camouflage.project_config', function()
     assert.same({ '^TEST_' }, weak_secret.ignored_key_patterns)
     assert.same({ '^example$' }, weak_secret.ignored_value_patterns)
   end)
+
+  it('should load custom check configuration without registering executable checks', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'checks:',
+      '  local_policy:',
+      '    enabled: false',
+      '    label: project',
+      '    run: "return function() end"',
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    local registry = require('camouflage.checks.registry')
+    registry._reset()
+
+    config.setup()
+    local local_policy = config.get().checks.local_policy
+
+    assert.is_false(local_policy.enabled)
+    assert.equals('project', local_policy.label)
+    assert.equals('return function() end', local_policy.run)
+    assert.equals(0, #registry.list())
+  end)
 end)

@@ -156,6 +156,8 @@ local M = {}
 ---@field pwned? CamouflagePwnedConfig
 ---@field expiry? CamouflageExpiryConfig
 ---@field weak_secret? CamouflageWeakSecretConfig
+--- Registered public checks can also read data-only options from
+--- `checks.<name>`, including `enabled`.
 
 ---@class CamouflageProjectConfigLoaderConfig
 ---@field enabled? boolean Enable repo config loading (default: true)
