@@ -2,6 +2,8 @@ local core = require('camouflage.core')
 local state = require('camouflage.state')
 local config = require('camouflage.config')
 local hooks = require('camouflage.hooks')
+local check_registry = require('camouflage.checks.registry')
+local checks_store = require('camouflage.checks.store')
 
 local function setup_buffer(lines, filename)
   local bufnr = vim.api.nvim_create_buf(false, true)
@@ -17,6 +19,8 @@ describe('camouflage.core', function()
     hooks.clear()
     hooks.setup(nil)
     require('camouflage.parsers').setup()
+    check_registry._reset()
+    checks_store._reset()
     vim.wait(20, function()
       return false
     end)
@@ -313,6 +317,60 @@ describe('camouflage.core', function()
       assert.same({}, state.get_variables(bufnr))
       assert.equals(1, stats.total)
       assert.equals(1, stats.ignored)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should run registered checks for variables that survive policy and hooks', function()
+      local checks = require('camouflage.checks')
+      local badges = require('camouflage.checks.badges')
+      config.setup({
+        policy = {
+          rules = {
+            { id = 'ignore-debug', action = 'ignore', key = { '^DEBUG$' } },
+          },
+        },
+        checks = {
+          custom_policy = {
+            label = 'custom',
+          },
+        },
+      })
+      check_registry.register({
+        name = 'custom_policy',
+        run = function(ctx)
+          assert.equals('API_KEY', ctx.var.key)
+          assert.equals('custom', ctx.config.label)
+          return {
+            severity = 'warning',
+            text = '[custom]',
+            hl_group = 'DiagnosticWarn',
+            data = { key = ctx.var.key },
+          }
+        end,
+      })
+      local bufnr = setup_buffer({ 'DEBUG=true', 'API_KEY=secret' })
+      checks.set_result(bufnr, 1, 'pwned', {
+        severity = 'error',
+        text = '[PWNED]',
+        hl_group = 'DiagnosticError',
+      })
+
+      core.apply_decorations(bufnr)
+
+      assert.is_nil(checks_store.get(bufnr, 0, 'custom_policy'))
+      assert.is_table(checks_store.get(bufnr, 1, 'custom_policy'))
+      assert.is_table(checks_store.get(bufnr, 1, 'pwned'))
+
+      local marks = vim.api.nvim_buf_get_extmarks(
+        bufnr,
+        badges.get_namespace(),
+        { 1, 0 },
+        { 1, -1 },
+        { details = true }
+      )
+      assert.equals('[PWNED]', marks[1][4].virt_text[1][1])
+      assert.equals('[custom]', marks[1][4].virt_text[3][1])
 
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)

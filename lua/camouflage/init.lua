@@ -631,6 +631,42 @@ function M.get_parser(name)
   return require('camouflage.parsers').get(name)
 end
 
+-- Check API
+---Register a trusted Lua check that runs on parsed variables during masking.
+---
+---Spec fields:
+---  name (string, required)
+---  run (function, required)                  -- sync: run(ctx), async: run(ctx, done)
+---  async (boolean, optional, default false)
+---  priority (integer, optional, default 50)  -- higher runs first
+---  default_enabled (boolean, optional, default true)
+---
+---@param spec CamouflageCheckSpec
+---@return CamouflageRegisteredCheck
+function M.register_check(spec)
+  return require('camouflage.checks.registry').register(spec)
+end
+
+---Unregister a check by name and clear its rendered results.
+---@param name string
+---@return boolean removed
+function M.unregister_check(name)
+  return require('camouflage.checks.registry').unregister(name)
+end
+
+---List registered checks sorted by priority descending, then name.
+---@return CamouflageRegisteredCheck[]
+function M.list_checks()
+  return require('camouflage.checks.registry').list()
+end
+
+---Get a registered check by name.
+---@param name string
+---@return CamouflageRegisteredCheck|nil
+function M.get_check(name)
+  return require('camouflage.checks.registry').get(name)
+end
+
 -- Repo project config API
 M.project_config_status = function()
   return require('camouflage.project_config').status()

@@ -25,6 +25,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Workspace Audit**: Scan supported files into quickfix/location list without exposing values
 - **Rule-Based Policy**: Data-only ignore/force-mask rules for paths, parsers, keys, metadata, and safe value shapes
 - **Weak Secret Check**: Offline badges for obvious defaults, placeholders, short values, repeated values, and low-entropy tokens
+- **Custom Check API**: Register trusted Lua checks that render through the shared badge pipeline
 - **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+ with `vim.system`, plus `curl`)
 - **JWT Expiry Hints**: Decode `exp` claim and show "expires in 2h" badges
 - **Hot Reload**: Config changes apply immediately
@@ -33,6 +34,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Telescope/Snacks Integration**: Mask values in preview buffers
 - **Zero file modification**: All masking is purely visual
 - **Extensible**: Register custom parsers for unsupported formats via a public API
+- **Programmable Checks**: Add local or async value checks with `register_check`
 
 ## Security Model
 
@@ -259,6 +261,60 @@ policy:
 The weak-secret check runs locally during masking and flags high-confidence weak values such as `password`, placeholders, repeated characters, short sensitive values, simple sequences, and low-entropy token-like strings. It uses key context, so benign values like `PORT=5432` are not treated like passwords.
 
 Badges render through the same central badge pipeline as HIBP and JWT expiry. The result text and metadata include the reason, key, and value length, but never the plaintext value. Use `checks.weak_secret.ignored_key_patterns` or `checks.weak_secret.ignored_value_patterns` to suppress noisy project-specific cases.
+
+## Custom Check API
+
+Register trusted Lua checks to inspect parsed variables and render redacted badges through the same pipeline used by weak-secret, HIBP, and JWT expiry checks.
+
+```lua
+require('camouflage').register_check({
+  name = 'local_policy',
+  priority = 60,
+  run = function(ctx)
+    if ctx.var.key:match('TOKEN') and ctx.var.value == 'changeme' then
+      return {
+        severity = 'warning',
+        text = '[policy]',
+        hl_group = 'DiagnosticWarn',
+        data = { reason = 'placeholder', key = ctx.var.key },
+      }
+    end
+  end,
+})
+```
+
+Checks receive plaintext values in `ctx.var.value`, so only register code you trust. Badge `text` and `data` should stay redacted; camouflage drops results that directly include the exact plaintext value.
+
+Async checks must opt in with `async = true` and call `done(result)`. Old async completions are ignored after buffer edits, unregister, buffer deletion, or a newer decoration run.
+
+```lua
+require('camouflage').register_check({
+  name = 'remote_policy',
+  async = true,
+  run = function(ctx, done)
+    vim.defer_fn(function()
+      done({ severity = 'info', text = '[checked]' })
+    end, 10)
+  end,
+})
+```
+
+Configure registered checks with data under `checks.<name>`:
+
+```lua
+require('camouflage').setup({
+  checks = {
+    local_policy = {
+      enabled = false,
+      label = 'team',
+    },
+  },
+})
+```
+
+Project config can set those data options but cannot register executable check code.
+
+With `debug = true`, custom check logs include check names, run counts, failures, and elapsed time without logging plaintext values.
 
 ## Supported File Formats
 
