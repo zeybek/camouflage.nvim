@@ -446,10 +446,26 @@ function M.disable()
   require('camouflage.config').set('enabled', false)
   local state = require('camouflage.state')
   local core = require('camouflage.core')
+  local checks = require('camouflage.checks')
 
+  require('camouflage.reveal').hide()
+
+  local tracked_buffers = {}
   for bufnr, _ in pairs(state.buffers) do
+    table.insert(tracked_buffers, bufnr)
+  end
+
+  for _, bufnr in ipairs(tracked_buffers) do
     if vim.api.nvim_buf_is_valid(bufnr) then
-      core.clear_decorations(bufnr)
+      core.clear_mask_state(bufnr)
+    else
+      state.remove_buffer(bufnr)
+    end
+  end
+
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      checks.clear_buffer(bufnr)
     end
   end
 end

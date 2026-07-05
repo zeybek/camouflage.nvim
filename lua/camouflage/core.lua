@@ -308,6 +308,14 @@ function M.clear_decorations(bufnr)
   end
 end
 
+---Clear all mask-owned buffer state without reparsing.
+---@param bufnr number|nil
+function M.clear_mask_state(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  M.clear_decorations(bufnr)
+  reset_mask_state(bufnr)
+end
+
 ---Refresh decorations for current buffer
 ---@return nil
 function M.refresh()

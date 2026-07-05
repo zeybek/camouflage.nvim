@@ -10,29 +10,29 @@ describe('camouflage.init', function()
     end
   end
 
+  local function no_network_opts()
+    return {
+      pwned = { enabled = false },
+      checks = {
+        pwned = { enabled = false },
+      },
+    }
+  end
+
+  local function create_named_buffer(lines, filename)
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(bufnr, filename)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+    vim.api.nvim_set_current_buf(bufnr)
+    return bufnr
+  end
+
   before_each(function()
     clear_camouflage_modules()
     camouflage = require('camouflage')
   end)
 
   describe('setup', function()
-    local function no_network_opts()
-      return {
-        pwned = { enabled = false },
-        checks = {
-          pwned = { enabled = false },
-        },
-      }
-    end
-
-    local function create_named_buffer(lines, filename)
-      local bufnr = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_buf_set_name(bufnr, filename)
-      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-      vim.api.nvim_set_current_buf(bufnr)
-      return bufnr
-    end
-
     it('should initialize without options', function()
       assert.has_no.errors(function()
         camouflage.setup()
@@ -180,7 +180,9 @@ describe('camouflage.init', function()
     before_each(function()
       clear_camouflage_modules()
       camouflage = require('camouflage')
-      camouflage.setup({ enabled = false })
+      local opts = no_network_opts()
+      opts.enabled = false
+      camouflage.setup(opts)
     end)
 
     it('should enable masking', function()
@@ -198,6 +200,79 @@ describe('camouflage.init', function()
       camouflage.disable()
 
       assert.is_false(camouflage.is_enabled())
+    end)
+
+    it('should synchronously clear buffer state, badges, reveal, and wrap', function()
+      camouflage.enable()
+      local bufnr = create_named_buffer({ 'PASSWORD=password' }, vim.fn.tempname() .. '.env')
+      local win = vim.api.nvim_get_current_win()
+      vim.api.nvim_set_option_value('wrap', true, { win = win })
+
+      local core = require('camouflage.core')
+      local state = require('camouflage.state')
+      local checks = require('camouflage.checks')
+      local badges = require('camouflage.checks.badges')
+      local store = require('camouflage.checks.store')
+      local reveal = require('camouflage.reveal')
+      local pwned_ui = require('camouflage.pwned.ui')
+
+      core.apply_decorations(bufnr)
+      checks.set_result(bufnr, 0, 'weak_secret', { severity = 'warning', text = '[weak]' })
+      checks.set_result(bufnr, 0, 'expiry', { severity = 'info', text = '[expires]' })
+      pwned_ui.mark_pwned(bufnr, 0, 5)
+
+      vim.api.nvim_win_set_cursor(0, { 1, 10 })
+      reveal.reveal_line()
+
+      local mask_marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+      local badge_marks = vim.api.nvim_buf_get_extmarks(bufnr, badges.get_namespace(), 0, -1, {})
+      assert.is_true(state.is_buffer_masked(bufnr))
+      assert.equals(1, #state.get_variables(bufnr))
+      assert.is_true(#mask_marks > 0)
+      assert.is_true(#badge_marks > 0)
+      assert.is_true(reveal.is_revealed())
+      assert.is_false(vim.api.nvim_get_option_value('wrap', { win = win }))
+
+      camouflage.disable()
+
+      mask_marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+      badge_marks = vim.api.nvim_buf_get_extmarks(bufnr, badges.get_namespace(), 0, -1, {})
+      assert.is_false(camouflage.is_enabled())
+      assert.is_false(state.is_buffer_masked(bufnr))
+      assert.equals(0, #state.get_variables(bufnr))
+      assert.equals(0, #mask_marks)
+      assert.equals(0, #badge_marks)
+      assert.is_nil(store.get(bufnr, 0, 'weak_secret'))
+      assert.is_nil(store.get(bufnr, 0, 'expiry'))
+      assert.is_nil(store.get(bufnr, 0, 'pwned'))
+      assert.is_false(reveal.is_revealed())
+      assert.is_true(vim.api.nvim_get_option_value('wrap', { win = win }))
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should reparse visible supported buffers after disable then enable', function()
+      camouflage.enable()
+      local bufnr = create_named_buffer({ 'API_KEY=old-secret' }, vim.fn.tempname() .. '.env')
+      local core = require('camouflage.core')
+      local state = require('camouflage.state')
+
+      core.apply_decorations(bufnr)
+      assert.is_true(state.is_buffer_masked(bufnr))
+      assert.equals('old-secret', state.get_variables(bufnr)[1].value)
+
+      camouflage.disable()
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'API_KEY=fresh-secret' })
+      camouflage.enable()
+
+      local variables = state.get_variables(bufnr)
+      local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+      assert.is_true(state.is_buffer_masked(bufnr))
+      assert.equals(1, #variables)
+      assert.equals('fresh-secret', variables[1].value)
+      assert.equals(1, #extmarks)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
     it('should toggle masking', function()

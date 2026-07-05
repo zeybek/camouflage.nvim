@@ -7,9 +7,22 @@ describe('camouflage.commands', function()
     end
   end
 
+  local function create_env_buffer(lines)
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_name(bufnr, vim.fn.tempname() .. '.env')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+    vim.api.nvim_set_current_buf(bufnr)
+    return bufnr
+  end
+
   before_each(function()
     clear_camouflage_modules()
-    require('camouflage').setup()
+    require('camouflage').setup({
+      pwned = { enabled = false },
+      checks = {
+        pwned = { enabled = false },
+      },
+    })
   end)
 
   it('should create CamouflageToggle command', function()
@@ -145,6 +158,32 @@ describe('camouflage.commands', function()
       assert.is_nil(message:find('status-secret-should-not-return', 1, true))
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
+
+    it('should report unmasked state after global disable clears stale variables', function()
+      local camouflage = require('camouflage')
+      local core = require('camouflage.core')
+      local bufnr = create_env_buffer({ 'API_KEY=status-stale-secret' })
+
+      core.apply_decorations(bufnr)
+      camouflage.disable()
+
+      local message
+      local original_notify = vim.notify
+      vim.notify = function(msg)
+        message = msg
+      end
+
+      vim.cmd('CamouflageStatus')
+
+      vim.notify = original_notify
+
+      assert.is_string(message)
+      assert.is_not_nil(message:find('Global: disabled', 1, true))
+      assert.is_not_nil(message:find('Buffer: not masked', 1, true))
+      assert.is_not_nil(message:find('Masked values: 0', 1, true))
+      assert.is_nil(message:find('status-stale-secret', 1, true))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
   end)
 
   describe('CamouflageYank', function()
@@ -157,6 +196,26 @@ describe('camouflage.commands', function()
       end)
 
       vim.notify = original_notify
+    end)
+
+    it('should not copy stale values after global disable', function()
+      local camouflage = require('camouflage')
+      local core = require('camouflage.core')
+      local bufnr = create_env_buffer({ 'API_KEY=yank-stale-secret' })
+      vim.api.nvim_win_set_cursor(0, { 1, 10 })
+      core.apply_decorations(bufnr)
+      vim.fn.setreg('a', 'original')
+
+      local original_notify = vim.notify
+      vim.notify = function() end
+
+      camouflage.disable()
+      vim.cmd('CamouflageYank a')
+
+      vim.notify = original_notify
+
+      assert.equals('original', vim.fn.getreg('a'))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
   end)
 
