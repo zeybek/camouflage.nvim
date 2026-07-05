@@ -145,6 +145,27 @@ describe('camouflage.core', function()
     end)
   end)
 
+  describe('clear_mask_state', function()
+    it('should clear mask state, extmarks, policy stats, and restore wrap', function()
+      local bufnr = setup_buffer({ 'API_KEY=secret' })
+      local win = vim.api.nvim_get_current_win()
+      vim.api.nvim_set_option_value('wrap', true, { win = win })
+
+      core.apply_decorations(bufnr)
+      assert.is_true(state.is_buffer_masked(bufnr))
+      assert.is_true(#state.get_variables(bufnr) > 0)
+      assert.is_not_nil(state.get_policy_stats(bufnr))
+      assert.is_false(vim.api.nvim_get_option_value('wrap', { win = win }))
+
+      core.clear_mask_state(bufnr)
+
+      assert_unmasked_state(bufnr)
+      assert.is_true(vim.api.nvim_get_option_value('wrap', { win = win }))
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+  end)
+
   describe('is_masked', function()
     it('should return false when buffer has no state', function()
       local bufnr = vim.api.nvim_create_buf(false, true)
