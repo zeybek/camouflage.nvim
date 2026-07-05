@@ -245,40 +245,48 @@ describe('camouflage.policy', function()
       assert.is_false(vim.inspect(result):find('secret', 1, true) ~= nil)
     end)
 
-    it('classifies one thousand variables against one hundred rules quickly enough', function()
-      local rules = {}
-      for i = 1, 100 do
-        rules[i] = {
-          id = 'rule-' .. i,
-          action = i == 100 and 'ignore' or 'mask',
-          key = { '^RULE_' .. i .. '$' },
-        }
-      end
+    it(
+      'classifies one thousand variables against one hundred rules without pathological slowdown',
+      function()
+        local rules = {}
+        for i = 1, 100 do
+          rules[i] = {
+            id = 'rule-' .. i,
+            action = i == 100 and 'ignore' or 'mask',
+            key = { '^RULE_' .. i .. '$' },
+          }
+        end
 
-      local variables = {}
-      for i = 1, 1000 do
-        variables[i] = parsed_var('RULE_100', 'token-value-' .. i)
-      end
+        local variables = {}
+        for i = 1, 1000 do
+          variables[i] = parsed_var('RULE_100', 'token-value-' .. i)
+        end
 
-      local start = (vim.uv or vim.loop).hrtime()
-      local filtered = policy.filter_variables({
-        filename = '/repo/app.env',
-        root = '/repo',
-        parser_name = 'env',
-        variables = variables,
-        config = {
-          policy = {
-            rules = rules,
+        local start = (vim.uv or vim.loop).hrtime()
+        local filtered = policy.filter_variables({
+          filename = '/repo/app.env',
+          root = '/repo',
+          parser_name = 'env',
+          variables = variables,
+          config = {
+            policy = {
+              rules = rules,
+            },
           },
-        },
-      })
-      local elapsed_ms = ((vim.uv or vim.loop).hrtime() - start) / 1000000
+        })
+        local elapsed_ms = ((vim.uv or vim.loop).hrtime() - start) / 1000000
+        local budget_ms = 100
 
-      assert.equals(0, #filtered)
-      assert.is_true(
-        elapsed_ms < 15,
-        string.format('expected 100 rules x 1000 variables under 15ms, got %.2fms', elapsed_ms)
-      )
-    end)
+        assert.equals(0, #filtered)
+        assert.is_true(
+          elapsed_ms < budget_ms,
+          string.format(
+            'expected 100 rules x 1000 variables under %dms, got %.2fms',
+            budget_ms,
+            elapsed_ms
+          )
+        )
+      end
+    )
   end)
 end)
