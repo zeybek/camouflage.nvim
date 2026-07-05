@@ -31,6 +31,12 @@ describe('camouflage parsers offset contract', function()
       expect_count = 3,
     },
     {
+      name = 'json duplicate identical values across objects',
+      parser = 'camouflage.parsers.json',
+      content = '{"ab":{"password":"same"},"aa":{"password":"same"}}',
+      expect_count = 2,
+    },
+    {
       name = 'yaml',
       parser = 'camouflage.parsers.yaml',
       content = 'api_key: secret123\ndb:\n  password: hunter2\n',
