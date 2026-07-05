@@ -107,6 +107,12 @@ Using lazy.nvim: >lua
   }
 <
 
+Use `BufReadPre` / `BufNewFile` when you want masking available as files are
+opened. `VeryLazy` is also usable if you prefer deferred startup loading, but it
+can let a buffer appear before the first masking pass runs. camouflage only
+masks visually; it does not encrypt, remove, or otherwise secure the real buffer
+text.
+
 Using packer.nvim: >lua
   use {
     'zeybek/camouflage.nvim',
