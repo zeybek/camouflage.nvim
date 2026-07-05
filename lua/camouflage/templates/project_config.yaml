@@ -277,21 +277,23 @@ reveal:
 # HAVE I BEEN PWNED (HIBP) INTEGRATION
 # =============================================================================
 
-# Check passwords against the HIBP breach database
+# Check passwords against the HIBP breach database.
+# This is a network check; manual commands are available by default, but
+# automatic checks are disabled unless you opt in below.
 # Requires: Neovim 0.10+, curl
 # Privacy: Uses k-anonymity (only first 5 chars of SHA-1 hash sent)
 pwned:
-  # Enable the feature
+  # Enable the feature and manual commands
   enabled: true
 
-  # Check passwords on BufEnter
-  auto_check: true
+  # Network check passwords on BufEnter (opt in)
+  auto_check: false
 
-  # Check passwords on save
-  check_on_save: true
+  # Network check passwords on save (opt in)
+  check_on_save: false
 
-  # Check passwords on text change (with debounce)
-  check_on_change: true
+  # Network check passwords on text change with debounce (opt in)
+  check_on_change: false
 
   # Show sign column indicator for breached passwords
   show_sign: true

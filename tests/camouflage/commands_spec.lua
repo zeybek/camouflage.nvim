@@ -60,6 +60,15 @@ describe('camouflage.commands', function()
     assert.is_not_nil(commands['CamouflageReveal'])
   end)
 
+  it('should create pwned manual check commands', function()
+    local commands = vim.api.nvim_get_commands({})
+    assert.is_not_nil(commands['CamouflagePwnedCheck'])
+    assert.is_not_nil(commands['CamouflagePwnedCheckLine'])
+    assert.is_not_nil(commands['CamouflagePwnedCheckBuffer'])
+    assert.is_not_nil(commands['CamouflagePwnedClear'])
+    assert.is_not_nil(commands['CamouflagePwnedClearCache'])
+  end)
+
   describe('CamouflageToggle', function()
     it('should toggle enabled state', function()
       local camouflage = require('camouflage')
@@ -229,6 +238,37 @@ describe('camouflage.commands', function()
       end)
 
       vim.notify = original_notify
+    end)
+  end)
+
+  describe('CamouflagePwned manual commands', function()
+    it('should dispatch to pwned entrypoints without automatic triggers', function()
+      local calls = {
+        current = 0,
+        line = 0,
+        buffer = 0,
+      }
+      package.loaded['camouflage.pwned'] = {
+        check_current = function()
+          calls.current = calls.current + 1
+        end,
+        check_line = function()
+          calls.line = calls.line + 1
+        end,
+        check_buffer = function()
+          calls.buffer = calls.buffer + 1
+        end,
+        clear = function() end,
+        clear_cache = function() end,
+      }
+
+      vim.cmd('CamouflagePwnedCheck')
+      vim.cmd('CamouflagePwnedCheckLine')
+      vim.cmd('CamouflagePwnedCheckBuffer')
+
+      assert.equals(1, calls.current)
+      assert.equals(1, calls.line)
+      assert.equals(1, calls.buffer)
     end)
   end)
 end)

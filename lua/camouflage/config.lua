@@ -68,9 +68,9 @@ local M = {}
 
 ---@class CamouflagePwnedConfig
 ---@field enabled? boolean Feature toggle (default: true)
----@field auto_check? boolean Check on BufEnter (default: true)
----@field check_on_save? boolean Check on BufWritePost (default: true)
----@field check_on_change? boolean Check on TextChanged with debounce (default: true)
+---@field auto_check? boolean Check on BufEnter (default: false; network opt-in)
+---@field check_on_save? boolean Check on BufWritePost (default: false; network opt-in)
+---@field check_on_change? boolean Check on TextChanged with debounce (default: false; network opt-in)
 ---@field show_sign? boolean Show sign column indicator (default: true)
 ---@field show_virtual_text? boolean Show virtual text (default: true)
 ---@field show_line_highlight? boolean Highlight the line (default: true)
@@ -258,9 +258,9 @@ M.defaults = {
   },
   pwned = {
     enabled = true,
-    auto_check = true,
-    check_on_save = true,
-    check_on_change = true,
+    auto_check = false,
+    check_on_save = false,
+    check_on_change = false,
     show_sign = true,
     show_virtual_text = true,
     show_line_highlight = true,
@@ -428,7 +428,7 @@ end
 ---@param opts CamouflageConfig|nil
 function M.setup(opts)
   local user_opts = validate_config(opts) or {}
-  M.user_options = vim.tbl_deep_extend('force', {}, user_opts)
+  M.user_options = vim.deepcopy(user_opts)
 
   -- Merge user project_config with defaults to get effective settings
   local effective_project_config = vim.tbl_deep_extend(
@@ -438,7 +438,13 @@ function M.setup(opts)
     M.user_options.project_config or {}
   )
   local project_config_opts = require('camouflage.project_config').load(effective_project_config)
-  M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
+  M.options = vim.tbl_deep_extend(
+    'force',
+    {},
+    vim.deepcopy(M.defaults),
+    vim.deepcopy(M.user_options),
+    vim.deepcopy(project_config_opts)
+  )
   apply_legacy_aliases(M.options)
   warn_cosmetic_styles(M.options)
 end
@@ -457,7 +463,13 @@ function M.reload_project_config()
     return false, status
   end
 
-  M.options = vim.tbl_deep_extend('force', {}, M.defaults, M.user_options, project_config_opts)
+  M.options = vim.tbl_deep_extend(
+    'force',
+    {},
+    vim.deepcopy(M.defaults),
+    vim.deepcopy(M.user_options),
+    vim.deepcopy(project_config_opts)
+  )
   apply_legacy_aliases(M.options)
   warn_cosmetic_styles(M.options)
   return true, status

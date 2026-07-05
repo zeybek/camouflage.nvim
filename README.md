@@ -26,7 +26,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Rule-Based Policy**: Data-only ignore/force-mask rules for paths, parsers, keys, metadata, and safe value shapes
 - **Weak Secret Check**: Offline badges for obvious defaults, placeholders, short values, repeated values, and low-entropy tokens
 - **Custom Check API**: Register trusted Lua checks that render through the shared badge pipeline
-- **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+ with `vim.system`, plus `curl`)
+- **Have I Been Pwned**: Manually check passwords against the breach database (network checks are opt-in; Neovim 0.10+ with `vim.system`, plus `curl`)
 - **JWT Expiry Hints**: Decode `exp` claim and show "expires in 2h" badges
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
@@ -59,6 +59,13 @@ For per-repo `.camouflage.yaml` files, masking config is applied as data only
 (no code execution). If you don't trust the repositories you open, set
 `project_config.secure = true` to gate the file behind Neovim's
 `vim.secure`/`:trust` mechanism.
+
+Have I Been Pwned checks use the network. They are manual/opt-in by default:
+the `:CamouflagePwnedCheck*` commands remain available, but automatic checks on
+buffer enter, save, or text change are disabled unless you set the corresponding
+`pwned` option to `true`. The HIBP integration uses k-anonymity and sends only
+the first 5 characters of a SHA-1 hash, but this is still a deliberate network
+request.
 
 The `scramble` style is **cosmetic, not protective**: the mask is a shuffle of
 the real characters, so it leaks the value's length and character set.
@@ -177,6 +184,13 @@ require('camouflage').setup({
     },
   },
 
+  pwned = {
+    enabled = true,          -- Manual HIBP commands are available
+    auto_check = false,      -- Network check on BufEnter (opt in)
+    check_on_save = false,   -- Network check on BufWritePost (opt in)
+    check_on_change = false, -- Network check on TextChanged (opt in)
+  },
+
   reveal = {
     follow_cursor = false,   -- Auto-reveal current line
   },
@@ -209,7 +223,10 @@ require('camouflage').setup({
 | `:CamouflageAudit! [path]` | Scan workspace/path and populate location list |
 | `:CamouflageWeakSecretToggle` | Toggle offline weak-secret badges |
 | `:CamouflagePwnedCheck` | Check if value under cursor is pwned |
+| `:CamouflagePwnedCheckLine` | Check all values on current line |
 | `:CamouflagePwnedCheckBuffer` | Check all values in buffer |
+| `:CamouflagePwnedClear` | Clear pwned indicators from buffer |
+| `:CamouflagePwnedClearCache` | Clear local pwned check cache |
 | `:CamouflageExpiryToggle` | Toggle JWT expiry check on/off |
 | `:CamouflageInit` | Create `.camouflage.yaml` in project root |
 | `:CamouflageParsers` | List registered parsers (debug) |
