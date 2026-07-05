@@ -12,9 +12,12 @@ local function get_plugin_path()
   if source:sub(1, 1) == '@' then
     source = source:sub(2)
   end
+  source = vim.fn.fnamemodify(source, ':p')
   -- Go up from lua/camouflage/init_command.lua to plugin root
   return vim.fn.fnamemodify(source, ':h:h:h')
 end
+
+local plugin_path_at_load = get_plugin_path()
 
 --- Read the template file
 ---@return string|nil content, string|nil error
@@ -27,7 +30,7 @@ local function read_template()
   if rtp and rtp[1] then
     template_path = rtp[1]
   else
-    local plugin_path = get_plugin_path()
+    local plugin_path = plugin_path_at_load or get_plugin_path()
     if not plugin_path then
       return nil, 'Could not determine plugin path'
     end
@@ -38,7 +41,17 @@ local function read_template()
 
   local ok, lines = pcall(vim.fn.readfile, template_path)
   if not ok or type(lines) ~= 'table' then
-    return nil, 'Could not read template file'
+    local plugin_path = plugin_path_at_load or get_plugin_path()
+    local fallback_path = plugin_path
+        and (plugin_path .. '/lua/camouflage/templates/project_config.yaml')
+      or nil
+    if fallback_path and fallback_path ~= template_path then
+      log.debug('Retrying template read from: %s', fallback_path)
+      ok, lines = pcall(vim.fn.readfile, fallback_path)
+    end
+    if not ok or type(lines) ~= 'table' then
+      return nil, 'Could not read template file'
+    end
   end
 
   return table.concat(lines, '\n'), nil
