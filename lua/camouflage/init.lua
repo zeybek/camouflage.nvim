@@ -390,7 +390,6 @@ function M.setup(opts)
   end
 
   require('camouflage.config').setup(opts)
-  reconfigure_runtime()
 
   -- Setup hooks with config
   local hooks_config = opts and opts.hooks or nil
@@ -417,6 +416,8 @@ function M.setup(opts)
   if weak_secret_ok then
     weak_secret.setup()
   end
+
+  reconfigure_runtime()
 
   initialized = true
 
