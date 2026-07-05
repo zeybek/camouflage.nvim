@@ -225,7 +225,7 @@ function M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
   else
     -- Single line value (mask sized by display cells, not bytes)
     local masked_text =
-      styles.generate_hidden_text(cfg.style, vim.fn.strdisplaywidth(var.value), var.value)
+      styles.generate_hidden_text(cfg.style, vim.fn.strdisplaywidth(var.value), var.value, cfg)
     local ok, err =
       pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, start_pos.row, start_pos.col, {
         end_row = end_pos.row,
@@ -281,8 +281,12 @@ function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos
       goto continue
     end
 
-    local masked_text =
-      styles.generate_hidden_text(cfg.style, vim.fn.strdisplaywidth(line_content), line_content)
+    local masked_text = styles.generate_hidden_text(
+      cfg.style,
+      vim.fn.strdisplaywidth(line_content),
+      line_content,
+      cfg
+    )
     local ok, err = pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, row, col_start, {
       end_row = row,
       end_col = col_end,

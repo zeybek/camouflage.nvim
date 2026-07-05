@@ -28,6 +28,21 @@ describe('camouflage end-to-end extmark placement', function()
     return row, byte_index - line_start
   end
 
+  local function mask_texts(bufnr)
+    local marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {
+      details = true,
+    })
+    local texts = {}
+    for _, mark in ipairs(marks) do
+      table.insert(texts, {
+        row = mark[2],
+        col = mark[3],
+        text = mark[4].virt_text[1][1],
+      })
+    end
+    return texts
+  end
+
   it('places overlay extmarks exactly on each value range', function()
     local lines = { 'API_KEY=secret123', 'DB_PASSWORD=hunter2' }
     local content = table.concat(lines, '\n')
@@ -60,6 +75,70 @@ describe('camouflage end-to-end extmark placement', function()
         string.format('no extmark at expected (%d, %d) for key %s', srow, scol, var.key)
       )
     end
+
+    vim.api.nvim_buf_delete(bufnr, { force = true })
+  end)
+
+  it('uses buffer-local mask_char when rendering stars masks', function()
+    local bufnr = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/camouflage_test/local-char.env')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'API_KEY=secret123' })
+    vim.b[bufnr].camouflage_mask_char = '#'
+
+    core.apply_decorations(bufnr)
+
+    local texts = mask_texts(bufnr)
+    assert.equals(1, #texts)
+    assert.equals('#########', texts[1].text)
+
+    vim.api.nvim_buf_delete(bufnr, { force = true })
+  end)
+
+  it('uses buffer-local mask_length and pads to cover the value width', function()
+    local bufnr = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/camouflage_test/local-length.env')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'API_KEY=secret123' })
+    vim.b[bufnr].camouflage_mask_length = 4
+
+    core.apply_decorations(bufnr)
+
+    local texts = mask_texts(bufnr)
+    assert.equals(1, #texts)
+    assert.equals('****' .. string.rep(' ', 5), texts[1].text)
+    assert.equals(vim.fn.strdisplaywidth('secret123'), vim.fn.strdisplaywidth(texts[1].text))
+
+    vim.api.nvim_buf_delete(bufnr, { force = true })
+  end)
+
+  it('uses buffer-local rendering config for multiline masks', function()
+    local lines = { 'PRIVATE_KEY=line-one', '  line-two' }
+    local bufnr = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/camouflage_test/local-multiline.env')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+    vim.b[bufnr].camouflage_mask_char = '#'
+
+    local content = table.concat(lines, '\n')
+    local start_index = #'PRIVATE_KEY='
+    local var = {
+      key = 'PRIVATE_KEY',
+      value = 'line-one\n  line-two',
+      start_index = start_index,
+      end_index = #content,
+      is_multiline = true,
+    }
+
+    core.apply_single_decoration(
+      bufnr,
+      var,
+      config.get_for_buffer(bufnr),
+      lines,
+      core.compute_line_offsets(lines)
+    )
+
+    local texts = mask_texts(bufnr)
+    assert.equals(2, #texts)
+    assert.equals('########', texts[1].text)
+    assert.equals('########', texts[2].text)
 
     vim.api.nvim_buf_delete(bufnr, { force = true })
   end)
