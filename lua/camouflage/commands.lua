@@ -128,12 +128,15 @@ function M.setup()
     local camouflage = require('camouflage')
     local state = require('camouflage.state')
     local parsers = require('camouflage.parsers')
+    local cfg = require('camouflage.config').get()
 
     local enabled = camouflage.is_enabled()
     local bufnr = vim.api.nvim_get_current_buf()
     local filename = vim.api.nvim_buf_get_name(bufnr)
     local _, parser_name = parsers.find_parser_for_file(filename)
     local vars = state.get_variables(bufnr)
+    local policy_cfg = cfg.policy or {}
+    local policy_stats = state.get_policy_stats(bufnr) or {}
 
     local lines = {
       '[camouflage] Status:',
@@ -141,6 +144,8 @@ function M.setup()
       '  Buffer: ' .. (state.is_buffer_masked(bufnr) and 'masked' or 'not masked'),
       '  Parser: ' .. (parser_name or 'none'),
       '  Masked values: ' .. #vars,
+      '  Policy: ' .. (policy_cfg.enabled == false and 'disabled' or 'enabled'),
+      '  Policy ignored: ' .. tostring(policy_stats.ignored or 0),
     }
     vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
   end, { desc = 'Show Camouflage status' })

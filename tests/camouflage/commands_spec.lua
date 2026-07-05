@@ -112,6 +112,39 @@ describe('camouflage.commands', function()
 
       vim.notify = original_notify
     end)
+
+    it('should include policy state and ignored count without plaintext values', function()
+      local state = require('camouflage.state')
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_name(bufnr, vim.fn.tempname() .. '.env')
+      vim.api.nvim_set_current_buf(bufnr)
+      state.update_buffer(bufnr, {
+        enabled = true,
+        variables = {
+          { key = 'API_KEY', value = 'status-secret-should-not-return' },
+        },
+        parser = 'env',
+        policy_stats = {
+          ignored = 2,
+        },
+      })
+
+      local message
+      local original_notify = vim.notify
+      vim.notify = function(msg)
+        message = msg
+      end
+
+      vim.cmd('CamouflageStatus')
+
+      vim.notify = original_notify
+
+      assert.is_string(message)
+      assert.is_not_nil(message:find('Policy: enabled', 1, true))
+      assert.is_not_nil(message:find('Policy ignored: 2', 1, true))
+      assert.is_nil(message:find('status-secret-should-not-return', 1, true))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
   end)
 
   describe('CamouflageYank', function()

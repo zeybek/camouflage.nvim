@@ -9,6 +9,7 @@ local parsers = require('camouflage.parsers')
 local hooks = require('camouflage.hooks')
 local log = require('camouflage.log')
 local position = require('camouflage.position')
+local policy = require('camouflage.policy')
 
 -- Position math lives in the leaf module camouflage.position so yank/pwned can
 -- reuse it without depending on the whole decoration engine. These permanent
@@ -62,6 +63,20 @@ end
 ---@param bufnr number
 local function reset_mask_state(bufnr)
   state.clear_variables(bufnr)
+  state.clear_policy_stats(bufnr)
+  restore_wrap(bufnr)
+end
+
+---@param bufnr number
+---@param parser_name string|nil
+---@param policy_stats table|nil
+local function reset_mask_state_with_policy(bufnr, parser_name, policy_stats)
+  state.update_buffer(bufnr, {
+    enabled = false,
+    variables = {},
+    parser = parser_name,
+    policy_stats = policy_stats,
+  })
   restore_wrap(bufnr)
 end
 
@@ -124,9 +139,21 @@ function M.apply_decorations(bufnr, override_filename)
     return
   end
 
+  local policy_variables, policy_result = policy.filter_variables({
+    bufnr = bufnr,
+    filename = filename,
+    parser_name = parser_name,
+    variables = variables,
+    config = cfg,
+  })
+  if #policy_variables == 0 then
+    reset_mask_state_with_policy(bufnr, parser_name, policy_result.stats)
+    return
+  end
+
   -- HOOK: variable_detected (filter variables)
   local filtered_variables = {}
-  for _, var in ipairs(variables) do
+  for _, var in ipairs(policy_variables) do
     local should_mask = hooks.emit('variable_detected', bufnr, var)
     if should_mask ~= false then
       table.insert(filtered_variables, var)
@@ -138,7 +165,12 @@ function M.apply_decorations(bufnr, override_filename)
     return
   end
 
-  state.set_variables(bufnr, filtered_variables)
+  state.update_buffer(bufnr, {
+    enabled = true,
+    variables = filtered_variables,
+    parser = parser_name,
+    policy_stats = policy_result.stats,
+  })
   state.clear_dirty(bufnr)
 
   -- Pre-compute line offsets for O(1) index lookups

@@ -23,6 +23,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 - **Reveal & Yank**: Temporarily reveal or copy masked values
 - **Follow Cursor Mode**: Auto-reveal current line as you navigate
 - **Workspace Audit**: Scan supported files into quickfix/location list without exposing values
+- **Rule-Based Policy**: Data-only ignore/force-mask rules for paths, parsers, keys, metadata, and safe value shapes
 - **Weak Secret Check**: Offline badges for obvious defaults, placeholders, short values, repeated values, and low-entropy tokens
 - **Have I Been Pwned**: Check passwords against breach database (Neovim 0.10+ with `vim.system`, plus `curl`)
 - **JWT Expiry Hints**: Decode `exp` claim and show "expires in 2h" badges
@@ -144,6 +145,26 @@ require('camouflage').setup({
     destination = 'quickfix', -- 'quickfix' | 'loclist'
   },
 
+  policy = {
+    enabled = true,
+    default_action = 'mask',
+    terminal_path_ignores = { 'node_modules/**', '.git/**' },
+    rules = {
+      {
+        id = 'ignore-debug-flags',
+        action = 'ignore',
+        key = { '^DEBUG$', '^PORT$' },
+        parser = { 'env', 'json', 'yaml' },
+      },
+      {
+        id = 'force-client-secrets',
+        action = 'mask',
+        allow_force = true,
+        key = { 'client[_%.%-]?secret', 'private[_%.%-]?key' },
+      },
+    },
+  },
+
   checks = {
     weak_secret = {
       enabled = true,
@@ -197,7 +218,41 @@ require('camouflage').setup({
 
 `:CamouflageAudit [path]` scans supported files under the current project root or optional path using the same parser registry as live masking. Results are written to quickfix by default; `:CamouflageAudit! [path]` writes to the current window's location list.
 
-Audit results include file, line, column, parser, key, and value length metadata, but never the plaintext value. The audit engine does not run HIBP or any other network check.
+Audit results include file, line, column, parser, key, value length, and policy decision metadata, but never the plaintext value. The audit engine does not run HIBP or any other network check.
+
+## Rule-Based Policy
+
+`policy` lets you declare data-only rules in `setup()` or `.camouflage.yaml`.
+Rules only filter values already found by supported parsers; a `mask` rule does
+not make unsupported files parseable.
+
+Policy precedence is deterministic:
+
+1. `terminal_path_ignores` ignore a root-relative path first.
+2. An `action = 'mask'` rule with `allow_force = true` can override that path
+   ignore or a broader ordered ignore rule.
+3. Otherwise, ordered rules are evaluated in order and the first match wins.
+4. Unmatched variables use `default_action`, which defaults to `mask`.
+
+Supported predicates are `path`, `basename`, `parser`, `key`, `nested`,
+`commented`, `value_length`, `value_shape`, `value_prefix`, and `value_suffix`.
+Value predicates never log or display the plaintext value.
+
+Example `.camouflage.yaml`:
+
+```yaml
+version: 1
+policy:
+  terminal_path_ignores: ['tests/fixtures/**']
+  rules:
+    - id: ignore-debug
+      action: ignore
+      key: ['^DEBUG$', '^PORT$']
+    - id: force-client-secrets
+      action: mask
+      allow_force: true
+      key: ['client[_%.%-]?secret', 'private[_%.%-]?key']
+```
 
 ## Weak Secret Check
 

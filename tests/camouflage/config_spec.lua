@@ -31,6 +31,34 @@ describe('camouflage.config', function()
       config.setup({ debounce_ms = 0 })
       assert.equals(0, config.get().debounce_ms)
     end)
+
+    it('should include data-only policy defaults', function()
+      config.setup()
+      local policy = config.get().policy
+
+      assert.is_table(policy)
+      assert.is_true(policy.enabled)
+      assert.equals('mask', policy.default_action)
+      assert.same({}, policy.terminal_path_ignores)
+      assert.same({}, policy.rules)
+    end)
+
+    it('should merge user policy options with defaults', function()
+      config.setup({
+        policy = {
+          terminal_path_ignores = { 'vendor/**' },
+          rules = {
+            { id = 'ignore-debug', action = 'ignore', key = { '^DEBUG$' } },
+          },
+        },
+      })
+
+      local policy = config.get().policy
+      assert.is_true(policy.enabled)
+      assert.equals('mask', policy.default_action)
+      assert.same({ 'vendor/**' }, policy.terminal_path_ignores)
+      assert.equals('ignore-debug', policy.rules[1].id)
+    end)
   end)
 
   describe('is_enabled', function()
@@ -56,6 +84,12 @@ describe('camouflage.config', function()
       config.setup()
       config.set('integrations.telescope', false)
       assert.is_false(config.get().integrations.telescope)
+    end)
+
+    it('should update policy options with dot notation', function()
+      config.setup()
+      config.set('policy.enabled', false)
+      assert.is_false(config.get().policy.enabled)
     end)
 
     it('should call refresh_all when value changes (hot reload)', function()

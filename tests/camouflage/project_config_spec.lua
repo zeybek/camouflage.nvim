@@ -188,6 +188,81 @@ describe('camouflage.project_config', function()
     assert.is_false(audit.notify)
   end)
 
+  it('should load policy configuration', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'policy:',
+      '  enabled: true',
+      '  default_action: mask',
+      "  terminal_path_ignores: ['vendor/**']",
+      '  rules:',
+      '    - id: ignore-debug',
+      '      action: ignore',
+      "      key: ['^DEBUG$']",
+      "      parser: ['env']",
+      '    - id: force-client-secret',
+      '      action: mask',
+      '      allow_force: true',
+      "      key: ['^CLIENT_SECRET$']",
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local policy = config.get().policy
+
+    assert.is_true(policy.enabled)
+    assert.equals('mask', policy.default_action)
+    assert.same({ 'vendor/**' }, policy.terminal_path_ignores)
+    assert.equals('ignore-debug', policy.rules[1].id)
+    assert.equals('force-client-secret', policy.rules[2].id)
+    assert.is_true(policy.rules[2].allow_force)
+  end)
+
+  it('should fail closed when project policy contains an invalid rule', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'policy:',
+      '  rules:',
+      '    - id: invalid-rule',
+      '      action: drop',
+      "      key: ['SECRET']",
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    local calls = {}
+    local original_notify = vim.notify
+    local original_notify_once = vim.notify_once
+    vim.notify = function(msg, level)
+      table.insert(calls, { msg = msg, level = level })
+    end
+    vim.notify_once = vim.notify
+
+    config.setup()
+    local policy = require('camouflage.policy')
+    policy._reset_warnings()
+    local decision = policy.evaluate({
+      filename = dir .. '/app.env',
+      root = dir,
+      parser_name = 'env',
+      variable = {
+        key = 'SECRET',
+        value = 'plaintext-secret',
+      },
+    }, config.get().policy)
+
+    vim.notify = original_notify
+    vim.notify_once = original_notify_once
+
+    assert.equals('mask', decision.action)
+    assert.equals(1, #calls)
+    assert.equals(vim.log.levels.WARN, calls[1].level)
+    assert.is_nil(calls[1].msg:find('plaintext-secret', 1, true))
+  end)
+
   it('should load weak-secret check configuration', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

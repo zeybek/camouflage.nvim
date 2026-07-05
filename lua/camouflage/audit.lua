@@ -12,6 +12,7 @@ local config = require('camouflage.config')
 local log = require('camouflage.log')
 local parsers = require('camouflage.parsers')
 local position = require('camouflage.position')
+local policy = require('camouflage.policy')
 
 -- Compatibility: vim.uv exists in Neovim 0.10+, vim.loop in 0.9.
 local uv = vim.uv or vim.loop
@@ -36,6 +37,7 @@ local DEFAULT_CHUNK_SIZE = 50
 ---@field is_commented boolean
 ---@field is_multiline boolean|nil
 ---@field value_length integer
+---@field policy table|nil
 
 ---@class CamouflageAuditError
 ---@field filename string
@@ -124,9 +126,10 @@ local function is_ignored(path, ignore_patterns)
 end
 
 ---@param opts table|nil
+---@param base_config table|nil
 ---@return table
-local function audit_config(opts)
-  local cfg = config.get().audit or {}
+local function audit_config(opts, base_config)
+  local cfg = (base_config or config.get()).audit or {}
   local audit_opts = opts or {}
   local merged = vim.tbl_deep_extend('force', {
     ignore_patterns = { '.git', '.git/**', 'node_modules', 'node_modules/**' },
@@ -219,6 +222,7 @@ local function new_result(root)
       files_scanned = 0,
       files_skipped = 0,
       findings = 0,
+      policy_ignored = 0,
       elapsed_ms = 0,
     },
   }
@@ -391,6 +395,11 @@ local function add_finding(result, var, filename, parser_name, lines, line_offse
     is_commented = var.is_commented == true,
     is_multiline = var.is_multiline == true or nil,
     value_length = #tostring(var.value),
+    policy = var.policy and {
+      action = var.policy.action,
+      reason = var.policy.reason,
+      rule_id = var.policy.rule_id,
+    } or nil,
   })
   result.stats.findings = result.stats.findings + 1
 end
@@ -412,7 +421,7 @@ local function process_file(result, filename, cfg)
     return
   end
 
-  local max_lines = config.get().max_lines
+  local max_lines = cfg.max_lines
   if max_lines and #lines > max_lines then
     result.stats.files_skipped = result.stats.files_skipped + 1
     return
@@ -430,8 +439,17 @@ local function process_file(result, filename, cfg)
   end
 
   result.stats.files_scanned = result.stats.files_scanned + 1
+  local filtered_variables, policy_result = policy.filter_variables({
+    filename = filename,
+    root = result.root,
+    parser_name = parser_name,
+    variables = variables,
+    config = cfg,
+    include_default_policy_metadata = true,
+  })
+  result.stats.policy_ignored = result.stats.policy_ignored + policy_result.stats.ignored
   local line_offsets = position.compute_line_offsets(lines)
-  for _, var in ipairs(variables) do
+  for _, var in ipairs(filtered_variables) do
     add_finding(result, var, filename, parser_name, lines, line_offsets)
   end
 end
@@ -457,7 +475,8 @@ end
 ---@return CamouflageAuditResult
 function M.run_sync(opts)
   opts = opts or {}
-  local cfg = audit_config(opts)
+  local effective_config = config.get()
+  local cfg = audit_config(opts, effective_config)
   local root, target = resolve_target(opts)
   local result = new_result(root)
   local started = vim.loop.hrtime()
@@ -465,7 +484,7 @@ function M.run_sync(opts)
 
   collect_files(target, root, cfg, result, files)
   for _, filename in ipairs(files) do
-    process_file(result, filename, cfg)
+    process_file(result, filename, effective_config)
   end
 
   finish_result(result, started)
@@ -476,7 +495,8 @@ end
 ---@return CamouflageAuditHandle
 function M.run_async(opts)
   opts = opts or {}
-  local cfg = audit_config(opts)
+  local effective_config = config.get()
+  local cfg = audit_config(opts, effective_config)
   local root, target = resolve_target(opts)
   local result = new_result(root)
   local started = vim.loop.hrtime()
@@ -522,7 +542,7 @@ function M.run_async(opts)
     end
 
     while discovery.done and index <= #files and processed < chunk_size do
-      process_file(result, files[index], cfg)
+      process_file(result, files[index], effective_config)
       index = index + 1
       processed = processed + 1
     end

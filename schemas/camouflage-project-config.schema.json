@@ -253,6 +253,207 @@
         }
       }
     },
+    "policy": {
+      "type": "object",
+      "description": "Data-only masking policy for ignoring or force-masking detected variables",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable policy evaluation"
+        },
+        "default_action": {
+          "type": "string",
+          "enum": [
+            "mask",
+            "ignore"
+          ],
+          "description": "Fallback action when no policy rule matches"
+        },
+        "terminal_path_ignores": {
+          "description": "Root-relative or basename globs ignored before ordered rules",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "rules": {
+          "type": "array",
+          "description": "Ordered policy rules; the first non-forced match wins",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Stable identifier shown in redacted policy metadata"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "mask",
+                  "ignore"
+                ],
+                "description": "Policy decision for matching variables"
+              },
+              "allow_force": {
+                "type": "boolean",
+                "description": "Allow a mask rule to override terminal or broad ignores"
+              },
+              "path": {
+                "description": "Project-root-relative or basename glob(s)",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              },
+              "basename": {
+                "description": "Basename glob(s)",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              },
+              "parser": {
+                "description": "Parser name(s), such as env, json, yaml, or toml",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              },
+              "key": {
+                "description": "Lua pattern(s) matched against variable keys",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              },
+              "nested": {
+                "type": "boolean",
+                "description": "Match nested-key metadata"
+              },
+              "commented": {
+                "type": "boolean",
+                "description": "Match commented-line metadata"
+              },
+              "value_length": {
+                "type": "object",
+                "description": "Match by plaintext length without exposing the value",
+                "additionalProperties": false,
+                "properties": {
+                  "min": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "max": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              },
+              "value_shape": {
+                "description": "Safe value shape(s) inspected without exposing plaintext",
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "empty",
+                      "non_empty",
+                      "numeric",
+                      "boolean",
+                      "quoted",
+                      "jwt_like",
+                      "token_like"
+                    ]
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "empty",
+                        "non_empty",
+                        "numeric",
+                        "boolean",
+                        "quoted",
+                        "jwt_like",
+                        "token_like"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "value_prefix": {
+                "description": "Literal value prefix or prefixes",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              },
+              "value_suffix": {
+                "description": "Literal value suffix or suffixes",
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
     "yank": {
       "type": "object",
       "description": "Configuration for copying unmasked values",

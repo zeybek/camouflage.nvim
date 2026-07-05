@@ -10,6 +10,7 @@ M.runtime_augroup = vim.api.nvim_create_augroup('camouflage_runtime', { clear = 
 ---@field enabled boolean
 ---@field variables table[]
 ---@field parser string|nil
+---@field policy_stats table|nil
 
 ---@type table<number, BufferState>
 M.buffers = {}
@@ -74,6 +75,27 @@ function M.clear_variables(bufnr)
   local buf_state = M.buffers[bufnr]
   if buf_state then
     buf_state.variables = {}
+  end
+end
+
+---@param bufnr number
+---@param stats table|nil
+function M.set_policy_stats(bufnr, stats)
+  M.init_buffer(bufnr).policy_stats = stats
+end
+
+---@param bufnr number|nil
+---@return table|nil
+function M.get_policy_stats(bufnr)
+  local buf_state = M.get_buffer(bufnr)
+  return buf_state and buf_state.policy_stats or nil
+end
+
+---@param bufnr number
+function M.clear_policy_stats(bufnr)
+  local buf_state = M.buffers[bufnr]
+  if buf_state then
+    buf_state.policy_stats = nil
   end
 end
 

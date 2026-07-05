@@ -1,10 +1,25 @@
 local core = require('camouflage.core')
 local state = require('camouflage.state')
 local config = require('camouflage.config')
+local hooks = require('camouflage.hooks')
+
+local function setup_buffer(lines, filename)
+  local bufnr = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_name(bufnr, filename or (vim.fn.tempname() .. '.env'))
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+  vim.api.nvim_set_current_buf(bufnr)
+  return bufnr
+end
 
 describe('camouflage.core', function()
   before_each(function()
     config.setup()
+    hooks.clear()
+    hooks.setup(nil)
+    require('camouflage.parsers').setup()
+    vim.wait(20, function()
+      return false
+    end)
     state.clear()
   end)
 
@@ -200,6 +215,104 @@ describe('camouflage.core', function()
       assert.has_no.errors(function()
         core.apply_decorations(bufnr)
       end)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should apply policy before storing and decorating variables', function()
+      config.setup({
+        policy = {
+          rules = {
+            { id = 'ignore-debug', action = 'ignore', key = { '^DEBUG$' } },
+          },
+        },
+      })
+      local bufnr = setup_buffer({ 'DEBUG=true', 'API_KEY=secret' })
+
+      core.apply_decorations(bufnr)
+
+      local variables = state.get_variables(bufnr)
+      local marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+      local stats = state.get_policy_stats(bufnr)
+
+      assert.equals(1, #variables)
+      assert.equals('API_KEY', variables[1].key)
+      assert.equals(1, #marks)
+      assert.equals(2, stats.total)
+      assert.equals(1, stats.ignored)
+      assert.equals(1, stats.masked)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should let allow_force mask rules survive broad ignore rules', function()
+      config.setup({
+        policy = {
+          rules = {
+            { id = 'ignore-all', action = 'ignore', key = { '.+' } },
+            {
+              id = 'force-client-secret',
+              action = 'mask',
+              allow_force = true,
+              key = { '^CLIENT_SECRET$' },
+            },
+          },
+        },
+      })
+      local bufnr = setup_buffer({ 'CLIENT_SECRET=secret', 'DEBUG=true' })
+
+      core.apply_decorations(bufnr)
+
+      local variables = state.get_variables(bufnr)
+      local stats = state.get_policy_stats(bufnr)
+
+      assert.equals(1, #variables)
+      assert.equals('CLIENT_SECRET', variables[1].key)
+      assert.equals('force-client-secret', variables[1].policy.rule_id)
+      assert.equals(1, stats.ignored)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should run variable_detected hooks after policy filtering', function()
+      config.setup({
+        policy = {
+          rules = {
+            { id = 'ignore-debug', action = 'ignore', key = { '^DEBUG$' } },
+          },
+        },
+      })
+      local seen = {}
+      hooks.on('variable_detected', function(_, var)
+        seen[var.key] = true
+      end)
+      local bufnr = setup_buffer({ 'DEBUG=true', 'API_KEY=secret' })
+
+      core.apply_decorations(bufnr)
+
+      assert.is_nil(seen.DEBUG)
+      assert.is_true(seen.API_KEY)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should keep policy stats when every parsed variable is ignored', function()
+      config.setup({
+        policy = {
+          rules = {
+            { id = 'ignore-debug', action = 'ignore', key = { '^DEBUG$' } },
+          },
+        },
+      })
+      local bufnr = setup_buffer({ 'DEBUG=true' })
+
+      core.apply_decorations(bufnr)
+
+      local stats = state.get_policy_stats(bufnr)
+      assert.is_false(state.is_buffer_masked(bufnr))
+      assert.same({}, state.get_variables(bufnr))
+      assert.equals(1, stats.total)
+      assert.equals(1, stats.ignored)
 
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)

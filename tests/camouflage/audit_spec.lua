@@ -137,6 +137,29 @@ describe('camouflage.audit', function()
     assert.is_false(inspect_has(result, 'custom-secret-should-not-return'))
   end)
 
+  it('applies policy and returns redacted policy metadata', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    writefile(dir .. '/.env', { 'DEBUG=true', 'API_KEY=audit-secret-should-not-return' })
+
+    local audit = setup_in_dir(dir, {
+      policy = {
+        rules = {
+          { id = 'ignore-debug', action = 'ignore', key = { '^DEBUG$' } },
+        },
+      },
+    })
+
+    local result = audit.run({ root = dir })
+
+    assert.equals(1, #result.findings)
+    assert.equals('API_KEY', result.findings[1].key)
+    assert.equals(1, result.stats.policy_ignored)
+    assert.equals('mask', result.findings[1].policy.action)
+    assert.equals('default', result.findings[1].policy.reason)
+    assert.is_false(inspect_has(result, 'audit-secret-should-not-return'))
+  end)
+
   it('skips project config, unsupported files, oversized files, and ignored paths', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

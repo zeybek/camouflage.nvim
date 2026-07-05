@@ -126,6 +126,31 @@ local M = {}
 ---@field open? boolean Open quickfix/location-list after findings are written
 ---@field notify? boolean Show audit completion notifications
 
+---@class CamouflagePolicyValueLengthConfig
+---@field min? number
+---@field max? number
+
+---@class CamouflagePolicyRuleConfig
+---@field id? string Stable rule identifier for status/debug metadata
+---@field action string "mask" | "ignore"
+---@field allow_force? boolean Allow this mask rule to override broader ignore rules
+---@field path? string|string[] Root-relative glob(s)
+---@field basename? string|string[] Basename glob(s)
+---@field parser? string|string[] Parser name(s)
+---@field key? string|string[] Lua pattern(s) matched against parsed keys
+---@field nested? boolean Match nested parser output
+---@field commented? boolean Match commented parser output
+---@field value_length? CamouflagePolicyValueLengthConfig
+---@field value_shape? string|string[] "empty" | "non_empty" | "numeric" | "boolean" | "quoted" | "jwt_like" | "token_like"
+---@field value_prefix? string|string[] Literal value prefix shape(s), never logged
+---@field value_suffix? string|string[] Literal value suffix shape(s), never logged
+
+---@class CamouflagePolicyConfig
+---@field enabled? boolean Enable declarative policy evaluation
+---@field default_action? string "mask" | "ignore" for unmatched parsed variables
+---@field terminal_path_ignores? string[] Root-relative globs ignored before ordered rules unless allow_force mask matches
+---@field rules? CamouflagePolicyRuleConfig[] Ordered policy rules
+
 ---@class CamouflageChecksConfig
 ---@field badges? CamouflageBadgesConfig
 ---@field pwned? CamouflagePwnedConfig
@@ -165,6 +190,7 @@ local M = {}
 ---@field custom_patterns? CamouflageCustomPatternConfig[] Custom patterns for unsupported file types
 ---@field project_config? CamouflageProjectConfigLoaderConfig Repo-level project config loading
 ---@field audit? CamouflageAuditConfig Workspace audit configuration
+---@field policy? CamouflagePolicyConfig Declarative data-only masking policy
 ---@field checks? CamouflageChecksConfig Per-check configuration (pwned, expiry, ...)
 
 ---@type CamouflageConfig
@@ -249,6 +275,12 @@ M.defaults = {
     destination = 'quickfix',
     open = true,
     notify = true,
+  },
+  policy = {
+    enabled = true,
+    default_action = 'mask',
+    terminal_path_ignores = {},
+    rules = {},
   },
   checks = {
     badges = {

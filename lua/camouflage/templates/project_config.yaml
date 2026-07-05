@@ -164,6 +164,39 @@ audit:
   notify: true
 
 # =============================================================================
+# RULE-BASED POLICY
+# =============================================================================
+
+# Data-only rules for deciding which detected variables should be masked or
+# ignored. Policy can only act on values found by supported parsers or custom
+# patterns; it does not make unsupported files parseable.
+policy:
+  enabled: true
+  default_action: mask # 'mask' or 'ignore'
+
+  # Terminal path ignores run first. A later rule can override these only when
+  # action is 'mask' and allow_force is true.
+  terminal_path_ignores:
+    - .git/**
+    - node_modules/**
+
+  # Rules are evaluated in order and the first non-forced match wins. Matching
+  # supports path, basename, parser, key, nested, commented, value_length,
+  # value_shape, value_prefix, and value_suffix predicates.
+  rules:
+    - id: ignore-debug-flags
+      action: ignore
+      key: ['^DEBUG$', '^PORT$']
+      parser: [env, json, yaml]
+
+    - id: force-client-secrets
+      action: mask
+      allow_force: true
+      key:
+        - client[_%.%-]?secret
+        - private[_%.%-]?key
+
+# =============================================================================
 # CHECKS
 # =============================================================================
 

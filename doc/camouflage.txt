@@ -22,11 +22,12 @@ CONTENTS                                                  *camouflage-contents*
  13. Integrations ............................ |camouflage-integrations|
  14. Project Config .......................... |camouflage-project-config|
  15. Workspace Audit ......................... |camouflage-audit|
- 16. Weak Secret Check ....................... |camouflage-weak-secret|
- 17. Have I Been Pwned ....................... |camouflage-pwned|
- 18. JWT Expiry Hints ........................ |camouflage-expiry|
- 19. Custom Queries .......................... |camouflage-custom-queries|
- 20. Troubleshooting ......................... |camouflage-troubleshooting|
+ 16. Rule-Based Policy ....................... |camouflage-policy|
+ 17. Weak Secret Check ....................... |camouflage-weak-secret|
+ 18. Have I Been Pwned ....................... |camouflage-pwned|
+ 19. JWT Expiry Hints ........................ |camouflage-expiry|
+ 20. Custom Queries .......................... |camouflage-custom-queries|
+ 21. Troubleshooting ......................... |camouflage-troubleshooting|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -42,6 +43,7 @@ Features:
 - Multiple masking styles: stars, dotted, text, scramble
 - Have I Been Pwned integration for password breach checking
 - Workspace audit into quickfix/location list
+- Rule-based data-only policy for ignore/force-mask rules
 - Offline weak-secret quality badges
 - Buffer-local configuration overrides
 - Telescope and Snacks.nvim preview integration
@@ -192,6 +194,27 @@ Call the setup function with your options: >lua
       notify = true,              -- Notify after completion
     },
 
+    -- Rule-based policy
+    policy = {
+      enabled = true,
+      default_action = 'mask',    -- 'mask' | 'ignore'
+      terminal_path_ignores = { '.git/**', 'node_modules/**' },
+      rules = {
+        {
+          id = 'ignore-debug-flags',
+          action = 'ignore',
+          key = { '^DEBUG$', '^PORT$' },
+          parser = { 'env', 'json', 'yaml' },
+        },
+        {
+          id = 'force-client-secrets',
+          action = 'mask',
+          allow_force = true,
+          key = { 'client[_%.%-]?secret', 'private[_%.%-]?key' },
+        },
+      },
+    },
+
     -- Offline weak-secret heuristics
     checks = {
       weak_secret = {
@@ -304,6 +327,15 @@ audit ~
     - `open`: open the list after findings are written
     - `notify`: show completion notifications
 
+policy ~
+    Type: `table`
+    Rule-based masking policy. See |camouflage-policy|.
+    Fields:
+    - `enabled`: enable policy evaluation
+    - `default_action`: fallback action, `'mask'` or `'ignore'`
+    - `terminal_path_ignores`: root-relative or basename globs skipped first
+    - `rules`: ordered policy rules using data-only match predicates
+
 ==============================================================================
 COMMANDS                                                  *camouflage-commands*
 
@@ -326,7 +358,7 @@ COMMANDS                                                  *camouflage-commands*
   Scan supported files under the current project root or optional [path].
   Results are written to quickfix by default. Use `!` to write to the current
   window's location list. Audit entries include file, line, column, parser, and
-  key metadata, but never plaintext values.
+  key and policy metadata, but never plaintext values.
 
                                              *:CamouflageWeakSecretToggle*
 :CamouflageWeakSecretToggle
@@ -345,6 +377,7 @@ COMMANDS                                                  *camouflage-commands*
   - Current buffer mask state
   - Parser used for current file
   - Number of masked values
+  - Policy enabled/disabled state and ignored count
 
                                                       *:CamouflagePwnedCheck*
 :CamouflagePwnedCheck
@@ -1052,7 +1085,7 @@ Project config files support most configuration options:
 - style, mask_char, mask_length, hidden_text
 - highlight_group, colors
 - patterns, parsers
-- integrations, yank, reveal, audit, pwned, checks
+- integrations, yank, reveal, audit, policy, pwned, checks
 
 Note: The `project_config` key itself cannot be set in project config files.
 
@@ -1125,9 +1158,9 @@ directory.
 Privacy ~
                                                   *camouflage-audit-privacy*
 Audit findings include file path, line, column, parser name, key, nested or
-commented metadata, and value length. Plaintext values are stripped before
-results are returned or written to quickfix/location-list. HIBP and other
-network checks are not run during audit.
+commented metadata, value length, and redacted policy decision metadata.
+Plaintext values are stripped before results are returned or written to
+quickfix/location-list. HIBP and other network checks are not run during audit.
 
 Configuration ~
                                                    *camouflage-audit-config*
@@ -1152,6 +1185,91 @@ API ~
 >lua
   local result = require('camouflage.audit').run({ root = vim.fn.getcwd() })
   -- result.findings contains redacted metadata only, never `value`.
+<
+
+==============================================================================
+RULE-BASED POLICY                                      *camouflage-policy*
+
+Policy rules decide which already-detected variables are masked or ignored.
+They are data only: configuration is read from `setup()` or `.camouflage.yaml`,
+and no project code is executed.
+
+Policy does not make unsupported files parseable. A `mask` rule can only force
+masking for variables that were already found by a supported parser or custom
+pattern.
+
+Decision order ~
+                                           *camouflage-policy-precedence*
+1. `terminal_path_ignores` ignore matching files first.
+2. A matching `mask` rule with `allow_force = true` can override a path ignore
+   or broad ignore rule.
+3. Otherwise, rules are evaluated in order and the first match wins.
+4. If no rule matches, `default_action` is used. The default is `mask`.
+
+Supported predicates ~
+                                           *camouflage-policy-predicates*
+Rules can match on:
+- `path`: project-root-relative or basename glob
+- `basename`: basename glob
+- `parser`: parser names such as `env`, `json`, `yaml`, or `toml`
+- `key`: Lua patterns matched against the variable key
+- `nested`: boolean nested-key metadata
+- `commented`: boolean commented-line metadata
+- `value_length`: `{ min = N, max = N }`
+- `value_shape`: `empty`, `non_empty`, `numeric`, `boolean`, `quoted`,
+  `jwt_like`, or `token_like`
+- `value_prefix`: literal prefixes
+- `value_suffix`: literal suffixes
+
+Value predicates inspect the value only to make the decision. Warnings,
+status output, audit findings, and policy stats do not include plaintext
+values.
+
+Example ~
+                                                *camouflage-policy-example*
+>lua
+  require('camouflage').setup({
+    policy = {
+      enabled = true,
+      default_action = 'mask',
+      terminal_path_ignores = { '.git/**', 'node_modules/**' },
+      rules = {
+        {
+          id = 'ignore-debug-flags',
+          action = 'ignore',
+          key = { '^DEBUG$', '^PORT$' },
+          parser = { 'env', 'json', 'yaml' },
+        },
+        {
+          id = 'force-client-secrets',
+          action = 'mask',
+          allow_force = true,
+          key = { 'client[_%.%-]?secret', 'private[_%.%-]?key' },
+        },
+      },
+    },
+  })
+<
+
+The same policy can be set in `.camouflage.yaml`:
+>yaml
+  policy:
+    enabled: true
+    default_action: mask
+    terminal_path_ignores:
+      - .git/**
+      - node_modules/**
+    rules:
+      - id: ignore-debug-flags
+        action: ignore
+        key: ['^DEBUG$', '^PORT$']
+        parser: [env, json, yaml]
+      - id: force-client-secrets
+        action: mask
+        allow_force: true
+        key:
+          - client[_%.%-]?secret
+          - private[_%.%-]?key
 <
 
 ==============================================================================
