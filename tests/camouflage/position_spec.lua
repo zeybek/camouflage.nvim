@@ -29,6 +29,42 @@ describe('camouflage.position', function()
   end)
 
   describe('find_variable_at_cursor', function()
+    it('strict mode matches the first byte of an end-exclusive value range', function()
+      local bufnr = setup_buf({ 'API_KEY=secret123' })
+      local vars = {
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17, line_number = 0 },
+      }
+      vim.api.nvim_win_set_cursor(0, { 1, 8 }) -- first byte of the value
+
+      local var = position.find_variable_at_cursor(bufnr, vars, { same_line_fallback = false })
+
+      assert.equals('API_KEY', var.key)
+    end)
+
+    it('strict mode matches the last byte before an end-exclusive boundary', function()
+      local bufnr = setup_buf({ 'API_KEY=secret123' })
+      local vars = {
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17, line_number = 0 },
+      }
+      vim.api.nvim_win_set_cursor(0, { 1, 16 }) -- last byte of the value
+
+      local var = position.find_variable_at_cursor(bufnr, vars, { same_line_fallback = false })
+
+      assert.equals('API_KEY', var.key)
+    end)
+
+    it('strict mode does not match at the end-exclusive boundary', function()
+      local bufnr = setup_buf({ 'API_KEY=secret123,' })
+      local vars = {
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17, line_number = 0 },
+      }
+      vim.api.nvim_win_set_cursor(0, { 1, 17 }) -- comma after the value
+
+      local var = position.find_variable_at_cursor(bufnr, vars, { same_line_fallback = false })
+
+      assert.is_nil(var)
+    end)
+
     it('returns the variable whose byte range contains the cursor', function()
       local bufnr = setup_buf({ 'API_KEY=secret123' })
       local vars = {
@@ -57,6 +93,18 @@ describe('camouflage.position', function()
       vim.api.nvim_win_set_cursor(0, { 1, 7 }) -- between values, closer to BBB
       local var = position.find_variable_at_cursor(bufnr, vars, { same_line_fallback = true })
       assert.equals('b', var.key)
+    end)
+
+    it('lenient fallback still selects the nearest variable at an end boundary', function()
+      local bufnr = setup_buf({ 'API_KEY=secret123,' })
+      local vars = {
+        { key = 'API_KEY', value = 'secret123', start_index = 8, end_index = 17, line_number = 0 },
+      }
+      vim.api.nvim_win_set_cursor(0, { 1, 17 }) -- comma after the value
+
+      local var = position.find_variable_at_cursor(bufnr, vars, { same_line_fallback = true })
+
+      assert.equals('API_KEY', var.key)
     end)
   end)
 end)

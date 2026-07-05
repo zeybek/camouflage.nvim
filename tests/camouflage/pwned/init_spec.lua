@@ -10,6 +10,7 @@ end
 
 describe('camouflage.pwned', function()
   local pwned
+  local test_counter = 0
 
   local function with_system_unavailable(fn)
     local original_system = vim.system
@@ -24,6 +25,15 @@ describe('camouflage.pwned', function()
   before_each(function()
     pwned = require('camouflage.pwned')
   end)
+
+  local function setup_test_buffer(content, filename)
+    test_counter = test_counter + 1
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(content, '\n'))
+    vim.api.nvim_buf_set_name(bufnr, (filename or '/tmp/pwned.env') .. '.' .. test_counter)
+    vim.api.nvim_set_current_buf(bufnr)
+    return bufnr
+  end
 
   describe('setup', function()
     it('should not error', function()
@@ -91,6 +101,49 @@ describe('camouflage.pwned', function()
       cache.set('TEST', { pwned = true, count = 1 })
       pwned.clear_cache()
       assert.is_nil(cache.get('TEST'))
+    end)
+  end)
+
+  describe('check_current', function()
+    it('does not check a variable when the cursor is at its end-exclusive boundary', function()
+      local pwned_check = require('camouflage.pwned.check')
+      local state = require('camouflage.state')
+      local original_is_available = pwned_check.is_available
+      local original_check_variable = pwned_check.check_variable
+      local original_notify = vim.notify
+
+      local ok, err = pcall(function()
+        local bufnr = setup_test_buffer('PASSWORD=secret,', '/tmp/pwned.env')
+        state.set_variables(bufnr, {
+          { key = 'PASSWORD', value = 'secret', start_index = 9, end_index = 15, line_number = 0 },
+        })
+        vim.api.nvim_win_set_cursor(0, { 1, 15 }) -- comma after the value
+
+        local checked = false
+        pwned_check.is_available = function()
+          return true
+        end
+        pwned_check.check_variable = function()
+          checked = true
+        end
+        vim.notify = function() end
+
+        local callback_result = 'unset'
+        pwned.check_current(function(result)
+          callback_result = result
+        end)
+
+        assert.is_false(checked)
+        assert.is_nil(callback_result)
+      end)
+
+      pwned_check.is_available = original_is_available
+      pwned_check.check_variable = original_check_variable
+      vim.notify = original_notify
+
+      if not ok then
+        error(err, 0)
+      end
     end)
   end)
 
