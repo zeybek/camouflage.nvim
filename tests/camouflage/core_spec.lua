@@ -13,6 +13,26 @@ local function setup_buffer(lines, filename)
   return bufnr
 end
 
+local function assert_unmasked_state(bufnr)
+  local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+  assert.equals(0, #extmarks)
+  assert.equals(0, #state.get_variables(bufnr))
+  assert.is_false(state.is_buffer_masked(bufnr))
+  assert.is_nil(state.get_policy_stats(bufnr))
+end
+
+local function setup_masked_buffer(lines, filename)
+  local bufnr = setup_buffer(lines, filename)
+  core.apply_decorations(bufnr)
+
+  local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+  assert.is_true(state.is_buffer_masked(bufnr))
+  assert.is_true(#state.get_variables(bufnr) > 0)
+  assert.is_true(#extmarks > 0)
+
+  return bufnr
+end
+
 describe('camouflage.core', function()
   before_each(function()
     config.setup()
@@ -160,9 +180,8 @@ describe('camouflage.core', function()
   end)
 
   describe('apply_decorations', function()
-    it('should skip when disabled', function()
-      local bufnr = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_set_current_buf(bufnr)
+    it('should clear stale mask state when disabled', function()
+      local bufnr = setup_masked_buffer({ 'API_KEY=secret' })
 
       config.set('enabled', false)
 
@@ -170,12 +189,13 @@ describe('camouflage.core', function()
         core.apply_decorations(bufnr)
       end)
 
+      assert_unmasked_state(bufnr)
+
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
 
-    it('should skip files over max_lines', function()
-      local bufnr = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_set_current_buf(bufnr)
+    it('should clear stale mask state when files exceed max_lines', function()
+      local bufnr = setup_masked_buffer({ 'API_KEY=secret' })
 
       -- Create a buffer with many lines
       local lines = {}
@@ -191,9 +211,7 @@ describe('camouflage.core', function()
         core.apply_decorations(bufnr)
       end)
 
-      -- Should not have created any extmarks
-      local extmarks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
-      assert.equals(0, #extmarks)
+      assert_unmasked_state(bufnr)
 
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)
@@ -211,14 +229,55 @@ describe('camouflage.core', function()
     end)
 
     it('should skip unsupported file types', function()
-      local bufnr = vim.api.nvim_create_buf(false, true)
-      vim.api.nvim_buf_set_name(bufnr, 'test.unsupported')
-      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'some content' })
-      vim.api.nvim_set_current_buf(bufnr)
+      local bufnr = setup_masked_buffer({ 'API_KEY=secret' })
 
       assert.has_no.errors(function()
-        core.apply_decorations(bufnr)
+        core.apply_decorations(bufnr, 'test.unsupported')
       end)
+
+      assert_unmasked_state(bufnr)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should clear stale mask state when parser returns no variables', function()
+      local bufnr = setup_masked_buffer({ 'API_KEY=secret' })
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'plain text without assignments' })
+
+      core.apply_decorations(bufnr)
+
+      assert_unmasked_state(bufnr)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should clear stale mask state when buffer-local config disables masking', function()
+      local bufnr = setup_masked_buffer({ 'API_KEY=secret' })
+      vim.b[bufnr].camouflage_enabled = false
+
+      core.apply_decorations(bufnr)
+
+      assert_unmasked_state(bufnr)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('should clear stale variables so yank, reveal, and checks cannot use them', function()
+      local bufnr = setup_masked_buffer({ 'PASSWORD=password' })
+      vim.api.nvim_win_set_cursor(0, { 1, 10 })
+
+      config.set('enabled', false)
+      core.apply_decorations(bufnr)
+
+      local yank = require('camouflage.yank')
+      local reveal = require('camouflage.reveal')
+      local weak_secret = require('camouflage.checks.weak_secret')
+
+      assert.is_nil(yank.find_variable_at_cursor(bufnr))
+      reveal.reveal_line()
+      assert.is_false(reveal.is_revealed())
+      weak_secret.check_buffer(bufnr)
+      assert.is_nil(checks_store.get(bufnr, 0, 'weak_secret'))
 
       vim.api.nvim_buf_delete(bufnr, { force = true })
     end)

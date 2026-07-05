@@ -141,6 +141,39 @@ describe('camouflage.init', function()
       assert.is_not_nil(found)
       assert.equals(0, #autocmds)
     end)
+
+    it('should not disable cmp for a supported buffer after masking stops', function()
+      local original_cmp = package.loaded.cmp
+      local disabled_calls = 0
+      package.loaded.cmp = {
+        setup = {
+          buffer = function(opts)
+            if opts and opts.enabled == false then
+              disabled_calls = disabled_calls + 1
+            end
+          end,
+        },
+      }
+      local bufnr = create_named_buffer({ 'API_KEY=secret' }, vim.fn.tempname() .. '.env')
+
+      camouflage.setup(no_network_opts())
+
+      local config = require('camouflage.config')
+      local core = require('camouflage.core')
+      local state = require('camouflage.state')
+      assert.is_true(state.is_buffer_masked(bufnr))
+
+      config.set('enabled', false)
+      core.apply_decorations(bufnr)
+      vim.api.nvim_exec_autocmds('BufEnter', { buffer = bufnr })
+
+      package.loaded.cmp = original_cmp
+
+      assert.is_false(state.is_buffer_masked(bufnr))
+      assert.equals(0, disabled_calls)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
   end)
 
   describe('enable/disable', function()

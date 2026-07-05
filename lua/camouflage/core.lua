@@ -63,7 +63,10 @@ end
 ---window wrap.
 ---@param bufnr number
 local function reset_mask_state(bufnr)
-  state.clear_variables(bufnr)
+  state.update_buffer(bufnr, {
+    enabled = false,
+    variables = {},
+  })
   state.clear_policy_stats(bufnr)
   restore_wrap(bufnr)
 end

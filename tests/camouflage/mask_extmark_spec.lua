@@ -114,6 +114,7 @@ describe('camouflage end-to-end extmark placement', function()
     local marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
     assert.equals(0, #marks)
     assert.equals(0, #state.get_variables(bufnr))
+    assert.is_false(state.is_buffer_masked(bufnr))
 
     vim.api.nvim_buf_delete(bufnr, { force = true })
   end)
