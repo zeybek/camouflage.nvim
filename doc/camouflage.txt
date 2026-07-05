@@ -90,6 +90,8 @@ For Have I Been Pwned feature (|camouflage-pwned|):
 - Neovim >= 0.10.0 (requires `vim.system`)
 - `curl` (for API requests)
   (password hashing is done in-process; no external sha1sum/openssl needed)
+- HIBP uses network requests; automatic checks are disabled by default and must
+  be opted into explicitly.
 
 ==============================================================================
 INSTALLATION                                          *camouflage-installation*
@@ -231,9 +233,9 @@ Call the setup function with your options: >lua
     -- Have I Been Pwned (requires Neovim 0.10+ with vim.system, plus curl)
     pwned = {
       enabled = true,             -- Enable the feature
-      auto_check = true,          -- Check on BufEnter
-      check_on_save = true,       -- Check on BufWritePost
-      check_on_change = true,     -- Check when value changes
+      auto_check = false,         -- Network check on BufEnter (opt in)
+      check_on_save = false,      -- Network check on BufWritePost (opt in)
+      check_on_change = false,    -- Network check when value changes (opt in)
       show_sign = true,           -- Show sign column indicator
       show_virtual_text = true,   -- Show virtual text
       show_line_highlight = true, -- Highlight the line
@@ -1488,6 +1490,10 @@ The integration uses k-anonymity: only the first 5 characters of the
 SHA-1 hash are sent to the HIBP API. Your actual passwords never leave
 your machine.
 
+HIBP is still a network check. Manual commands are available by default, but
+automatic checks on buffer enter, save, and text change are disabled unless you
+explicitly opt in with the corresponding `pwned` options.
+
 How it works:
 1. Password is hashed locally using SHA-1
 2. Only the first 5 characters of the hash are sent to the API
@@ -1508,8 +1514,9 @@ Configuration ~
   require('camouflage').setup({
     pwned = {
       enabled = true,               -- Feature toggle
-      auto_check = true,            -- Check on BufEnter
-      check_on_save = true,         -- Check on BufWritePost
+      auto_check = false,           -- Network check on BufEnter (opt in)
+      check_on_save = false,        -- Network check on BufWritePost (opt in)
+      check_on_change = false,      -- Network check on TextChanged (opt in)
       show_sign = true,             -- Show sign column indicator
       show_virtual_text = true,     -- Show virtual text
       show_line_highlight = true,   -- Highlight the line

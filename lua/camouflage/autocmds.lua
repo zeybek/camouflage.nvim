@@ -180,6 +180,7 @@ function M.setup()
     vim.api.nvim_create_autocmd('BufEnter', {
       group = group,
       pattern = all_patterns,
+      desc = 'Camouflage pwned check on buffer enter',
       callback = function(args)
         if vim.api.nvim_buf_is_valid(args.buf) then
           vim.schedule(function()
@@ -198,6 +199,7 @@ function M.setup()
     vim.api.nvim_create_autocmd('BufWritePost', {
       group = group,
       pattern = all_patterns,
+      desc = 'Camouflage pwned check on save',
       callback = function(args)
         if vim.api.nvim_buf_is_valid(args.buf) then
           vim.schedule(function()
@@ -216,6 +218,7 @@ function M.setup()
     vim.api.nvim_create_autocmd({ 'TextChanged', 'TextChangedI' }, {
       group = group,
       pattern = all_patterns,
+      desc = 'Camouflage pwned check on text change',
       callback = function(args)
         if vim.api.nvim_buf_is_valid(args.buf) then
           cleanup_pwned_timer(args.buf)

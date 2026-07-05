@@ -43,6 +43,44 @@ describe('camouflage.config', function()
       assert.same({}, policy.rules)
     end)
 
+    it('keeps HIBP available but disables automatic network checks by default', function()
+      config.setup()
+      local pwned = config.get().pwned
+
+      assert.is_true(pwned.enabled)
+      assert.is_false(pwned.auto_check)
+      assert.is_false(pwned.check_on_save)
+      assert.is_false(pwned.check_on_change)
+    end)
+
+    it('allows opting in to individual HIBP automatic triggers', function()
+      config.setup({
+        pwned = {
+          check_on_save = true,
+        },
+      })
+      local pwned = config.get().pwned
+
+      assert.is_false(pwned.auto_check)
+      assert.is_true(pwned.check_on_save)
+      assert.is_false(pwned.check_on_change)
+    end)
+
+    it('does not let legacy pwned aliasing mutate defaults across setup calls', function()
+      config.setup()
+      assert.is_nil(config.defaults.checks.pwned)
+
+      config.setup({
+        pwned = {
+          auto_check = true,
+        },
+      })
+
+      assert.is_nil(config.defaults.checks.pwned)
+      assert.is_true(config.get().pwned.auto_check)
+      assert.is_true(config.get().checks.pwned.auto_check)
+    end)
+
     it('should merge user policy options with defaults', function()
       config.setup({
         policy = {

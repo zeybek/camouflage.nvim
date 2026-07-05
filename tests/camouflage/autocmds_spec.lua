@@ -10,6 +10,20 @@ describe('camouflage.autocmds', function()
     end
   end
 
+  local function pwned_autocmds(event)
+    local query = { group = state.augroup }
+    if event then
+      query.event = event
+    end
+    local results = {}
+    for _, au in ipairs(vim.api.nvim_get_autocmds(query)) do
+      if au.desc and au.desc:find('Camouflage pwned', 1, true) then
+        table.insert(results, au)
+      end
+    end
+    return results
+  end
+
   before_each(function()
     clear_camouflage_modules()
     require('camouflage.config').setup()
@@ -72,6 +86,57 @@ describe('camouflage.autocmds', function()
       })
 
       assert.is_true(#aus > 0)
+    end)
+
+    it('should not create HIBP network-check autocmds by default', function()
+      autocmds.setup()
+
+      assert.equals(0, #pwned_autocmds())
+    end)
+
+    it('should only create the opted-in HIBP BufEnter autocmd', function()
+      require('camouflage.config').setup({
+        pwned = {
+          auto_check = true,
+        },
+      })
+
+      autocmds.setup()
+
+      assert.is_true(#pwned_autocmds('BufEnter') > 0)
+      assert.equals(0, #pwned_autocmds('BufWritePost'))
+      assert.equals(0, #pwned_autocmds('TextChanged'))
+      assert.equals(0, #pwned_autocmds('TextChangedI'))
+    end)
+
+    it('should only create the opted-in HIBP BufWritePost autocmd', function()
+      require('camouflage.config').setup({
+        pwned = {
+          check_on_save = true,
+        },
+      })
+
+      autocmds.setup()
+
+      assert.equals(0, #pwned_autocmds('BufEnter'))
+      assert.is_true(#pwned_autocmds('BufWritePost') > 0)
+      assert.equals(0, #pwned_autocmds('TextChanged'))
+      assert.equals(0, #pwned_autocmds('TextChangedI'))
+    end)
+
+    it('should only create the opted-in HIBP text-change autocmds', function()
+      require('camouflage.config').setup({
+        pwned = {
+          check_on_change = true,
+        },
+      })
+
+      autocmds.setup()
+
+      assert.equals(0, #pwned_autocmds('BufEnter'))
+      assert.equals(0, #pwned_autocmds('BufWritePost'))
+      assert.is_true(#pwned_autocmds('TextChanged') > 0)
+      assert.is_true(#pwned_autocmds('TextChangedI') > 0)
     end)
   end)
 
