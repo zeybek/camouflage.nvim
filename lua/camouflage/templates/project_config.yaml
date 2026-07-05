@@ -71,7 +71,7 @@ highlight_group: Comment
 # =============================================================================
 
 # Define which files should be parsed and with which parser
-# Available parsers: env, json, yaml, toml, properties, netrc, xml, http
+# Available parsers: env, json, yaml, toml, properties, netrc, xml, http, hcl, dockerfile
 patterns:
   - file_pattern: ['.env*', '*.env', '.envrc']
     parser: env
@@ -91,6 +91,10 @@ patterns:
     parser: xml
   - file_pattern: ['*.http']
     parser: http
+  - file_pattern: ['*.tf', '*.tfvars', '*.hcl']
+    parser: hcl
+  - file_pattern: ['Dockerfile', 'Dockerfile.*', '*.dockerfile', 'Containerfile', 'Containerfile.*']
+    parser: dockerfile
 
 # =============================================================================
 # CUSTOM PATTERNS
@@ -128,6 +132,18 @@ parsers:
   # YAML parser settings
   yaml:
     max_depth: 10
+
+  # XML parser settings
+  xml:
+    max_depth: 10
+
+  # HCL/Terraform parser settings
+  hcl:
+    max_depth: 10
+
+  # Dockerfile parser settings
+  dockerfile:
+    # No parser-specific options currently
 
 # =============================================================================
 # INTEGRATIONS

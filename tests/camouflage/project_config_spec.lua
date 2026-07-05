@@ -54,6 +54,35 @@ describe('camouflage.project_config', function()
     assert.is_true(config.get().debug)
   end)
 
+  it('should load generated template with current built-in parser coverage', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    local template = require('camouflage.init_command')._read_template()
+    vim.fn.writefile(vim.split(template, '\n', { plain = true }), dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local status = project_config.status()
+    local patterns_by_parser = {}
+    for _, entry in ipairs(config.get().patterns) do
+      patterns_by_parser[entry.parser] = entry.file_pattern
+    end
+
+    assert.is_true(status.loaded)
+    assert.equals(0, #status.errors)
+    assert.same({ '*.tf', '*.tfvars', '*.hcl' }, patterns_by_parser.hcl)
+    assert.same({
+      'Dockerfile',
+      'Dockerfile.*',
+      '*.dockerfile',
+      'Containerfile',
+      'Containerfile.*',
+    }, patterns_by_parser.dockerfile)
+    assert.equals(10, config.get().parsers.xml.max_depth)
+    assert.equals(10, config.get().parsers.hcl.max_depth)
+    assert.same({}, config.get().parsers.dockerfile)
+  end)
+
   it('should accept documented nil-default keys (e.g. mask_length)', function()
     -- mask_length has a nil default, so its type cannot be inferred from
     -- defaults; the NULLABLE_KEYS allowlist must accept it instead of rejecting
