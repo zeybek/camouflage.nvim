@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.0](https://github.com/zeybek/camouflage.nvim/compare/v0.10.1...v0.11.0) (2026-07-05)
+
+
+### Features
+
+* add rule-based masking policy ([aef052a](https://github.com/zeybek/camouflage.nvim/commit/aef052a242e643ddfad5b01eef415bcd9b90f59a))
+* add weak secret check ([#30](https://github.com/zeybek/camouflage.nvim/issues/30)) ([2849422](https://github.com/zeybek/camouflage.nvim/commit/284942268c63dbb67daea9d2d8f61f43767ab6cc))
+* add workspace secret audit ([#28](https://github.com/zeybek/camouflage.nvim/issues/28)) ([003665e](https://github.com/zeybek/camouflage.nvim/commit/003665e724e5b4d4ffaaad890cd06fc95146d3f7))
+
 ## [0.10.1](https://github.com/zeybek/camouflage.nvim/compare/v0.10.0...v0.10.1) (2026-07-04)
 
 
