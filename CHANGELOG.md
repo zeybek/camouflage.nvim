@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/zeybek/camouflage.nvim/compare/v0.11.0...v0.12.0) (2026-07-05)
+
+
+### Features
+
+* add public check API ([#32](https://github.com/zeybek/camouflage.nvim/issues/32)) ([cb314ce](https://github.com/zeybek/camouflage.nvim/commit/cb314ce5326773951ee15152e2df7048900e7e2c))
+
 ## [0.11.0](https://github.com/zeybek/camouflage.nvim/compare/v0.10.1...v0.11.0) (2026-07-05)
 
 
