@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.12.1](https://github.com/zeybek/camouflage.nvim/compare/v0.12.0...v0.12.1) (2026-07-05)
+
+
+### Bug Fixes
+
+* **core:** clear state on global disable ([#37](https://github.com/zeybek/camouflage.nvim/issues/37)) ([3cb3621](https://github.com/zeybek/camouflage.nvim/commit/3cb3621b0932aee11393e499d5e7e1005c15ebac))
+* **core:** reset mask state on no-mask paths ([#36](https://github.com/zeybek/camouflage.nvim/issues/36)) ([56d6572](https://github.com/zeybek/camouflage.nvim/commit/56d6572fc6d5c2f67962229061d1447496e47b8b))
+* **core:** use buffer-local mask config ([#39](https://github.com/zeybek/camouflage.nvim/issues/39)) ([a90ff1c](https://github.com/zeybek/camouflage.nvim/commit/a90ff1c9e378c742aa2fb725241236f6fa4a86a2))
+* **init:** mask loaded buffers during setup ([#34](https://github.com/zeybek/camouflage.nvim/issues/34)) ([6ea668a](https://github.com/zeybek/camouflage.nvim/commit/6ea668a0693bcd889e8b9bbba832aec60d889589))
+* **json:** preserve fallback paths for duplicate values ([#42](https://github.com/zeybek/camouflage.nvim/issues/42)) ([79fb4c4](https://github.com/zeybek/camouflage.nvim/commit/79fb4c4c934a18c4ae328349eeaad86a9a8825a0))
+* **position:** honor end-exclusive cursor bounds ([#43](https://github.com/zeybek/camouflage.nvim/issues/43)) ([7c4105c](https://github.com/zeybek/camouflage.nvim/commit/7c4105c6024a9c4511c9518c42e0db82bf338429))
+* **pwned:** make HIBP auto checks opt-in ([#38](https://github.com/zeybek/camouflage.nvim/issues/38)) ([877e745](https://github.com/zeybek/camouflage.nvim/commit/877e745121af5ca2896b96da776f442687672a62))
+
 ## [0.12.0](https://github.com/zeybek/camouflage.nvim/compare/v0.11.0...v0.12.0) (2026-07-05)
 
 
