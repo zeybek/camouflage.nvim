@@ -77,7 +77,7 @@ the real characters, so it leaks the value's length and character set.
 ```lua
 {
   'zeybek/camouflage.nvim',
-  event = 'VeryLazy',
+  event = { 'BufReadPre', 'BufNewFile' },
   opts = {},
   keys = {
     { '<leader>ct', '<cmd>CamouflageToggle<cr>', desc = 'Toggle Camouflage' },
@@ -87,6 +87,11 @@ the real characters, so it leaks the value's length and character set.
   },
 }
 ```
+
+Use `BufReadPre`/`BufNewFile` when you want masking available as files are
+opened. `VeryLazy` is also usable if you prefer deferred startup loading, but it
+can let a buffer appear before the first masking pass runs. camouflage only masks
+visually; it does not encrypt, remove, or otherwise secure the real buffer text.
 
 <details>
 <summary>Other package managers</summary>
