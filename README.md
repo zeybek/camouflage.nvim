@@ -354,6 +354,21 @@ With `debug = true`, custom check logs include check names, run counts, failures
 | Dockerfile | `Dockerfile`, `Containerfile`, `*.dockerfile` | No |
 
 For unsupported formats, you can define [custom patterns](https://github.com/zeybek/camouflage.nvim/wiki/Custom-Patterns).
+These are opt-in; a fixture such as `test.myconfig` will not be masked until you map that filename pattern:
+
+```lua
+require('camouflage').setup({
+  custom_patterns = {
+    {
+      file_pattern = { '*.myconfig' },
+      pattern = '^%s*@([%w_]+)%s*=%s*(.+)',
+      key_capture = 1,
+      value_capture = 2,
+    },
+  },
+})
+```
+
 Runtime parser registrations with `file_patterns` are picked up by automatic masking immediately after registration.
 
 When TreeSitter is available, JSON/YAML/XML nested keys are reported with their full path. XML attributes use `parent.path@attribute` so attributes and child elements with the same name stay distinct.

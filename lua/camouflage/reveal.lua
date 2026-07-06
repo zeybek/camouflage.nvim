@@ -20,6 +20,7 @@ local revealed_state = {
   anchor_id = nil, -- extmark id tracking the revealed line through edits
   autocmd_id = nil,
   hook_id = nil, -- variable_detected hook to skip revealed line
+  after_decorate_hook_id = nil, -- after_decorate hook to restore revealed multiline rows
 }
 
 ---Resolve the currently revealed line (1-indexed) from the anchor extmark,
@@ -77,24 +78,55 @@ local function get_reveal_config()
   }, cfg.reveal or {})
 end
 
----Get the line number for a variable
+---Get the visible value range for a variable on a specific line.
+---@param var table
+---@param line_0 number 0-indexed line number
+---@param lines string[]
+---@param line_offsets number[]
+---@return number|nil col_start
+---@return number|nil col_end
+local function var_range_on_line(var, line_0, lines, line_offsets)
+  local line = lines[line_0 + 1]
+  local line_start = line_offsets[line_0 + 1]
+  if not line or not line_start or not var.start_index then
+    return nil, nil
+  end
+
+  local value_end = var.end_index or var.start_index
+  if value_end <= var.start_index then
+    value_end = var.start_index + #(var.value or '')
+  end
+
+  local line_end = line_start + #line
+  local start_index = math.max(var.start_index, line_start)
+  local end_index = math.min(value_end, line_end)
+  if end_index <= start_index then
+    return nil, nil
+  end
+
+  local col_start = start_index - line_start
+  local col_end = end_index - line_start
+  local line_content = line:sub(col_start + 1, col_end)
+  if line_content:match('^%s*$') then
+    return nil, nil
+  end
+
+  return col_start, col_end
+end
+
 ---@param bufnr number
 ---@param var table
----@return number|nil 1-indexed line number
-local function get_var_line(bufnr, var)
-  -- Builtin parsers always set line_number (0-indexed), so this is O(1) with no
-  -- buffer read — important because line_has_variables runs on every cursor move
-  -- in follow mode.
-  if var.line_number then
-    return var.line_number + 1
-  end
+---@param line_0 number 0-indexed line number
+---@return boolean
+local function var_has_value_on_line(bufnr, var, line_0)
   local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
   if not ok then
-    return nil
+    return false
   end
+
   local line_offsets = core.compute_line_offsets(lines)
-  local pos = core.index_to_position(bufnr, var.start_index, lines, line_offsets)
-  return pos and (pos.row + 1) or nil
+  local col_start = var_range_on_line(var, line_0, lines, line_offsets)
+  return col_start ~= nil
 end
 
 ---Check if a line has any masked variables
@@ -103,9 +135,15 @@ end
 ---@return boolean
 local function line_has_variables(bufnr, line)
   local variables = state.get_variables(bufnr)
+  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
+  if not ok then
+    return false
+  end
+
+  local line_0 = line - 1
+  local line_offsets = core.compute_line_offsets(lines)
   for _, var in ipairs(variables) do
-    local var_line = get_var_line(bufnr, var)
-    if var_line == line then
+    if var_range_on_line(var, line_0, lines, line_offsets) then
       return true
     end
   end
@@ -138,24 +176,21 @@ local function apply_revealed_highlight(bufnr, line)
   local line_offsets = core.compute_line_offsets(lines)
 
   for _, var in ipairs(variables) do
-    local var_pos = core.index_to_position(bufnr, var.start_index, lines, line_offsets)
-    if var_pos and var_pos.row == line then
-      local end_pos = core.index_to_position(bufnr, var.end_index, lines, line_offsets)
-      if end_pos then
-        local extmark_ok, extmark_err =
-          pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, line, var_pos.col, {
-            end_row = end_pos.row,
-            end_col = end_pos.col,
-            hl_group = cfg.highlight_group,
-            priority = 101,
-          })
-        if not extmark_ok then
-          log.pcall_error(
-            'nvim_buf_set_extmark',
-            extmark_err,
-            { bufnr = bufnr, line = line, col = var_pos.col }
-          )
-        end
+    local col_start, col_end = var_range_on_line(var, line, lines, line_offsets)
+    if col_start and col_end then
+      local extmark_ok, extmark_err =
+        pcall(vim.api.nvim_buf_set_extmark, bufnr, state.namespace, line, col_start, {
+          end_row = line,
+          end_col = col_end,
+          hl_group = cfg.highlight_group,
+          priority = 101,
+        })
+      if not extmark_ok then
+        log.pcall_error(
+          'nvim_buf_set_extmark',
+          extmark_err,
+          { bufnr = bufnr, line = line, col = col_start }
+        )
       end
     end
   end
@@ -166,10 +201,22 @@ end
 local function setup_reveal_hook()
   revealed_state.hook_id = hooks.on('variable_detected', function(bufnr, var)
     if revealed_state.bufnr == bufnr then
-      local var_line = get_var_line(bufnr, var)
-      if var_line == current_revealed_line() then
+      local line = current_revealed_line()
+      if line and not var.is_multiline and var_has_value_on_line(bufnr, var, line - 1) then
         return false -- Skip masking this variable
       end
+    end
+  end)
+
+  revealed_state.after_decorate_hook_id = hooks.on('after_decorate', function(bufnr)
+    if revealed_state.bufnr ~= bufnr then
+      return
+    end
+
+    local line = current_revealed_line()
+    if line then
+      clear_line_extmarks(bufnr, line - 1)
+      apply_revealed_highlight(bufnr, line - 1)
     end
   end)
 end
@@ -180,6 +227,10 @@ local function cleanup_reveal_hook()
   if revealed_state.hook_id then
     hooks.off('variable_detected', revealed_state.hook_id)
     revealed_state.hook_id = nil
+  end
+  if revealed_state.after_decorate_hook_id then
+    hooks.off('after_decorate', revealed_state.after_decorate_hook_id)
+    revealed_state.after_decorate_hook_id = nil
   end
 end
 

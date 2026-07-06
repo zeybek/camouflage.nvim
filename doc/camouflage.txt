@@ -1038,7 +1038,7 @@ patterns using Lua patterns:
     custom_patterns = {
       {
         file_pattern = { '*.myconfig' },  -- Glob pattern(s) for file matching
-        pattern = '@([%w_]+)%s*=%s*(.+)', -- Lua pattern with capture groups
+        pattern = '^%s*@([%w_]+)%s*=%s*(.+)', -- Lua pattern with capture groups
         key_capture = 1,                   -- Capture group for key (optional)
         value_capture = 2,                 -- Capture group for value (required)
       },
@@ -1074,7 +1074,7 @@ value_capture ~
 Example patterns:
 >lua
   -- @variable = value
-  { pattern = '@([%w_]+)%s*=%s*(.+)', key_capture = 1, value_capture = 2 }
+  { pattern = '^%s*@([%w_]+)%s*=%s*(.+)', key_capture = 1, value_capture = 2 }
 
   -- SECRET: value
   { pattern = 'SECRET:%s*(.+)', value_capture = 1 }
@@ -1088,6 +1088,8 @@ Example patterns:
 
 Note: Built-in parsers take priority over custom patterns. If a file matches
 a built-in parser (e.g., `.json`, `.env`), the custom pattern will not be used.
+Custom patterns are opt-in for unsupported filenames; for example, `*.myconfig`
+files are ignored until a matching `custom_patterns` entry is configured.
 
 ==============================================================================
 STYLES                                                      *camouflage-styles*

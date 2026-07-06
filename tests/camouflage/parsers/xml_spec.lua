@@ -72,9 +72,9 @@ describe('camouflage.parsers.xml', function()
         keys[v.key] = v.value
       end
 
-      assert.equals('localhost', keys['host'])
-      assert.equals('dbpass', keys['password'])
-      assert.equals('5432', keys['port'])
+      assert.equals('localhost', keys['database@host'])
+      assert.equals('dbpass', keys['database@password'])
+      assert.equals('5432', keys['database@port'])
     end)
 
     it('should parse single-quoted attributes', function()
@@ -86,8 +86,8 @@ describe('camouflage.parsers.xml', function()
         keys[v.key] = v.value
       end
 
-      assert.equals('localhost', keys['host'])
-      assert.equals('secret', keys['password'])
+      assert.equals('localhost', keys['server@host'])
+      assert.equals('secret', keys['server@password'])
     end)
 
     it('should parse mixed elements and attributes', function()
@@ -106,8 +106,8 @@ describe('camouflage.parsers.xml', function()
         keys[v.key] = v.value
       end
 
-      assert.equals('localhost', keys['host'])
-      assert.equals('dbpass', keys['password'])
+      assert.equals('localhost', keys['settings.database@host'])
+      assert.equals('dbpass', keys['settings.database@password'])
       assert.equals('api-secret-key', keys['settings.api.key'])
     end)
 
@@ -207,6 +207,27 @@ describe('camouflage.parsers.xml', function()
       assert.equals(2, #passwords)
     end)
 
+    it('should keep namespace root elements in key paths', function()
+      local content = [[
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+  <servers>
+    <server>
+      <password>deploy123</password>
+    </server>
+  </servers>
+</settings>
+]]
+      local result = xml_parser.parse_regex(content)
+
+      local keys = {}
+      for _, v in ipairs(result) do
+        keys[v.key] = v.value
+      end
+
+      assert.equals('deploy123', keys['settings.servers.server.password'])
+    end)
+
     it('should parse pom.xml style structure', function()
       local content = [[
 <project>
@@ -249,8 +270,8 @@ describe('camouflage.parsers.xml', function()
         keys[v.key] = v.value
       end
 
-      assert.equals('localhost', keys['host'])
-      assert.equals('5432', keys['port'])
+      assert.equals('localhost', keys['config.database@host'])
+      assert.equals('5432', keys['config.database@port'])
       assert.equals('secret', keys['config.password'])
     end)
 
@@ -272,7 +293,7 @@ describe('camouflage.parsers.xml', function()
         keys[v.key] = v.value
       end
 
-      assert.equals('secret', keys['sec:password'])
+      assert.equals('secret', keys['server@sec:password'])
     end)
 
     it('should set correct line numbers', function()
@@ -337,8 +358,8 @@ describe('camouflage.parsers.xml', function()
         values[v.key] = v.value
         assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
       end
-      assert.equals("it's", values['token'])
-      assert.equals('say "hi"', values['other'])
+      assert.equals("it's", values['a@token'])
+      assert.equals('say "hi"', values['a@other'])
     end)
   end)
 end)
