@@ -105,8 +105,8 @@ patterns:
 #
 # Example:
 # custom_patterns:
-#   - file_pattern: '*.rest'
-#     pattern: '@([%w_]+)%s*=%s*(.+)'
+#   - file_pattern: '*.myconfig'
+#     pattern: '^%s*@([%w_]+)%s*=%s*(.+)'
 #     key_capture: 1
 #     value_capture: 2
 custom_patterns: []

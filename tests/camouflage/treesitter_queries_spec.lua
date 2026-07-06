@@ -14,6 +14,12 @@ describe('camouflage.treesitter queries', function()
       it('should have query available for ' .. lang, function()
         -- Query should be available either from file or fallback
         local ok, query = pcall(vim.treesitter.query.get, lang, 'camouflage')
+        if treesitter.has_parser(lang) then
+          assert.is_true(ok, 'query should parse for installed parser: ' .. lang)
+          assert.is_not_nil(query, 'query should load for installed parser: ' .. lang)
+          return
+        end
+
         if not ok or not query then
           -- Check fallback exists
           local fallback_ok = pcall(vim.treesitter.query.parse, lang, '(_) @test')
@@ -47,6 +53,21 @@ describe('camouflage.treesitter queries', function()
       end
 
       local query = vim.treesitter.query.get('yaml', 'camouflage')
+      if query then
+        local has_key = vim.tbl_contains(query.captures, 'key')
+        local has_value = vim.tbl_contains(query.captures, 'value')
+        assert.is_true(has_key, 'should have @key capture')
+        assert.is_true(has_value, 'should have @value capture')
+      end
+    end)
+
+    it('should have @key and @value captures for toml', function()
+      if not treesitter.has_parser('toml') then
+        pending('toml parser not available')
+        return
+      end
+
+      local query = vim.treesitter.query.get('toml', 'camouflage')
       if query then
         local has_key = vim.tbl_contains(query.captures, 'key')
         local has_value = vim.tbl_contains(query.captures, 'value')

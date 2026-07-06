@@ -23,6 +23,15 @@ describe('camouflage.reveal follow_cursor', function()
     return bufnr
   end
 
+  local function setup_yaml_test_buffer(content)
+    test_counter = test_counter + 1
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(content, '\n'))
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/test_follow_' .. test_counter .. '.yaml')
+    vim.api.nvim_set_current_buf(bufnr)
+    return bufnr
+  end
+
   local function follow_cursor_autocmd_count()
     return #vim.api.nvim_get_autocmds({
       group = state.runtime_augroup,
@@ -255,6 +264,45 @@ describe('camouflage.reveal follow_cursor', function()
 
       assert.is_true(reveal.is_revealed())
       assert.equals(1, reveal.get_revealed().line)
+    end)
+
+    it('follows multiline value content lines', function()
+      local content = table.concat({
+        'private_key: |',
+        '  line-one',
+        '  line-two',
+        'NEXT=value',
+      }, '\n')
+      local bufnr = setup_yaml_test_buffer(content)
+      local start_index = content:find('  line-one', 1, true) - 1
+      local value = '  line-one\n  line-two'
+      state.set_variables(bufnr, {
+        {
+          key = 'private_key',
+          value = value,
+          start_index = start_index,
+          end_index = start_index + #value,
+          line_number = 0,
+          is_multiline = true,
+        },
+      })
+
+      vim.api.nvim_win_set_cursor(0, { 2, 2 })
+      reveal.start_follow_cursor()
+
+      assert.is_true(reveal.is_revealed())
+      assert.equals(2, reveal.get_revealed().line)
+
+      vim.api.nvim_win_set_cursor(0, { 3, 2 })
+      vim.api.nvim_exec_autocmds('CursorMoved', { buffer = bufnr })
+
+      assert.is_true(reveal.is_revealed())
+      assert.equals(3, reveal.get_revealed().line)
+
+      vim.api.nvim_win_set_cursor(0, { 1, 0 })
+      vim.api.nvim_exec_autocmds('CursorMoved', { buffer = bufnr })
+
+      assert.is_false(reveal.is_revealed())
     end)
   end)
 

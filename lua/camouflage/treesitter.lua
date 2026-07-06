@@ -19,12 +19,27 @@ local fallback_queries = {
       key: (_) @key
       value: (flow_node
         [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value))
+    (block_mapping_pair
+      key: (_) @key
+      value: (block_node
+        (block_scalar) @value))
     (flow_pair
       key: (flow_node) @key
       value: (flow_node
         [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value))
   ]],
-  toml = '(pair key: (_) @key value: (_) @value)',
+  toml = [[
+    (pair
+      [(bare_key) (dotted_key) (quoted_key)] @key
+      [(string)
+       (integer)
+       (float)
+       (boolean)
+       (local_date)
+       (local_time)
+       (local_date_time)
+       (offset_date_time)] @value)
+  ]],
   xml = [[
     (element
       (STag (Name) @key)
@@ -268,6 +283,19 @@ local function first_child_of_type(node, node_type)
   return nil
 end
 
+---@param node userdata
+---@param node_types table<string, boolean>
+---@return userdata|nil
+local function first_child_of_types(node, node_types)
+  for i = 0, node:child_count() - 1 do
+    local child = node:child(i)
+    if child and node_types[child:type()] then
+      return child
+    end
+  end
+  return nil
+end
+
 ---@param pair userdata
 ---@param bufnr number
 ---@return string|nil
@@ -310,15 +338,61 @@ local function derive_pair_key_path(lang, key_node, bufnr)
   return table.concat(parts, '.'), #parts > 1
 end
 
+local toml_key_types = {
+  bare_key = true,
+  dotted_key = true,
+  quoted_key = true,
+}
+
+---@param table_node userdata
+---@param bufnr number
+---@return string|nil
+local function toml_table_key_text(table_node, bufnr)
+  local key_node = first_child_of_types(table_node, toml_key_types)
+  if not key_node then
+    return nil
+  end
+  return normalize_key_text(vim.treesitter.get_node_text(key_node, bufnr))
+end
+
+---@param key_node userdata
+---@param fallback_key string
+---@param bufnr number
+---@return string key_path
+---@return boolean is_nested
+local function derive_toml_key_path(key_node, fallback_key, bufnr)
+  local parts = {}
+  local node = key_node:parent()
+
+  while node do
+    local node_type = node:type()
+    if
+      node_type == 'table'
+      or node_type == 'table_array'
+      or node_type == 'array_table'
+      or node_type == 'table_array_element'
+    then
+      local key = toml_table_key_text(node, bufnr)
+      if key and key ~= '' then
+        table.insert(parts, 1, key)
+      end
+    end
+    node = node:parent()
+  end
+
+  table.insert(parts, fallback_key)
+  return table.concat(parts, '.'), #parts > 1 or fallback_key:find('%.') ~= nil
+end
+
 ---@param element userdata
 ---@param bufnr number
 ---@return string|nil
 local function xml_element_name(element, bufnr)
-  local stag = first_child_of_type(element, 'STag')
-  if not stag then
+  local tag = first_child_of_type(element, 'STag') or first_child_of_type(element, 'EmptyElemTag')
+  if not tag then
     return nil
   end
-  local name = first_child_of_type(stag, 'Name')
+  local name = first_child_of_type(tag, 'Name')
   if not name then
     return nil
   end
@@ -391,10 +465,52 @@ local function derive_key_path(lang, key_node, fallback_key, bufnr)
   local key_path, is_nested
   if lang == 'json' or lang == 'yaml' then
     key_path, is_nested = derive_pair_key_path(lang, key_node, bufnr)
+  elseif lang == 'toml' then
+    key_path, is_nested = derive_toml_key_path(key_node, fallback_key, bufnr)
   elseif lang == 'xml' then
     key_path, is_nested = derive_xml_key_path(key_node, fallback_key, bufnr)
   end
   return key_path or fallback_key, is_nested == true
+end
+
+---@param value string
+---@param start_index number
+---@param end_index number
+---@return string value
+---@return number start_index
+---@return number end_index
+local function normalize_toml_string(value, start_index, end_index)
+  if
+    (value:sub(1, 3) == '"""' and value:sub(-3) == '"""')
+    or (value:sub(1, 3) == "'''" and value:sub(-3) == "'''")
+  then
+    return value:sub(4, -4), start_index + 3, end_index - 3
+  end
+
+  local first = value:sub(1, 1)
+  if (first == '"' or first == "'") and value:sub(-1) == first then
+    return value:sub(2, -2), start_index + 1, end_index - 1
+  end
+
+  return value, start_index, end_index
+end
+
+---@param node_text string
+---@param start_row number
+---@param start_index number
+---@param offsets number[]
+---@return string value
+---@return number start_index
+---@return number end_index
+local function normalize_yaml_block_scalar(node_text, start_row, start_index, offsets)
+  local first_newline = node_text:find('\n', 1, true)
+  if not first_newline then
+    return '', start_index, start_index
+  end
+
+  local value = node_text:sub(first_newline + 1):gsub('%s+$', '')
+  local content_start = offsets[start_row + 2] or start_index + first_newline
+  return value, content_start, content_start + #value
 end
 
 ---Parse a buffer using TreeSitter and extract key-value pairs
@@ -453,8 +569,15 @@ function M.parse(bufnr, lang, content)
         local start_row, start_col, end_row, end_col = node:range()
 
         -- Byte offsets via the precomputed line table (node rows are 0-based).
-        local start_index = offsets[start_row + 1] + start_col
-        local end_index = offsets[end_row + 1] + end_col
+        local start_offset = offsets[start_row + 1]
+        local end_offset = offsets[end_row + 1] or #content
+        if not start_offset then
+          current_key = nil
+          current_key_text = nil
+          goto continue
+        end
+        local start_index = start_offset + start_col
+        local end_index = end_offset + end_col
 
         -- Get actual value (remove quotes for strings)
         local value = node_text
@@ -470,6 +593,11 @@ function M.parse(bufnr, lang, content)
           value = value:sub(2, -2)
           start_index = start_index + 1
           end_index = end_index - 1
+        elseif lang == 'yaml' and node_type == 'block_scalar' then
+          value, start_index, end_index =
+            normalize_yaml_block_scalar(node_text, start_row, start_index, offsets)
+        elseif lang == 'toml' and node_type == 'string' then
+          value, start_index, end_index = normalize_toml_string(value, start_index, end_index)
         elseif lang == 'xml' and node_type == 'AttValue' then
           -- XML attribute values include quotes: "value" or 'value'
           if value:match('^".*"$') or value:match("^'.*'$") then
@@ -490,6 +618,7 @@ function M.parse(bufnr, lang, content)
             line_number = start_row,
             is_nested = is_nested,
             is_commented = false,
+            is_multiline = end_row ~= start_row or nil,
           })
         end
       end
@@ -497,6 +626,8 @@ function M.parse(bufnr, lang, content)
       current_key = nil
       current_key_text = nil
     end
+
+    ::continue::
   end
 
   return variables

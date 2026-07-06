@@ -94,6 +94,7 @@ describe('camouflage.treesitter', function()
   describe('parse with treesitter (integration)', function()
     local json_parser_available = ts.has_parser('json')
     local yaml_parser_available = ts.has_parser('yaml')
+    local toml_parser_available = ts.has_parser('toml')
     local xml_parser_available = ts.has_parser('xml')
 
     if json_parser_available then
@@ -231,6 +232,42 @@ describe('camouflage.treesitter', function()
         end
       end)
 
+      it('should parse YAML block scalars as multiline values', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local lines = {
+          'certificates:',
+          '  private_key: |',
+          '    -----BEGIN RSA PRIVATE KEY-----',
+          '    secret-key-material',
+          '  certificate: >',
+          '    folded certificate',
+          '    material',
+        }
+        local content = table.concat(lines, '\n')
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+        vim.api.nvim_set_option_value('filetype', 'yaml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'yaml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          local by_key = {}
+          for _, v in ipairs(result) do
+            by_key[v.key] = v
+            assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          end
+          assert.is_not_nil(by_key['certificates.private_key'])
+          assert.is_true(by_key['certificates.private_key'].is_multiline)
+          assert.is_true(by_key['certificates.private_key'].value:match('BEGIN RSA') ~= nil)
+          assert.is_not_nil(by_key['certificates.certificate'])
+          assert.is_true(by_key['certificates.certificate'].is_multiline)
+          assert.is_true(
+            by_key['certificates.certificate'].value:match('folded certificate') ~= nil
+          )
+        end
+      end)
+
       it('should skip YAML flow mapping containers', function()
         local bufnr = vim.api.nvim_create_buf(false, true)
         local content = 'outer: {inner: value}'
@@ -247,6 +284,37 @@ describe('camouflage.treesitter', function()
           assert.equals(1, #result)
           assert.equals('outer.inner', result[1].key)
           assert.equals('value', result[1].value)
+        end
+      end)
+    end
+
+    if toml_parser_available then
+      it('should expose TOML table key paths and unquoted string values', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local lines = {
+          '[database]',
+          'host = "localhost"',
+          'password = "secret"',
+          'port = 5432',
+        }
+        local content = table.concat(lines, '\n')
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+        vim.api.nvim_set_option_value('filetype', 'toml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'toml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          local by_key = {}
+          for _, v in ipairs(result) do
+            by_key[v.key] = v
+            assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          end
+          assert.equals('localhost', by_key['database.host'].value)
+          assert.equals('secret', by_key['database.password'].value)
+          assert.equals('5432', by_key['database.port'].value)
+          assert.is_true(by_key['database.password'].is_nested)
         end
       end)
     end
@@ -274,6 +342,27 @@ describe('camouflage.treesitter', function()
           assert.equals('secret', by_key['settings.database.password'].value)
           assert.is_true(by_key['settings.database@password'].is_nested)
           assert.is_true(by_key['settings.database.password'].is_nested)
+        end
+      end)
+
+      it('should include self-closing XML element names in attribute key paths', function()
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local content = '<settings><database host="localhost" password="dbpass"/></settings>'
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { content })
+        vim.api.nvim_set_option_value('filetype', 'xml', { buf = bufnr })
+
+        local result = ts.parse(bufnr, 'xml', content)
+
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        if result then
+          local by_key = {}
+          for _, v in ipairs(result) do
+            by_key[v.key] = v
+            assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          end
+          assert.equals('localhost', by_key['settings.database@host'].value)
+          assert.equals('dbpass', by_key['settings.database@password'].value)
         end
       end)
     end

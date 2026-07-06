@@ -2,6 +2,7 @@ describe('camouflage.reveal', function()
   local reveal
   local state
   local hooks
+  local core
   local test_counter = 0
 
   local function clear_camouflage_modules()
@@ -24,6 +25,15 @@ describe('camouflage.reveal', function()
     return bufnr
   end
 
+  local function setup_yaml_test_buffer(content)
+    test_counter = test_counter + 1
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(content, '\n'))
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/test_reveal_' .. test_counter .. '.yaml')
+    vim.api.nvim_set_current_buf(bufnr)
+    return bufnr
+  end
+
   before_each(function()
     clear_camouflage_modules()
     require('camouflage').setup({
@@ -34,6 +44,7 @@ describe('camouflage.reveal', function()
     reveal = require('camouflage.reveal')
     state = require('camouflage.state')
     hooks = require('camouflage.hooks')
+    core = require('camouflage.core')
   end)
 
   after_each(function()
@@ -58,6 +69,98 @@ describe('camouflage.reveal', function()
       local revealed = reveal.get_revealed()
       assert.equals(bufnr, revealed.bufnr)
       assert.equals(1, revealed.line)
+    end)
+
+    it('reveals a multiline value content line', function()
+      local content = table.concat({
+        'private_key: |',
+        '  line-one',
+        '  line-two',
+        'NEXT=value',
+      }, '\n')
+      local bufnr = setup_yaml_test_buffer(content)
+      local start_index = content:find('  line-one', 1, true) - 1
+      local value = '  line-one\n  line-two'
+      state.set_variables(bufnr, {
+        {
+          key = 'private_key',
+          value = value,
+          start_index = start_index,
+          end_index = start_index + #value,
+          line_number = 0,
+          is_multiline = true,
+        },
+      })
+
+      vim.api.nvim_win_set_cursor(0, { 2, 2 })
+      reveal.reveal_line()
+
+      assert.is_true(reveal.is_revealed())
+      assert.equals(2, reveal.get_revealed().line)
+    end)
+
+    it('does not reveal a multiline declaration line without value bytes', function()
+      local content = table.concat({
+        'private_key: |',
+        '  line-one',
+        '  line-two',
+      }, '\n')
+      local bufnr = setup_yaml_test_buffer(content)
+      local start_index = content:find('  line-one', 1, true) - 1
+      local value = '  line-one\n  line-two'
+      state.set_variables(bufnr, {
+        {
+          key = 'private_key',
+          value = value,
+          start_index = start_index,
+          end_index = start_index + #value,
+          line_number = 0,
+          is_multiline = true,
+        },
+      })
+
+      vim.api.nvim_win_set_cursor(0, { 1, 0 })
+      reveal.reveal_line()
+
+      assert.is_false(reveal.is_revealed())
+    end)
+
+    it('keeps the revealed multiline row revealed after redecoration', function()
+      local content = table.concat({
+        'private_key: |',
+        '  line-one',
+        '  line-two',
+      }, '\n')
+      local bufnr = setup_yaml_test_buffer(content)
+      vim.bo[bufnr].filetype = 'yaml'
+      core.apply_decorations(bufnr)
+
+      vim.api.nvim_win_set_cursor(0, { 2, 2 })
+      reveal.reveal_line()
+      core.apply_decorations(bufnr)
+
+      assert.is_true(reveal.is_revealed())
+      assert.equals(2, reveal.get_revealed().line)
+
+      local marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {
+        details = true,
+      })
+      local revealed_rows = {}
+      local masked_rows = {}
+      for _, mark in ipairs(marks) do
+        local row = mark[2] + 1
+        local details = mark[4]
+        if details.hl_group == 'CamouflageRevealed' then
+          revealed_rows[row] = true
+        end
+        if details.virt_text then
+          masked_rows[row] = true
+        end
+      end
+
+      assert.is_true(revealed_rows[2])
+      assert.is_nil(masked_rows[2])
+      assert.is_true(masked_rows[3])
     end)
 
     it('does nothing if already revealed on same line', function()

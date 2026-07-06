@@ -6,6 +6,11 @@
   value: (flow_node
     [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value))
 
+(block_mapping_pair
+  key: (_) @key
+  value: (block_node
+    (block_scalar) @value))
+
 (flow_pair
   key: (flow_node) @key
   value: (flow_node

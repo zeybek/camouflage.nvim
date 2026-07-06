@@ -70,8 +70,14 @@ function M.parse_elements(content, variables, max_depth)
       tag_pattern
     )
 
-    -- Track opening tags that span multiple lines (no closing tag on same line)
-    for tag_name in processing_line:gmatch('<(' .. tag_pattern .. ')[^/>]*>') do
+    -- Track opening tags that span multiple lines (no closing tag on same line).
+    -- Attributes may contain "/" (for example namespace URLs), so inspect the
+    -- tag tail instead of excluding "/" from the whole match.
+    for tag_name, tag_tail in processing_line:gmatch('<(' .. tag_pattern .. ')([^>]*)>') do
+      if tag_tail:match('/%s*$') then
+        goto continue_open_tag
+      end
+
       -- Check if this tag has a closing tag on the same line
       local has_close_on_line = processing_line:match('</' .. M.escape_pattern(tag_name) .. '%s*>')
       if not has_close_on_line then
@@ -79,6 +85,8 @@ function M.parse_elements(content, variables, max_depth)
           table.insert(tag_stack, tag_name)
         end
       end
+
+      ::continue_open_tag::
     end
 
     -- Track closing tags that close multi-line elements
@@ -208,6 +216,76 @@ local function find_attribute(content, from)
   return nil
 end
 
+---@param content string
+---@param pos number
+---@return number|nil
+local function find_tag_start_before(content, pos)
+  local tag_start = nil
+  local search_pos = 1
+  while true do
+    local found = content:find('<', search_pos, true)
+    if not found or found >= pos then
+      break
+    end
+    tag_start = found
+    search_pos = found + 1
+  end
+  return tag_start
+end
+
+---@param content string
+---@param limit number
+---@return string[]
+function M.get_element_stack_before(content, limit)
+  local stack = {}
+  local tag_pattern = '[%w_%-:.]+'
+  local pos = 1
+
+  while pos < limit do
+    local tag_start, tag_end, closing, tag_name, tag_tail =
+      content:find('<%s*(/?)(' .. tag_pattern .. ')([^>]*)>', pos)
+    if not tag_start or tag_start >= limit then
+      break
+    end
+
+    if closing == '/' then
+      for i = #stack, 1, -1 do
+        if stack[i] == tag_name then
+          table.remove(stack, i)
+          break
+        end
+      end
+    elseif not tag_tail:match('/%s*$') then
+      table.insert(stack, tag_name)
+    end
+
+    pos = tag_end + 1
+  end
+
+  return stack
+end
+
+---@param content string
+---@param attr_start number
+---@param attr_name string
+---@return string
+function M.get_attribute_key_path(content, attr_start, attr_name)
+  local tag_start = find_tag_start_before(content, attr_start)
+  if not tag_start then
+    return attr_name
+  end
+
+  local tag_pattern = '[%w_%-:.]+'
+  local tag_name = content:match('^<%s*(' .. tag_pattern .. ')', tag_start)
+  if not tag_name then
+    return attr_name
+  end
+
+  local stack = M.get_element_stack_before(content, tag_start)
+  local element_path = M.build_key_path(stack, tag_name)
+  return element_path .. '@' .. attr_name
+end
+
 ---Parse attributes like attr="value" or attr='value'
 ---@param content string
 ---@param variables ParsedVariable[]
@@ -226,14 +304,15 @@ function M.parse_attributes(content, variables)
     if not M.is_in_xml_declaration(content, attr_start) then
       -- Skip empty/whitespace values
       if attr_value and not attr_value:match('^%s*$') then
+        local key = M.get_attribute_key_path(content, attr_start, attr_name)
         local value_end = value_pos + #attr_value
         table.insert(variables, {
-          key = attr_name,
+          key = key,
           value = attr_value,
           start_index = value_pos - 1, -- 0-indexed
           end_index = value_end - 1, -- 0-indexed (exclusive)
           line_number = M.get_line_number(content, value_pos),
-          is_nested = false,
+          is_nested = key ~= attr_name,
           is_commented = false,
         })
       end
