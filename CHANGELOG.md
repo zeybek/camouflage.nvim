@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/zeybek/camouflage.nvim/compare/v0.12.1...v0.12.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* handle multiline masking and parser ranges ([#44](https://github.com/zeybek/camouflage.nvim/issues/44)) ([930b2d0](https://github.com/zeybek/camouflage.nvim/commit/930b2d0b0d9605af8f82487c928697bd43e9330a))
+
 ## [0.12.1](https://github.com/zeybek/camouflage.nvim/compare/v0.12.0...v0.12.1) (2026-07-05)
 
 
