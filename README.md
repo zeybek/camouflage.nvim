@@ -1,3 +1,5 @@
+
+
 # camouflage.nvim
 
 Hide sensitive values in configuration files during screen sharing.
@@ -16,7 +18,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 
 ## Features
 
-- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`, `.tf`, `.tfvars`, `.hcl`, `Dockerfile`, `Containerfile`
+- **Multi-format support**: `.env`, `.envrc`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`, `.tf`, `.tfvars`, `.hcl`, `Dockerfile`, `Containerfile`
 - **Nested key support**: Handles `database.connection.password` in JSON/YAML/XML
 - **All value types**: Masks strings, numbers, and booleans
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
