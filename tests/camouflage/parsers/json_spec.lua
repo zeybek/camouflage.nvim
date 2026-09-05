@@ -180,6 +180,25 @@ describe('camouflage.parsers.json', function()
       assert.equals(0, #result)
     end)
 
+    it('should mask JSONC values with comments and trailing commas', function()
+      local content = [[{
+  // editor settings
+  "editor.fontSize": 14,
+  "github.token": "ghp_secret", // trailing comment
+  "trailing": "comma",
+}]]
+      local result = json_parser.parse(content)
+
+      local by_key = {}
+      for _, var in ipairs(result) do
+        by_key[var.key] = var.value
+      end
+
+      assert.equals('ghp_secret', by_key['github.token'])
+      assert.equals('comma', by_key['trailing'])
+      assert.is_nil(by_key['// editor settings'])
+    end)
+
     it('should use the pattern fallback for invalid JSON with string pairs', function()
       local result = json_parser.parse('{"api_key": "secret", invalid')
 
