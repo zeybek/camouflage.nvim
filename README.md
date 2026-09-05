@@ -2,7 +2,7 @@
 
 Hide sensitive values in configuration files during screen sharing.
 
-A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`, `.properties`, `.netrc`, `.xml`, `.http`, **Terraform/HCL** (`.tf`, `.tfvars`, `.hcl`), and **Dockerfile** files using extmarks - **without modifying the actual file content**.
+A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml`, `.toml`, `.properties`, `.netrc`, `.xml`, `.http`, **Terraform/HCL** (`.tf`, `.tfvars`, `.hcl`), and **Dockerfile** files using extmarks - **without modifying the actual file content**.
 
 [![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
@@ -16,7 +16,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.yaml`, `.toml`
 
 ## Features
 
-- **Multi-format support**: `.env`, `.json`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`, `.tf`, `.tfvars`, `.hcl`, `Dockerfile`, `Containerfile`
+- **Multi-format support**: `.env`, `.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`, `.tf`, `.tfvars`, `.hcl`, `Dockerfile`, `Containerfile`
 - **Nested key support**: Handles `database.connection.password` in JSON/YAML/XML
 - **All value types**: Masks strings, numbers, and booleans
 - **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
@@ -343,7 +343,7 @@ With `debug = true`, custom check logs include check names, run counts, failures
 | Format | Extensions | Nested Keys |
 |--------|-----------|-------------|
 | Environment | `.env`, `.env.*`, `.envrc`, `.sh` | No |
-| JSON | `.json` | Yes |
+| JSON | `.json`, `.jsonc` | Yes |
 | YAML | `.yaml`, `.yml` | Yes |
 | TOML | `.toml` | Yes (sections) |
 | Properties | `.properties`, `.ini`, `.conf`, `credentials` | Yes (sections) |

@@ -99,5 +99,43 @@ describe('camouflage.treesitter queries', function()
         assert.equals('secret123', result[1].value)
       end
     end)
+
+    it('should parse jsonc comments and trailing commas with the json grammar', function()
+      if not treesitter.has_parser('json') then
+        pending('json parser not available')
+        return
+      end
+
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      local lines = {
+        '{',
+        '  // editor settings',
+        '  "editor.fontSize": 14,',
+        '  /* "commented": "ignored" */',
+        '  "github.token": "ghp_secret", // trailing comment',
+        '  "db": {',
+        '    "password": "hunter2",',
+        '  },',
+        '}',
+      }
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.api.nvim_buf_set_option(bufnr, 'filetype', 'jsonc')
+      local content = table.concat(lines, '\n')
+
+      local result = treesitter.parse(bufnr, 'json', content)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+
+      if result then
+        local by_key = {}
+        for _, var in ipairs(result) do
+          by_key[var.key] = var.value
+        end
+        assert.equals('14', by_key['editor.fontSize'])
+        assert.equals('ghp_secret', by_key['github.token'])
+        assert.equals('hunter2', by_key['db.password'])
+        assert.is_nil(by_key['commented'])
+      end
+    end)
   end)
 end)

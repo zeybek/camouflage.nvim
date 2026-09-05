@@ -211,7 +211,7 @@ M.defaults = {
   patterns = {
     { file_pattern = { '.env*', '*.env', '.envrc' }, parser = 'env' },
     { file_pattern = { '*.sh' }, parser = 'env' },
-    { file_pattern = { '*.json' }, parser = 'json' },
+    { file_pattern = { '*.json', '*.jsonc' }, parser = 'json' },
     { file_pattern = { '*.yaml', '*.yml' }, parser = 'yaml' },
     { file_pattern = { '*.toml' }, parser = 'toml' },
     { file_pattern = { '*.properties', '*.ini', '*.conf', 'credentials' }, parser = 'properties' },

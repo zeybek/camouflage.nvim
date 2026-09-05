@@ -38,8 +38,8 @@ configuration files during screen sharing. It uses extmarks to overlay
 masked text without modifying the actual file content.
 
 Features:
-- Multi-format support: .env, .json, .yaml, .toml, .properties, .netrc, .xml,
-  .http, .tf, .tfvars, .hcl, Dockerfile, Containerfile
+- Multi-format support: .env, .json, .jsonc, .yaml, .toml, .properties, .netrc,
+  .xml, .http, .tf, .tfvars, .hcl, Dockerfile, Containerfile
 - Nested key support for JSON, YAML, and XML
 - Multiple masking styles: stars, dotted, text, scramble
 - Have I Been Pwned integration for password breach checking
@@ -877,7 +877,8 @@ Environment files ~
 <
 
 JSON files ~
-  Extensions: .json
+  Extensions: .json, .jsonc
+  JSONC (JSON with comments and trailing commas) is handled by the same parser.
   Supports nested keys like `database.connection.password`
   Example: >json
     {

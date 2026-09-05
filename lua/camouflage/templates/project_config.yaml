@@ -77,7 +77,7 @@ patterns:
     parser: env
   - file_pattern: ['*.sh']
     parser: env
-  - file_pattern: ['*.json']
+  - file_pattern: ['*.json', '*.jsonc']
     parser: json
   - file_pattern: ['*.yaml', '*.yml']
     parser: yaml

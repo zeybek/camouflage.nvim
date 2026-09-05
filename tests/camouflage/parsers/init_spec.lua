@@ -97,6 +97,13 @@ describe('camouflage.parsers', function()
       assert.equals('json', name)
     end)
 
+    it('should return json parser for settings.jsonc', function()
+      local parser, name = parsers.find_parser_for_file('settings.jsonc')
+
+      assert.is_not_nil(parser)
+      assert.equals('json', name)
+    end)
+
     it('should return yaml parser for config.yaml', function()
       local parser, name = parsers.find_parser_for_file('config.yaml')
 
@@ -176,6 +183,10 @@ describe('camouflage.parsers', function()
 
     it('should return true for config.json', function()
       assert.is_true(parsers.is_supported('config.json'))
+    end)
+
+    it('should return true for settings.jsonc', function()
+      assert.is_true(parsers.is_supported('settings.jsonc'))
     end)
 
     it('should return true for settings.yaml', function()
