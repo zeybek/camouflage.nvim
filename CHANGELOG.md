@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/zeybek/camouflage.nvim/compare/v0.12.2...v0.13.0) (2026-09-05)
+
+
+### Features
+
+* **json:** add native JSONC (*.jsonc) support ([#48](https://github.com/zeybek/camouflage.nvim/issues/48)) ([022f66e](https://github.com/zeybek/camouflage.nvim/commit/022f66ef986236530d249fbef5fc37c523034fc6)), closes [#47](https://github.com/zeybek/camouflage.nvim/issues/47)
+
 ## [0.12.2](https://github.com/zeybek/camouflage.nvim/compare/v0.12.1...v0.12.2) (2026-07-06)
 
 
