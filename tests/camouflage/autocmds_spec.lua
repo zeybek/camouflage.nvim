@@ -159,6 +159,104 @@ describe('camouflage.autocmds', function()
     end)
   end)
 
+  describe('TextChanged', function()
+    local buffers = {}
+
+    local function setup_masking(opts)
+      require('camouflage.config').setup(vim.tbl_deep_extend('force', {
+        debounce_ms = 0,
+        project_config = { enabled = false },
+      }, opts or {}))
+      require('camouflage.parsers').setup()
+      autocmds.setup()
+    end
+
+    -- Entering the buffer runs the BufEnter autocmd, like opening a file.
+    local function enter_buffer(name, lines)
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      table.insert(buffers, bufnr)
+      vim.api.nvim_buf_set_name(bufnr, vim.fn.tempname() .. '/' .. name)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.api.nvim_set_current_buf(bufnr)
+      return bufnr
+    end
+
+    local function type_lines(bufnr, lines)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.api.nvim_buf_call(bufnr, function()
+        vim.cmd('doautocmd TextChanged')
+      end)
+    end
+
+    local function mark_count(bufnr)
+      return #vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+    end
+
+    local function wait_for_marks(bufnr)
+      return vim.wait(1000, function()
+        return mark_count(bufnr) > 0
+      end, 10)
+    end
+
+    after_each(function()
+      for _, bufnr in ipairs(buffers) do
+        if vim.api.nvim_buf_is_valid(bufnr) then
+          vim.api.nvim_buf_delete(bufnr, { force = true })
+        end
+      end
+      buffers = {}
+    end)
+
+    it('masks a value typed into a buffer that had no values', function()
+      setup_masking()
+      local bufnr = enter_buffer('empty.env', {})
+      assert.is_false(state.is_buffer_masked(bufnr))
+
+      type_lines(bufnr, { 'API_KEY=typedsecret123' })
+
+      assert.is_true(wait_for_marks(bufnr), 'typed value was not masked')
+      assert.is_true(state.is_buffer_masked(bufnr))
+    end)
+
+    it('masks a value typed into a buffer that only has comments', function()
+      setup_masking({ debounce_ms = 20 })
+      local bufnr = enter_buffer('comments.env', { '# no values yet' })
+      assert.is_false(state.is_buffer_masked(bufnr))
+
+      type_lines(bufnr, { '# no values yet', 'TOKEN=commentfilesecret' })
+
+      assert.is_true(wait_for_marks(bufnr), 'typed value was not masked')
+    end)
+
+    it('masks a new value after every existing value was deleted', function()
+      setup_masking()
+      local bufnr = enter_buffer('cleared.env', { 'OLD=existingvalue1' })
+      assert.equals(1, mark_count(bufnr))
+
+      type_lines(bufnr, { '' })
+      assert.is_true(vim.wait(1000, function()
+        return not state.is_buffer_masked(bufnr)
+      end, 10))
+      assert.equals(0, mark_count(bufnr))
+
+      type_lines(bufnr, { 'NEW=afterclearsecret' })
+
+      assert.is_true(wait_for_marks(bufnr), 'value typed after clearing was not masked')
+    end)
+
+    it('does not start masking buffers that were never tracked', function()
+      setup_masking({ auto_enable = false })
+      local bufnr = enter_buffer('manual.env', {})
+      assert.is_nil(state.get_buffer(bufnr))
+
+      type_lines(bufnr, { 'API_KEY=manualmodevalue' })
+      vim.wait(100)
+
+      assert.is_nil(state.get_buffer(bufnr))
+      assert.equals(0, mark_count(bufnr))
+    end)
+  end)
+
   describe('apply_to_loaded_buffers', function()
     it('should not error when called', function()
       autocmds.setup()
