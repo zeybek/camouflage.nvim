@@ -275,4 +275,49 @@ database:
       assert.equals('secret123', content:sub(result[1].start_index + 1, result[1].end_index))
     end)
   end)
+
+  describe('keys', function()
+    local function by_key(lines)
+      local content = table.concat(lines, '\n')
+      local keys = {}
+      for _, v in ipairs(yaml_parser.parse(content)) do
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+        keys[v.key] = v
+      end
+      return keys
+    end
+
+    it('parses double and single quoted keys, including ones with a colon', function()
+      local keys = by_key({ '"db password": quoted-key-secret', "'a:b': colon-key-secret" })
+
+      assert.equals('quoted-key-secret', keys['db password'].value)
+      assert.equals('colon-key-secret', keys['a:b'].value)
+    end)
+
+    it('parses plain keys that start with a digit or contain spaces', function()
+      local keys = by_key({ '1password: digit-key-secret', 'db user name: spaced-key-secret' })
+
+      assert.equals('digit-key-secret', keys['1password'].value)
+      assert.equals('spaced-key-secret', keys['db user name'].value)
+    end)
+
+    it('uses quoted keys as parents of nested values', function()
+      local keys = by_key({ '"service account":', '  "private key": nested-secret' })
+
+      assert.equals('nested-secret', keys['service account.private key'].value)
+    end)
+
+    it('keeps colons inside values out of the key', function()
+      local keys = by_key({ 'url: http://example.com:8080/path' })
+
+      assert.equals('http://example.com:8080/path', keys.url.value)
+    end)
+
+    it('does not treat anchors, aliases or flow collections as keys', function()
+      local keys = by_key({ '&anchor: not-a-key', '{a: 1}: not-a-key', 'real: value' })
+
+      assert.is_nil(keys['&anchor'])
+      assert.equals('value', keys.real.value)
+    end)
+  end)
 end)
