@@ -394,6 +394,13 @@ local options_by_project = {}
 function M.clear_project_cache()
   project_file_by_dir = {}
   options_by_project = {}
+  -- The parser registry caches the last file -> parser lookup, which depends on
+  -- patterns, custom_patterns and the project config filename. Only clear it
+  -- when that module is loaded, requiring it here would be circular.
+  local parsers = package.loaded['camouflage.parsers']
+  if parsers then
+    parsers.clear_cache()
+  end
 end
 
 ---@param opts CamouflageConfig|nil
