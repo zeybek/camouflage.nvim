@@ -1220,6 +1220,20 @@ Settings are merged in this order (later overrides earlier):
 3. Project config from `.camouflage.yaml`
 4. Buffer-local overrides (`vim.b.camouflage_*`)
 
+Which project config applies ~
+                                          *camouflage-project-config-lookup*
+The global options use the `.camouflage.yaml` found by searching upward from
+the current working directory. Masking in a buffer uses the `.camouflage.yaml`
+found by searching upward from that buffer's file, so each repository keeps
+its own settings when files from several repositories are open. A file with no
+project config of its own gets plugin defaults plus your `setup()` options, it
+doesn't inherit the config of the cwd project. Enabling or disabling camouflage
+at runtime (for example |:CamouflageToggle|) applies to every buffer and is
+kept when project configs are reloaded.
+
+File patterns (`patterns`, `custom_patterns`) and other editor-wide settings
+come from the global options.
+
 Supported options ~
                                           *camouflage-project-config-options*
 Project config files support most configuration options:

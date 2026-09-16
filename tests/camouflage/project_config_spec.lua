@@ -245,6 +245,121 @@ describe('camouflage.project_config', function()
     end)
   end)
 
+  describe('per repository', function()
+    local buffers = {}
+
+    local function make_repo(lines)
+      local dir = vim.fn.tempname()
+      vim.fn.mkdir(dir, 'p')
+      if lines then
+        vim.fn.writefile(lines, dir .. '/.camouflage.yaml')
+      end
+      return dir
+    end
+
+    local function env_buffer(dir, secret)
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      table.insert(buffers, bufnr)
+      vim.api.nvim_buf_set_name(bufnr, dir .. '/.env')
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'SECRET=' .. secret })
+      return bufnr
+    end
+
+    local function mark_count(bufnr)
+      local state = require('camouflage.state')
+      return #vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+    end
+
+    after_each(function()
+      for _, bufnr in ipairs(buffers) do
+        if vim.api.nvim_buf_is_valid(bufnr) then
+          vim.api.nvim_buf_delete(bufnr, { force = true })
+        end
+      end
+      buffers = {}
+    end)
+
+    it('uses the project config of the repository the buffer is in', function()
+      local repo_a = make_repo({ 'version: 1', 'enabled: false' })
+      local repo_b = make_repo()
+      vim.cmd('cd ' .. vim.fn.fnameescape(repo_b))
+
+      config.setup()
+      local buf_a = env_buffer(repo_a, 'repo-a-secret')
+      local buf_b = env_buffer(repo_b, 'repo-b-secret')
+
+      assert.is_true(config.get().enabled)
+      assert.is_false(config.get_for_buffer(buf_a).enabled)
+      assert.is_true(config.get_for_buffer(buf_b).enabled)
+    end)
+
+    it('does not apply the cwd project config to files outside that project', function()
+      local repo_a = make_repo({ 'version: 1', 'enabled: false', 'style: dotted' })
+      local repo_b = make_repo()
+      vim.cmd('cd ' .. vim.fn.fnameescape(repo_a))
+
+      config.setup()
+      local buf_a = env_buffer(repo_a, 'repo-a-secret')
+      local buf_b = env_buffer(repo_b, 'repo-b-secret')
+
+      assert.is_false(config.get_for_buffer(buf_a).enabled)
+      assert.is_true(config.get_for_buffer(buf_b).enabled)
+      assert.equals('stars', config.get_for_buffer(buf_b).style)
+    end)
+
+    it('reloads the global config from cwd, not from the current buffer', function()
+      local repo_a = make_repo({ 'version: 1', 'enabled: false' })
+      local repo_b = make_repo({ 'version: 1', 'style: dotted' })
+      vim.cmd('cd ' .. vim.fn.fnameescape(repo_b))
+
+      config.setup()
+      local buf_a = env_buffer(repo_a, 'repo-a-secret')
+      vim.api.nvim_set_current_buf(buf_a)
+      assert.is_true(config.reload_project_config())
+
+      assert.is_true(config.get().enabled)
+      assert.equals('dotted', config.get().style)
+      assert.truthy(project_config.status().path:match('%.camouflage%.yaml$'))
+    end)
+
+    it('keeps a runtime toggle across reloads and applies it to every repository', function()
+      local repo_a = make_repo({ 'version: 1', 'style: dotted' })
+      vim.cmd('cd ' .. vim.fn.fnameescape(make_repo()))
+
+      config.setup()
+      local buf_a = env_buffer(repo_a, 'repo-a-secret')
+      config.set('enabled', false)
+      config.reload_project_config()
+
+      assert.is_false(config.get().enabled)
+      assert.is_false(config.get_for_buffer(buf_a).enabled)
+      assert.equals('dotted', config.get_for_buffer(buf_a).style)
+    end)
+
+    it('keeps masking another repository after one repository disables it', function()
+      local repo_a = make_repo({ 'version: 1', 'enabled: true' })
+      local repo_b = make_repo()
+      vim.cmd('cd ' .. vim.fn.fnameescape(repo_b))
+
+      config.setup()
+      require('camouflage.parsers').setup()
+      local core = require('camouflage.core')
+      local buf_a = env_buffer(repo_a, 'repo-a-secret')
+      local buf_b = env_buffer(repo_b, 'repo-b-secret')
+      core.apply_decorations(buf_b)
+      assert.equals(1, mark_count(buf_b))
+
+      vim.fn.writefile({ 'version: 1', 'enabled: false' }, repo_a .. '/.camouflage.yaml')
+      vim.api.nvim_set_current_buf(buf_a)
+      config.reload_project_config()
+      core.apply_decorations(buf_a)
+      core.apply_decorations(buf_b)
+
+      assert.equals(0, mark_count(buf_a))
+      assert.equals(1, mark_count(buf_b))
+    end)
+  end)
+
   it('should ignore unknown top-level keys', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

@@ -180,9 +180,13 @@ local function maybe_notify_errors(notify_enabled)
 end
 
 ---@param filename string
+---@param start_dir string Directory to search upward from
 ---@return string|nil
-local function find_project_config_file(filename)
-  local found = vim.fn.findfile(filename, '.;')
+local function find_project_config_file(filename, start_dir)
+  -- An explicit start directory: '.;' searched from the current buffer's
+  -- directory, so whatever file happened to be open decided which repo's
+  -- config became the global one.
+  local found = vim.fn.findfile(filename, vim.fn.fnameescape(start_dir) .. ';')
   if found == '' then
     return nil
   end
@@ -220,8 +224,9 @@ end
 ---Load and validate a repo-level project config file.
 ---Returns a table suitable for deep-merging into user config.
 ---@param opts? { enabled?: boolean, filename?: string, notify?: boolean, secure?: boolean }
+---@param start_dir? string Directory to search upward from (default: cwd)
 ---@return table
-function M.load(opts)
+function M.load(opts, start_dir)
   opts = opts or {}
   state.loaded = false
   state.path = nil
@@ -232,7 +237,7 @@ function M.load(opts)
   end
 
   local filename = opts.filename or DEFAULT_FILENAME
-  local path = find_project_config_file(filename)
+  local path = find_project_config_file(filename, start_dir or vim.fn.getcwd())
   if not path then
     return {}
   end
@@ -341,6 +346,25 @@ function M.load(opts)
   state.loaded = true
   maybe_notify_errors(notify_enabled)
   return sanitized
+end
+
+---Load a project config the same way as `load`, without replacing the status
+---of the project config that `load` last applied. Used to resolve the config
+---of a buffer that lives in another repository.
+---@param opts? { enabled?: boolean, filename?: string, notify?: boolean, secure?: boolean }
+---@param start_dir string
+---@return table options
+---@return CamouflageProjectConfigStatus status
+function M.read(opts, start_dir)
+  local saved = state
+  state = { loaded = false, path = nil, errors = {} }
+  local ok, result = pcall(M.load, opts, start_dir)
+  local status = { loaded = state.loaded, path = state.path, errors = state.errors }
+  state = saved
+  if not ok then
+    error(result, 0)
+  end
+  return result, status
 end
 
 ---@return CamouflageProjectConfigStatus

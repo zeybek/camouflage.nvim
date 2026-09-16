@@ -95,7 +95,7 @@ function M.setup()
       -- Any tracked buffer, not only one that currently has masks: a buffer that
       -- had no values when it was decorated must still pick up the first value
       -- typed into it.
-      if config.is_enabled() and state.get_buffer(args.buf) ~= nil then
+      if state.get_buffer(args.buf) ~= nil and config.is_enabled_for_buffer(args.buf) then
         cleanup_timer(args.buf)
         local debounce_ms = config.get().debounce_ms or 150
         if debounce_ms <= 0 then
