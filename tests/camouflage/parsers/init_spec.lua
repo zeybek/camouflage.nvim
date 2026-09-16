@@ -8,6 +8,53 @@ describe('camouflage.parsers', function()
   end)
 
   describe('match_pattern', function()
+    describe('globs with special characters', function()
+      it('matches a literal name that contains -, + or parentheses', function()
+        assert.is_true(parsers.match_pattern('my-app.secrets', 'my-app.secrets'))
+        assert.is_true(parsers.match_pattern('a+b(1).cfg', 'a+b(1).cfg'))
+        assert.is_false(parsers.match_pattern('myapp.secrets', 'my-app.secrets'))
+      end)
+
+      it('supports * in the middle and on both sides', function()
+        assert.is_true(parsers.match_pattern('foo.env.local', '*.env.*'))
+        assert.is_true(parsers.match_pattern('creds.txt', '*creds*'))
+        assert.is_true(parsers.match_pattern('docker-compose.prod.yml', 'docker-compose*.yml'))
+        assert.is_false(parsers.match_pattern('foo.env', '*.env.*'))
+      end)
+
+      it('stays case-sensitive when ignorecase is set', function()
+        local ignorecase = vim.o.ignorecase
+        vim.o.ignorecase = true
+        local matched = parsers.match_pattern('dockerfile', 'Dockerfile')
+        vim.o.ignorecase = ignorecase
+
+        assert.is_false(matched)
+      end)
+
+      it('returns false for a glob that cannot be compiled', function()
+        assert.is_false(parsers.match_pattern('anything', '[z-a'))
+      end)
+
+      it('finds a custom pattern whose name contains -', function()
+        require('camouflage.config').setup({
+          custom_patterns = {
+            {
+              file_pattern = 'my-app.secrets',
+              pattern = '^(%w+):%s*(.+)$',
+              key_capture = 1,
+              value_capture = 2,
+            },
+          },
+        })
+        parsers.clear_cache()
+
+        local parser, name = parsers.find_parser_for_file('/tmp/project/my-app.secrets')
+
+        assert.is_not_nil(parser)
+        assert.equals('custom', name)
+      end)
+    end)
+
     describe('prefix patterns (.env*)', function()
       it('should match .env.local with .env*', function()
         assert.is_true(parsers.match_pattern('.env.local', '.env*'))
