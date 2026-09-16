@@ -80,6 +80,18 @@ describe('camouflage.audit', function()
     assert.is_false(inspect_has(result, 'unsupported-secret'))
   end)
 
+  it('passes the filename to parsers that depend on the file type', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    writefile(dir .. '/app.properties', { 'db.password space-separated-audit-secret' })
+
+    local audit = setup_in_dir(dir)
+    local result = audit.run({ root = dir })
+
+    assert.equals(1, #result.findings)
+    assert.equals('db.password', result.findings[1].key)
+  end)
+
   it('uses runtime registered parsers', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

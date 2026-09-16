@@ -271,8 +271,9 @@ function M.parse(filename, content, bufnr, parser, parser_name)
     end
   end
 
-  -- Call parser with bufnr for TreeSitter support
-  local ok, result = pcall(parser.parse, content, bufnr)
+  -- Call parser with bufnr for TreeSitter support, and the filename for parsers
+  -- whose rules depend on the file type
+  local ok, result = pcall(parser.parse, content, bufnr, filename)
 
   if not ok then
     vim.notify(
