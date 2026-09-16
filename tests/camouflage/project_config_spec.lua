@@ -419,8 +419,11 @@ describe('camouflage.project_config', function()
 
       local camouflage = require('camouflage')
       camouflage.setup({ project_config = { watch_enabled = false } })
-      vim.cmd('edit ' .. vim.fn.fnameescape(dir .. '/app.secrets'))
-      local bufnr = vim.api.nvim_get_current_buf()
+      -- Open the file like :edit would (BufEnter runs the masking autocmd).
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      vim.api.nvim_buf_set_name(bufnr, dir .. '/app.secrets')
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'token: cache-stale-secret' })
+      vim.api.nvim_set_current_buf(bufnr)
       local state = require('camouflage.state')
       assert.equals(0, #vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {}))
 
