@@ -3,8 +3,9 @@
 local M = require('lualine.component'):extend()
 
 M.default_options = {
-  icon_enabled = '',
-  icon_disabled = '',
+  -- Nerd Font eye-slash (values hidden) and eye (values visible)
+  icon_enabled = '',
+  icon_disabled = '',
   show_disabled = false,
   show_count = false,
   show_follow_indicator = true,
@@ -17,7 +18,7 @@ function M:init(options)
 end
 
 function M:update_status()
-  local ok, camouflage = pcall(require, 'camouflage')
+  local ok = pcall(require, 'camouflage')
   if not ok then
     return ''
   end
@@ -32,7 +33,9 @@ function M:update_status()
     return ''
   end
 
-  if camouflage.is_enabled() then
+  -- Buffer-aware: vim.b.camouflage_enabled and the buffer's project config can
+  -- turn masking off for this buffer while it's on globally.
+  if require('camouflage.config').is_enabled_for_buffer(0) then
     local result = self.options.icon_enabled
 
     -- Add count
