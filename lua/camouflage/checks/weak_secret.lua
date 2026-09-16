@@ -273,8 +273,23 @@ end
 local function is_placeholder(value)
   local normalized = normalize_value(value):gsub('[%s_%-.]', '_')
   for _, placeholder in ipairs(PLACEHOLDER_VALUES) do
-    if normalized == placeholder or normalized:find(placeholder, 1, true) then
+    if normalized == placeholder then
       return true
+    end
+    -- Whole words only: 'changeme123' and 'your_api_key_here' are placeholders,
+    -- a random token that happens to contain 'todo' or 'example' is not. The
+    -- match must start the value or follow a separator, and must end the value
+    -- or be followed by something that isn't a letter.
+    local start_pos, end_pos = normalized:find(placeholder, 1, true)
+    while start_pos do
+      local starts_word = start_pos == 1
+        or normalized:sub(start_pos - 1, start_pos - 1):match('%w') == nil
+      local ends_word = end_pos == #normalized
+        or normalized:sub(end_pos + 1, end_pos + 1):match('%a') == nil
+      if starts_word and ends_word then
+        return true
+      end
+      start_pos, end_pos = normalized:find(placeholder, start_pos + 1, true)
     end
   end
   return false

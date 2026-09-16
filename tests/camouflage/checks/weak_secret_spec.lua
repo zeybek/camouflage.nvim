@@ -52,6 +52,28 @@ describe('camouflage.checks.weak_secret', function()
   end)
 
   describe('classify', function()
+    it('treats placeholder words as placeholders only as whole words', function()
+      local placeholders = {
+        'replace_me',
+        'changeme123',
+        'your_api_key_here',
+        'TODO',
+        'example-token',
+        'dummy.value.for.tests',
+      }
+      for _, value in ipairs(placeholders) do
+        local result = weak_secret.classify(parsed_var('API_TOKEN', value))
+        assert.is_table(result, value)
+        assert.equals('placeholder', result.reason, value)
+      end
+
+      local tokens = { 'Q7fK2mExampleXr9LpZs4Vb8Nw1', 'zT4todoPq8Wm2Rk7Yx5', 'Kp9dummyQw3Er7Ty2' }
+      for _, value in ipairs(tokens) do
+        local result = weak_secret.classify(parsed_var('API_TOKEN', value))
+        assert.is_true(result == nil or result.reason ~= 'placeholder', value)
+      end
+    end)
+
     it('flags conservative weak secret categories', function()
       local cases = {
         { parsed_var('PASSWORD', 'password'), 'default' },
