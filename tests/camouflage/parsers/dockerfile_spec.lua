@@ -224,5 +224,64 @@ LABEL api.key="label789"
         assert.equals(14, result[1].end_index)
       end)
     end)
+
+    describe('several pairs sharing text', function()
+      it('masks each ENV value at its own position', function()
+        local content = 'ENV DB_PASS=hunter2 PASS=hunter'
+        local result = dockerfile_parser.parse(content)
+
+        assert.equals(2, #result)
+        assert.equals(#'ENV DB_PASS=', result[1].start_index)
+        assert.equals(#'ENV DB_PASS=hunter2 PASS=', result[2].start_index)
+        assert.equals(#content, result[2].end_index)
+      end)
+
+      it('masks each LABEL value at its own position', function()
+        local content = 'LABEL a.token=xyz token=xy'
+        local result = dockerfile_parser.parse(content)
+
+        assert.equals(2, #result)
+        assert.equals(#'LABEL a.token=', result[1].start_index)
+        assert.equals(#'LABEL a.token=xyz token=', result[2].start_index)
+      end)
+    end)
+
+    describe('continuation lines', function()
+      local function by_key(content)
+        local result = dockerfile_parser.parse(content)
+        local keys = {}
+        for _, v in ipairs(result) do
+          assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          keys[v.key] = v
+        end
+        return keys, result
+      end
+
+      it('parses ENV pairs on continuation lines', function()
+        local content = table.concat({
+          'ENV A=first \\',
+          '    # a comment inside the instruction',
+          '    B="cont secret" \\',
+          '    C=last',
+          'RUN echo D=not-an-env',
+        }, '\n')
+        local keys, result = by_key(content)
+
+        assert.equals(3, #result)
+        assert.equals('first', keys.A.value)
+        assert.equals('cont secret', keys.B.value)
+        assert.equals(2, keys.B.line_number)
+        assert.equals('last', keys.C.value)
+        assert.is_nil(keys.D)
+      end)
+
+      it('parses LABEL pairs on continuation lines', function()
+        local content = 'LABEL org.one="a" \\\n      org.token=label-secret'
+        local keys = by_key(content)
+
+        assert.equals('a', keys['org.one'].value)
+        assert.equals('label-secret', keys['org.token'].value)
+      end)
+    end)
   end)
 end)
