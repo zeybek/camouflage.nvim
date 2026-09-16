@@ -174,6 +174,98 @@ describe('camouflage end-to-end extmark placement', function()
     vim.api.nvim_buf_delete(bufnr, { force = true })
   end)
 
+  describe('while a decoration pass runs', function()
+    local hooks = require('camouflage.hooks')
+    local registry = require('camouflage.checks.registry')
+    local listener_ids = {}
+
+    local function listen(event, fn)
+      table.insert(listener_ids, { event = event, id = hooks.on(event, fn) })
+    end
+
+    local function mark_count(bufnr)
+      return #vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+    end
+
+    local function masked_buffer(name)
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      vim.api.nvim_buf_set_name(bufnr, '/tmp/camouflage_test/' .. name)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'API_KEY=screenleaksecret' })
+      core.apply_decorations(bufnr)
+      assert.equals(1, mark_count(bufnr))
+      return bufnr
+    end
+
+    after_each(function()
+      for _, listener in ipairs(listener_ids) do
+        hooks.off(listener.event, listener.id)
+      end
+      listener_ids = {}
+      registry.unregister('mask_probe')
+    end)
+
+    it('keeps the old masks while hooks and checks run', function()
+      local bufnr = masked_buffer('during-pass.env')
+      local seen = {}
+      listen('before_decorate', function(b)
+        seen.before_decorate = mark_count(b)
+      end)
+      listen('variable_detected', function(b)
+        seen.variable_detected = mark_count(b)
+      end)
+      registry.register({
+        name = 'mask_probe',
+        run = function(ctx)
+          seen.check = mark_count(ctx.bufnr)
+        end,
+      })
+
+      core.apply_decorations(bufnr)
+
+      assert.equals(1, seen.before_decorate)
+      assert.equals(1, seen.variable_detected)
+      assert.equals(1, seen.check)
+      assert.equals(1, mark_count(bufnr))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('does not show the value when a hook redraws the screen', function()
+      local bufnr = masked_buffer('redraw.env')
+      vim.api.nvim_set_current_buf(bufnr)
+      vim.cmd('redraw!')
+      local function first_row()
+        local text = ''
+        for col = 1, 30 do
+          text = text .. vim.fn.screenstring(1, col)
+        end
+        return text
+      end
+      local during
+      listen('before_decorate', function()
+        vim.cmd('redraw')
+        during = first_row()
+      end)
+
+      core.apply_decorations(bufnr)
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+
+      assert.is_string(during)
+      assert.is_nil(during:find('screenleaksecret', 1, true))
+    end)
+
+    it('still clears the masks when before_decorate cancels the pass', function()
+      local bufnr = masked_buffer('cancelled.env')
+      listen('before_decorate', function()
+        return false
+      end)
+
+      core.apply_decorations(bufnr)
+
+      assert.equals(0, mark_count(bufnr))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+  end)
+
   it('disables wrap while masked and restores it when masking stops', function()
     require('camouflage').setup()
     local bufnr = vim.api.nvim_create_buf(false, false)
