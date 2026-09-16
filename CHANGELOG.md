@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.14.0](https://github.com/zeybek/camouflage.nvim/compare/v0.13.0...v0.14.0) (2026-09-16)
+
+
+### Features
+
+* **core:** skip redundant decoration passes ([#94](https://github.com/zeybek/camouflage.nvim/issues/94)) ([83bcaf5](https://github.com/zeybek/camouflage.nvim/commit/83bcaf5164c42b9c8d727ac565d7ada08a1090b5))
+
+
+### Bug Fixes
+
+* **audit:** follow a symlink at the path the audit starts from ([#86](https://github.com/zeybek/camouflage.nvim/issues/86)) ([f2ac365](https://github.com/zeybek/camouflage.nvim/commit/f2ac365be0b21e2498a8f7b6461fc62a07d823b3))
+* **autocmds:** mask values typed into buffers that had no values ([#72](https://github.com/zeybek/camouflage.nvim/issues/72)) ([eb8be33](https://github.com/zeybek/camouflage.nvim/commit/eb8be338a17ed41655586683d1a5f7aef5649263))
+* **checks:** keep badges on their line when lines move ([#88](https://github.com/zeybek/camouflage.nvim/issues/88)) ([573b89c](https://github.com/zeybek/camouflage.nvim/commit/573b89c05ee2e82a9cdcd1deef416197ceb96581))
+* **config:** clear the parser lookup cache when config changes ([#85](https://github.com/zeybek/camouflage.nvim/issues/85)) ([e41b9cf](https://github.com/zeybek/camouflage.nvim/commit/e41b9cf137c88c861f55d12e262d25afdb4527c5))
+* **config:** resolve project config per repository ([#79](https://github.com/zeybek/camouflage.nvim/issues/79)) ([4756a50](https://github.com/zeybek/camouflage.nvim/commit/4756a500bba4a91dcff33a892c9802834992b8a1))
+* **core:** keep masks in place until new ones are set ([#90](https://github.com/zeybek/camouflage.nvim/issues/90)) ([277cd1b](https://github.com/zeybek/camouflage.nvim/commit/277cd1bb9549e6ca256406e4412f2d03763e2953))
+* **dockerfile:** mask each pair at its own position and follow continuation lines ([#80](https://github.com/zeybek/camouflage.nvim/issues/80)) ([c66ae1b](https://github.com/zeybek/camouflage.nvim/commit/c66ae1b521aabff56d371f78a12db7288e523f72))
+* **env:** mask multiline quoted values ([#74](https://github.com/zeybek/camouflage.nvim/issues/74)) ([bdfc7f6](https://github.com/zeybek/camouflage.nvim/commit/bdfc7f636687853a2ce8a2c305e96d892d36f902))
+* **init:** stop the project template from replacing default lists ([#91](https://github.com/zeybek/camouflage.nvim/issues/91)) ([0727d4c](https://github.com/zeybek/camouflage.nvim/commit/0727d4c580ffb6b41305f2737e2356cff64b72e3))
+* **lualine:** show default icons and follow the buffer's masking state ([#92](https://github.com/zeybek/camouflage.nvim/issues/92)) ([925d96e](https://github.com/zeybek/camouflage.nvim/commit/925d96e67cc9cbdcf98179503727f4d7e867e2b4))
+* **parsers:** mask values inside arrays and lists ([#77](https://github.com/zeybek/camouflage.nvim/issues/77)) ([6af376a](https://github.com/zeybek/camouflage.nvim/commit/6af376a6515f1109ab6194ed6973986ffb91e7dd))
+* **parsers:** match file patterns as real globs ([#84](https://github.com/zeybek/camouflage.nvim/issues/84)) ([70103d3](https://github.com/zeybek/camouflage.nvim/commit/70103d34f22e04598229316e7e3442f18f339b58))
+* **project_config:** keep untrusted files from enabling network checks ([#78](https://github.com/zeybek/camouflage.nvim/issues/78)) ([0eb08d8](https://github.com/zeybek/camouflage.nvim/commit/0eb08d87ea0bf82e130cbd856b9853e3e0a395f5))
+* **properties:** support java separators, escaped keys and continuation lines ([#83](https://github.com/zeybek/camouflage.nvim/issues/83)) ([e87435b](https://github.com/zeybek/camouflage.nvim/commit/e87435b874295fae3b0bf3794d5881c522e854ef))
+* **pwned:** skip values the masking policy ignores ([#89](https://github.com/zeybek/camouflage.nvim/issues/89)) ([0b99f35](https://github.com/zeybek/camouflage.nvim/commit/0b99f353a523983ab2689e78e8f3224f558c2924))
+* **toml:** mask quoted keys with = and multi-line strings ([#81](https://github.com/zeybek/camouflage.nvim/issues/81)) ([e3111cb](https://github.com/zeybek/camouflage.nvim/commit/e3111cbac2cb2b6566a97286399a10ac9eff6ea3))
+* **treesitter:** mask hcl values when the grammar is installed ([#75](https://github.com/zeybek/camouflage.nvim/issues/75)) ([516edc5](https://github.com/zeybek/camouflage.nvim/commit/516edc5e4e0f632f3780c0b33b8861241ee84fc6))
+* **weak_secret:** only match placeholder words as whole words ([#93](https://github.com/zeybek/camouflage.nvim/issues/93)) ([ff4a47e](https://github.com/zeybek/camouflage.nvim/commit/ff4a47ed96e127dcdbceea743eb6136d9eec6ac8))
+* **xml:** mask element text with attributes, entities and CDATA ([#76](https://github.com/zeybek/camouflage.nvim/issues/76)) ([7b670d0](https://github.com/zeybek/camouflage.nvim/commit/7b670d04775943b64e3274d1c90576410163a681))
+* **yaml:** mask values under quoted, digit-leading and spaced keys ([#82](https://github.com/zeybek/camouflage.nvim/issues/82)) ([889c66d](https://github.com/zeybek/camouflage.nvim/commit/889c66dcfa02ade7bd80c995374f15a46ff044cc))
+* **yank:** clean up uppercase registers after auto-clear ([#87](https://github.com/zeybek/camouflage.nvim/issues/87)) ([601c143](https://github.com/zeybek/camouflage.nvim/commit/601c143c990acc909b05a7226fc80b12eaba1b5c))
+
 ## [0.13.0](https://github.com/zeybek/camouflage.nvim/compare/v0.12.2...v0.13.0) (2026-09-05)
 
 
