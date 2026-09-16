@@ -32,14 +32,37 @@ function M.parse_regex(content)
   local lines = vim.split(content, '\n', { plain = true })
   local current_index = 0
 
+  -- ENV and LABEL continue on the next line after a trailing backslash
+  local continuation = nil ---@type 'env'|'label'|nil
+
   for line_num, line in ipairs(lines) do
     local line_start = current_index
+    local body = line:match('^%s*(.-)%s*$')
 
-    local results = M.process_line(line, line_num, line_start, include_commented)
+    local results
+    if continuation and body ~= '' and not body:match('^#') then
+      local pairs = M.parse_key_value_pairs(body, continuation == 'label')
+      results = M.pairs_to_variables(pairs, line, body, line_num, line_start, false)
+    else
+      results = M.process_line(line, line_num, line_start, include_commented)
+    end
     if results then
       for _, result in ipairs(results) do
         table.insert(variables, result)
       end
+    end
+
+    -- Comment and blank lines inside a continued instruction don't end it.
+    if body:match('\\$') and not body:match('^#') then
+      if not continuation then
+        if body:match('^[eE][nN][vV]%s') then
+          continuation = 'env'
+        elseif body:match('^[lL][aA][bB][eE][lL]%s') then
+          continuation = 'label'
+        end
+      end
+    elseif body ~= '' and not body:match('^#') then
+      continuation = nil
     end
 
     current_index = current_index + #line + 1
@@ -122,20 +145,10 @@ function M.parse_env(original_line, trimmed, line_num, line_start, is_commented)
 
   -- Parse KEY=value pairs using custom parser for quoted strings
   local pairs = M.parse_key_value_pairs(after_env)
-  for _, pair in ipairs(pairs) do
-    local pos = M.find_value_position(original_line, pair.key .. '=', pair.raw_value, line_start)
-    if pos then
-      table.insert(results, {
-        key = pair.key,
-        value = pair.value,
-        start_index = pos.start + pair.quote_offset,
-        end_index = pos.start + pair.quote_offset + #pair.value,
-        line_number = line_num - 1,
-        is_nested = false,
-        is_commented = is_commented,
-      })
-    end
-  end
+  vim.list_extend(
+    results,
+    M.pairs_to_variables(pairs, original_line, after_env, line_num, line_start, is_commented)
+  )
 
   -- Try legacy format: ENV KEY value (single pair, space separated)
   if #results == 0 then
@@ -228,20 +241,10 @@ function M.parse_label(original_line, trimmed, line_num, line_start, is_commente
   -- Parse key=value pairs using custom parser for quoted strings
   -- LABEL keys can contain dots and hyphens
   local pairs = M.parse_key_value_pairs(after_label, true)
-  for _, pair in ipairs(pairs) do
-    local pos = M.find_value_position(original_line, pair.key .. '=', pair.raw_value, line_start)
-    if pos then
-      table.insert(results, {
-        key = pair.key,
-        value = pair.value,
-        start_index = pos.start + pair.quote_offset,
-        end_index = pos.start + pair.quote_offset + #pair.value,
-        line_number = line_num - 1,
-        is_nested = false,
-        is_commented = is_commented,
-      })
-    end
-  end
+  vim.list_extend(
+    results,
+    M.pairs_to_variables(pairs, original_line, after_label, line_num, line_start, is_commented)
+  )
 
   if #results > 0 then
     return results
@@ -276,6 +279,7 @@ function M.parse_key_value_pairs(str, allow_dots)
       i = i + 1
     else
       i = i + #key + 1 -- Skip key and =
+      local value_pos = i
 
       -- Parse value (quoted or unquoted)
       local value, raw_value, quote_offset
@@ -330,10 +334,52 @@ function M.parse_key_value_pairs(str, allow_dots)
         value = value,
         raw_value = raw_value,
         quote_offset = quote_offset,
+        value_pos = value_pos,
       })
     end
   end
 
+  return results
+end
+
+---0-based column in `line` where `tail` starts. `tail` is the end of the line,
+---with or without its trailing whitespace.
+---@param line string
+---@param tail string
+---@return number
+local function tail_col(line, tail)
+  if line:sub(-#tail) == tail then
+    return #line - #tail
+  end
+  local body = line:match('^(.-)%s*$')
+  return #body - #tail
+end
+
+---Turn scanned key=value pairs into variables, using the offset the scanner
+---recorded for each value. Searching the line for the value instead finds the
+---wrong spot when the text also appears earlier (DB_PASS=hunter2 PASS=hunter).
+---@param pairs_list table[] Result of parse_key_value_pairs
+---@param line string Original line
+---@param str string The part of the line that was scanned
+---@param line_num number 1-indexed line number
+---@param line_start number Byte offset where the line starts
+---@param is_commented boolean
+---@return table[]
+function M.pairs_to_variables(pairs_list, line, str, line_num, line_start, is_commented)
+  local results = {}
+  local base = tail_col(line, str)
+  for _, pair in ipairs(pairs_list) do
+    local start_index = line_start + base + pair.value_pos - 1 + pair.quote_offset
+    table.insert(results, {
+      key = pair.key,
+      value = pair.value,
+      start_index = start_index,
+      end_index = start_index + #pair.value,
+      line_number = line_num - 1,
+      is_nested = false,
+      is_commented = is_commented,
+    })
+  end
   return results
 end
 
