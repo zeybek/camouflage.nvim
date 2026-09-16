@@ -131,19 +131,23 @@ function M.parse_inline_elements(
   local local_stack = {}
   local pos = 1
 
+  -- Offsets can come straight from processing_line only when nothing was
+  -- stripped from it.
+  local same_line = processing_line == original_line
+
   while pos <= #processing_line do
-    -- Look for next tag
-    local open_start, open_end, tag_name = processing_line:find('<(' .. tag_pattern .. ')>', pos)
-    local self_close_start, self_close_end =
-      processing_line:find('<' .. tag_pattern .. '[^>]*/>', pos)
+    -- Look for the next opening tag, with or without attributes
+    local open_start, open_end, tag_name, tag_tail =
+      processing_line:find('<(' .. tag_pattern .. ')([^>]*)>', pos)
 
     if not open_start then
       break
     end
 
-    -- Skip self-closing tags
-    if self_close_start and self_close_start < open_start then
-      pos = self_close_end + 1
+    -- Skip self-closing tags, and matches where the name just continues
+    -- (tag_tail must be empty or start with whitespace)
+    if tag_tail:match('/%s*$') or (tag_tail ~= '' and not tag_tail:match('^%s')) then
+      pos = open_end + 1
     else
       -- Found opening tag <tag>
       -- Look for matching close tag </tag>
@@ -154,17 +158,28 @@ function M.parse_inline_elements(
         -- Extract content between tags
         local content_between = processing_line:sub(open_end + 1, close_start - 1)
 
+        -- A CDATA section is text, not a child element
+        local cdata_col, cdata = content_between:match('^%s*<!%[CDATA%[()(.-)%]%]>%s*$')
+
         -- Check if content has no child elements (just text)
-        if not content_between:match('<') then
+        if cdata or not content_between:match('<') then
           -- This is a leaf element with text content
-          local value = content_between
+          local value = cdata or content_between
+          local value_col = cdata_col or 1
           if value and not value:match('^%s*$') then
             -- Build full key path: parent_stack + local_stack + tag_name
             local full_stack = vim.list_extend(vim.list_extend({}, parent_stack), local_stack)
             local full_key = M.build_key_path(full_stack, tag_name)
 
-            -- Find position in original line
-            local value_start_in_line = original_line:find('>' .. M.escape_pattern(value) .. '<')
+            -- Offset of this occurrence. Searching the line for the text would
+            -- land on the first identical value instead.
+            local value_start_in_line
+            if same_line then
+              value_start_in_line = open_end + value_col - 1
+            else
+              local found = original_line:find(value, 1, true)
+              value_start_in_line = found and (found - 1)
+            end
             if value_start_in_line then
               local value_start = line_start + value_start_in_line -- 0-indexed
               local value_end = value_start + #value

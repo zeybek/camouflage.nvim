@@ -71,7 +71,7 @@ local fallback_queries = {
   xml = [[
     (element
       (STag (Name) @key)
-      (content (CharData) @value)
+      (content) @value
       (ETag))
     (Attribute
       (Name) @key
@@ -614,93 +614,188 @@ function M.parse(bufnr, lang, content)
   local offsets = require('camouflage.offsets').from_content(content)
 
   local variables = {}
-  local current_key = nil
-  local current_key_text = nil
+  local seen = {}
 
-  for id, node in query:iter_captures(root, source) do
-    local capture_name = query.captures[id]
-    local node_text = vim.treesitter.get_node_text(node, source)
+  ---Byte range of a node, from the precomputed line table (rows are 0-based).
+  ---@return number|nil start_index
+  ---@return number|nil end_index
+  local function node_range(node)
+    local start_row, start_col, end_row, end_col = node:range()
+    local start_offset = offsets[start_row + 1]
+    if not start_offset then
+      return nil, nil
+    end
+    local end_offset = offsets[end_row + 1] or #content
+    return start_offset + start_col, end_offset + end_col
+  end
 
-    if capture_name == 'key' then
-      -- Store key for next value
-      current_key = node
-      current_key_text = node_text
-      current_key_text = normalize_key_text(current_key_text)
-    elseif capture_name == 'value' and current_key then
-      local node_type = node:type()
-
-      -- Only process value types, not containers (objects/arrays)
-      if M.is_value_type(lang, node_type) then
-        local start_row, start_col, end_row, end_col = node:range()
-
-        -- Byte offsets via the precomputed line table (node rows are 0-based).
-        local start_offset = offsets[start_row + 1]
-        local end_offset = offsets[end_row + 1] or #content
-        if not start_offset then
-          current_key = nil
-          current_key_text = nil
-          goto continue
-        end
-        local start_index = start_offset + start_col
-        local end_index = end_offset + end_col
-
-        -- Get actual value (remove quotes for strings)
-        local value = node_text
-        if lang == 'json' and value:match('^".*"$') then
-          value = value:sub(2, -2)
-          -- Adjust positions to exclude quotes
-          start_index = start_index + 1
-          end_index = end_index - 1
-        elseif
-          lang == 'yaml'
-          and (node_type == 'double_quote_scalar' or node_type == 'single_quote_scalar')
-        then
-          value = value:sub(2, -2)
-          start_index = start_index + 1
-          end_index = end_index - 1
-        elseif lang == 'yaml' and node_type == 'block_scalar' then
-          value, start_index, end_index =
-            normalize_yaml_block_scalar(node_text, start_row, start_index, offsets)
-        elseif lang == 'toml' and node_type == 'string' then
-          value, start_index, end_index = normalize_toml_string(value, start_index, end_index)
-        elseif (lang == 'hcl' or lang == 'terraform') and node_type == 'quoted_template' then
-          if value:match('^".*"$') then
-            value = value:sub(2, -2)
-            start_index = start_index + 1
-            end_index = end_index - 1
-          end
-        elseif (lang == 'hcl' or lang == 'terraform') and node_type == 'heredoc_template' then
-          value, start_index, end_index = normalize_hcl_heredoc(node_text, start_index)
-        elseif lang == 'xml' and node_type == 'AttValue' then
-          -- XML attribute values include quotes: "value" or 'value'
-          if value:match('^".*"$') or value:match("^'.*'$") then
-            value = value:sub(2, -2)
-            start_index = start_index + 1
-            end_index = end_index - 1
-          end
-        end
-
-        -- Skip empty values
-        if value ~= '' and not value:match('^%s*$') then
-          local key_path, is_nested = derive_key_path(lang, current_key, current_key_text, source)
-          table.insert(variables, {
-            key = key_path,
-            value = value,
-            start_index = start_index,
-            end_index = end_index,
-            line_number = start_row,
-            is_nested = is_nested,
-            is_commented = false,
-            is_multiline = end_row ~= start_row or nil,
-          })
-        end
+  ---0-based row containing a byte offset.
+  ---@param index number
+  ---@return number
+  local function row_of(index)
+    local lo, hi = 1, #offsets
+    while lo < hi do
+      local mid = math.floor((lo + hi + 1) / 2)
+      if offsets[mid] <= index then
+        lo = mid
+      else
+        hi = mid - 1
       end
+    end
+    return lo - 1
+  end
 
-      current_key = nil
-      current_key_text = nil
+  ---@param key_node userdata
+  ---@param value string
+  ---@param start_index number
+  ---@param end_index number
+  local function add_variable(key_node, value, start_index, end_index)
+    -- Skip empty values, and values already reported by another pattern
+    if value == '' or value:match('^%s*$') or seen[start_index] then
+      return
+    end
+    seen[start_index] = true
+    local key_text = normalize_key_text(vim.treesitter.get_node_text(key_node, source))
+    local key_path, is_nested = derive_key_path(lang, key_node, key_text, source)
+    local start_row, end_row = row_of(start_index), row_of(math.max(start_index, end_index - 1))
+    table.insert(variables, {
+      key = key_path,
+      value = value,
+      start_index = start_index,
+      end_index = end_index,
+      line_number = start_row,
+      is_nested = is_nested,
+      is_commented = false,
+      is_multiline = end_row ~= start_row or nil,
+    })
+  end
+
+  ---Add a node's text without surrounding whitespace.
+  local function add_trimmed(key_node, node)
+    local start_index = node_range(node)
+    if not start_index then
+      return
+    end
+    local text = vim.treesitter.get_node_text(node, source)
+    local lead = #text:match('^%s*')
+    local value = text:match('^%s*(.-)%s*$')
+    add_variable(key_node, value, start_index + lead, start_index + lead + #value)
+  end
+
+  ---XML element content: the whole text, including entity references and
+  ---CDATA. When the element also holds child elements, only its own text
+  ---pieces are masked. A lone CDATA section is reduced to its inner text so
+  ---checks see the real value.
+  local function add_xml_content(key_node, node)
+    local has_element = false
+    local pieces = {}
+    local only_cdata = nil
+    for child in node:iter_children() do
+      local child_type = child:type()
+      if child_type == 'element' then
+        has_element = true
+      elseif child_type == 'CharData' or child_type == 'CDSect' then
+        table.insert(pieces, child)
+        local blank = child_type == 'CharData'
+          and vim.treesitter.get_node_text(child, source):match('^%s*$')
+        if child_type == 'CDSect' then
+          only_cdata = only_cdata == nil and child or false
+        elseif not blank then
+          only_cdata = false
+        end
+      elseif child:named() then
+        only_cdata = false
+      end
     end
 
-    ::continue::
+    local function add_piece(piece)
+      if piece:type() == 'CDSect' then
+        for inner in piece:iter_children() do
+          if inner:type() == 'CData' then
+            add_trimmed(key_node, inner)
+            return
+          end
+        end
+        return
+      end
+      add_trimmed(key_node, piece)
+    end
+
+    if has_element then
+      for _, piece in ipairs(pieces) do
+        add_piece(piece)
+      end
+    elseif only_cdata then
+      add_piece(only_cdata)
+    else
+      add_trimmed(key_node, node)
+    end
+  end
+
+  -- Pair @key and @value from the same match. Pairing by capture order let an
+  -- unrelated capture in between (an XML attribute name) replace the key.
+  for _, match in query:iter_matches(root, source) do
+    local key_node, node
+    for id, nodes in pairs(match) do
+      -- 0.11+ maps a capture id to a list of nodes, 0.9/0.10 to a single node
+      local captured = type(nodes) == 'table' and nodes[#nodes] or nodes
+      if query.captures[id] == 'key' then
+        key_node = captured
+      elseif query.captures[id] == 'value' then
+        node = captured
+      end
+    end
+
+    if key_node and node then
+      local node_type = node:type()
+      local node_text = vim.treesitter.get_node_text(node, source)
+
+      if lang == 'xml' and node_type == 'content' then
+        add_xml_content(key_node, node)
+      elseif M.is_value_type(lang, node_type) then
+        local start_row = node:range()
+        local start_index, end_index = node_range(node)
+        if start_index then
+          -- Get actual value (remove quotes for strings)
+          local value = node_text
+          if lang == 'json' and value:match('^".*"$') then
+            value = value:sub(2, -2)
+            -- Adjust positions to exclude quotes
+            start_index = start_index + 1
+            end_index = end_index - 1
+          elseif
+            lang == 'yaml'
+            and (node_type == 'double_quote_scalar' or node_type == 'single_quote_scalar')
+          then
+            value = value:sub(2, -2)
+            start_index = start_index + 1
+            end_index = end_index - 1
+          elseif lang == 'yaml' and node_type == 'block_scalar' then
+            value, start_index, end_index =
+              normalize_yaml_block_scalar(node_text, start_row, start_index, offsets)
+          elseif lang == 'toml' and node_type == 'string' then
+            value, start_index, end_index = normalize_toml_string(value, start_index, end_index)
+          elseif (lang == 'hcl' or lang == 'terraform') and node_type == 'quoted_template' then
+            if value:match('^".*"$') then
+              value = value:sub(2, -2)
+              start_index = start_index + 1
+              end_index = end_index - 1
+            end
+          elseif (lang == 'hcl' or lang == 'terraform') and node_type == 'heredoc_template' then
+            value, start_index, end_index = normalize_hcl_heredoc(node_text, start_index)
+          elseif lang == 'xml' and node_type == 'AttValue' then
+            -- XML attribute values include quotes: "value" or 'value'
+            if value:match('^".*"$') or value:match("^'.*'$") then
+              value = value:sub(2, -2)
+              start_index = start_index + 1
+              end_index = end_index - 1
+            end
+          end
+
+          add_variable(key_node, value, start_index, end_index)
+        end
+      end
+    end
   end
 
   return variables

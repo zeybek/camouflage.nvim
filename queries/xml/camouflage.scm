@@ -2,7 +2,7 @@
 
 (element
   (STag (Name) @key)
-  (content (CharData) @value)
+  (content) @value
   (ETag))
 
 (Attribute

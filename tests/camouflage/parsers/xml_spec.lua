@@ -362,4 +362,53 @@ describe('camouflage.parsers.xml', function()
       assert.equals('say "hi"', values['a@other'])
     end)
   end)
+
+  describe('element text', function()
+    local function parse_by_key(content)
+      local by_key = {}
+      local result = xml_parser.parse(content)
+      for _, v in ipairs(result) do
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+        by_key[v.key] = by_key[v.key] or {}
+        table.insert(by_key[v.key], v)
+      end
+      return by_key, result
+    end
+
+    it('masks the text of an element that has attributes', function()
+      local by_key = parse_by_key('<config><password type="t">xmlattrsecret</password></config>')
+
+      assert.equals('xmlattrsecret', by_key['config.password'][1].value)
+      assert.equals('t', by_key['config.password@type'][1].value)
+    end)
+
+    it('masks the inner text of a CDATA section', function()
+      local by_key = parse_by_key('<config><secret><![CDATA[cdata<secret>]]></secret></config>')
+
+      assert.equals('cdata<secret>', by_key['config.secret'][1].value)
+    end)
+
+    it('masks the whole text when it contains an entity', function()
+      local by_key = parse_by_key('<config><token>ab&amp;entitysecret</token></config>')
+
+      assert.equals('ab&amp;entitysecret', by_key['config.token'][1].value)
+    end)
+
+    it('uses the offset of each occurrence for repeated values on one line', function()
+      local content = '<a><u>dupsecret</u><p>dupsecret</p></a>'
+      local by_key = parse_by_key(content)
+
+      local first = by_key['a.u'][1]
+      local second = by_key['a.p'][1]
+      assert.equals(content:find('dupsecret', 1, true) - 1, first.start_index)
+      assert.equals(content:find('dupsecret', first.end_index + 1, true) - 1, second.start_index)
+    end)
+
+    it('does not treat a longer tag name as an attribute of a shorter one', function()
+      local by_key = parse_by_key('<config><pass>one</pass><password>two</password></config>')
+
+      assert.equals('one', by_key['config.pass'][1].value)
+      assert.equals('two', by_key['config.password'][1].value)
+    end)
+  end)
 end)
