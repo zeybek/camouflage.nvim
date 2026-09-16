@@ -143,6 +143,37 @@ describe('camouflage end-to-end extmark placement', function()
     vim.api.nvim_buf_delete(bufnr, { force = true })
   end)
 
+  it('masks every line of a multiline quoted .env value', function()
+    local lines = {
+      'PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----',
+      'MIIEowIBAAKCAQEA7secretbody',
+      '-----END RSA PRIVATE KEY-----"',
+      'DB_PASSWORD=hunter2',
+    }
+    local bufnr = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_name(bufnr, '/tmp/camouflage_test/multiline-key.env')
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+
+    core.apply_decorations(bufnr)
+
+    local marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, { details = true })
+    local covered = {}
+    for _, mark in ipairs(marks) do
+      covered[mark[2]] = { col = mark[3], end_col = mark[4].end_col }
+    end
+
+    -- Line 0: from after the opening quote to the end of the line.
+    assert.same({ col = #'PRIVATE_KEY="', end_col = #lines[1] }, covered[0])
+    -- Line 1: the key body, fully covered.
+    assert.same({ col = 0, end_col = #lines[2] }, covered[1])
+    -- Line 2: up to (not including) the closing quote.
+    assert.same({ col = 0, end_col = #lines[3] - 1 }, covered[2])
+    -- The next key is still masked on its own line.
+    assert.same({ col = #'DB_PASSWORD=', end_col = #lines[4] }, covered[3])
+
+    vim.api.nvim_buf_delete(bufnr, { force = true })
+  end)
+
   it('disables wrap while masked and restores it when masking stops', function()
     require('camouflage').setup()
     local bufnr = vim.api.nvim_create_buf(false, false)

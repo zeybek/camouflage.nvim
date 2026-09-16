@@ -14,15 +14,88 @@ function M.parse(content, _bufnr)
   local lines = vim.split(content, '\n', { plain = true })
   local current_index = 0
 
-  for line_num, line in ipairs(lines) do
+  local line_num = 1
+  while line_num <= #lines do
+    local line = lines[line_num]
     local result = M.parse_line(line, line_num, current_index, parser_config)
+    local extra_lines = 0
+    if result and not result.is_commented then
+      extra_lines = M.extend_multiline(result, lines, line_num, current_index)
+    end
     if result then
       table.insert(variables, result)
     end
-    current_index = current_index + #line + 1
+    for i = line_num, line_num + extra_lines do
+      current_index = current_index + #lines[i] + 1
+    end
+    line_num = line_num + extra_lines + 1
   end
 
   return variables
+end
+
+---Find the first unescaped `quote` in `text`, starting at `init`.
+---@param text string
+---@param quote string
+---@param init number|nil
+---@return number|nil
+local function find_closing_quote(text, quote, init)
+  local pos = init or 1
+  while pos <= #text do
+    local char = text:sub(pos, pos)
+    if char == '\\' then
+      pos = pos + 2
+    elseif char == quote then
+      return pos
+    else
+      pos = pos + 1
+    end
+  end
+  return nil
+end
+
+---Extend a quoted value that is not closed on its own line over the following
+---lines, as dotenv does (KEY="-----BEGIN ...<newline>...<newline>-----END ...").
+---Updates `var` in place and returns how many extra lines the value consumed
+---(0 when the quote closes on the first line or never closes).
+---@param var ParsedVariable
+---@param lines string[]
+---@param line_num number 1-indexed line of the key
+---@param line_start number Byte offset where that line starts
+---@return number
+function M.extend_multiline(var, lines, line_num, line_start)
+  local line = lines[line_num]
+  local quote_col = var.start_index - line_start + 1
+  local quote = line:sub(quote_col, quote_col)
+  if quote ~= '"' and quote ~= "'" and quote ~= '`' then
+    return 0
+  end
+
+  local first_rest = line:sub(quote_col + 1)
+  if find_closing_quote(first_rest, quote) then
+    return 0
+  end
+
+  local offset = line_start + #line + 1
+  for i = line_num + 1, #lines do
+    local close = find_closing_quote(lines[i], quote)
+    if close then
+      local parts = { first_rest }
+      for j = line_num + 1, i - 1 do
+        table.insert(parts, lines[j])
+      end
+      table.insert(parts, lines[i]:sub(1, close - 1))
+
+      var.value = table.concat(parts, '\n')
+      var.start_index = var.start_index + 1
+      var.end_index = offset + close - 1
+      var.is_multiline = true
+      return i - line_num
+    end
+    offset = offset + #lines[i] + 1
+  end
+
+  return 0
 end
 
 ---@param line string
