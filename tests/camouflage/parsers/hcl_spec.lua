@@ -221,4 +221,32 @@ api_key = "secret"
       assert.equals('true', by_key.enabled and by_key.enabled.value)
     end)
   end)
+
+  describe('lists', function()
+    it('reports each literal item and skips references', function()
+      local content = table.concat({
+        'tokens = ["hcl-one", "hcl-two"]',
+        'ports = [',
+        '  8080,',
+        '  "hcl-three", // note',
+        '  var.not_a_secret,',
+        ']',
+        'name = "after"',
+      }, '\n')
+      local result = hcl_parser.parse(content)
+
+      local values = {}
+      for _, v in ipairs(result) do
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+        table.insert(values, v.key .. '=' .. v.value)
+      end
+      assert.same({
+        'tokens=hcl-one',
+        'tokens=hcl-two',
+        'ports=8080',
+        'ports=hcl-three',
+        'name=after',
+      }, values)
+    end)
+  end)
 end)

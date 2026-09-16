@@ -10,3 +10,7 @@
    (local_time)
    (local_date_time)
    (offset_date_time)] @value)
+
+(pair
+  [(bare_key) (dotted_key) (quoted_key)] @key
+  (array [(string) (integer) (float) (boolean)] @value))

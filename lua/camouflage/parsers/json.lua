@@ -3,6 +3,7 @@
 local M = {}
 
 local config = require('camouflage.config')
+local util = require('camouflage.parsers.util')
 
 ---@param content string
 ---@param bufnr number|nil Buffer number for TreeSitter parsing
@@ -37,8 +38,9 @@ function M.parse_regex(content)
   return variables
 end
 
----Scan valid JSON in document order and emit supported object scalar values.
----Arrays and nulls are intentionally skipped to preserve the fallback contract.
+---Scan valid JSON in document order and emit supported scalar values. Scalar
+---array items are reported under the array's key, and objects inside arrays
+---are scanned like nested objects. Nulls and nested arrays are skipped.
 ---@param content string
 ---@param variables ParsedVariable[]
 ---@return nil
@@ -204,7 +206,7 @@ function M.scan_value(content, pos, path, key, max_depth, variables)
     local child_path = key and M.path_with_key(path, key) or path
     return M.scan_object(content, pos, child_path, max_depth, variables)
   elseif char == '[' then
-    return M.skip_json_value(content, pos)
+    return M.scan_array(content, pos, path, key, max_depth, variables)
   elseif char == '"' then
     local raw_value, value_end = M.parse_string_token(content, pos)
     if not raw_value or not value_end then
@@ -249,6 +251,37 @@ function M.scan_value(content, pos, path, key, max_depth, variables)
   end
 
   return pos + 1
+end
+
+---@param content string
+---@param pos number Position of the opening bracket
+---@param path string[]
+---@param key string|nil Key that owns the array
+---@param max_depth number
+---@param variables ParsedVariable[]
+---@return number
+function M.scan_array(content, pos, path, key, max_depth, variables)
+  pos = M.skip_whitespace(content, pos + 1)
+  if content:sub(pos, pos) == ']' then
+    return pos + 1
+  end
+
+  while pos <= #content do
+    if content:sub(pos, pos) == '[' then
+      pos = M.skip_json_value(content, pos)
+    else
+      pos = M.scan_value(content, pos, path, key, max_depth, variables)
+    end
+    pos = M.skip_whitespace(content, pos)
+
+    if content:sub(pos, pos) == ',' then
+      pos = M.skip_whitespace(content, pos + 1)
+    else
+      return pos + 1
+    end
+  end
+
+  return pos
 end
 
 ---@param content string
@@ -431,6 +464,30 @@ function M.parse_with_pattern(content, variables)
           else
             current_pos = value_search_start + 1
           end
+        elseif content:sub(value_search_start, value_search_start) == '[' then
+          -- Scalar items of an array value; objects inside it are picked up by
+          -- this loop as it keeps scanning for "key": pairs.
+          local items = util.scan_array(content, value_search_start)
+          for _, item in ipairs(items) do
+            if
+              item.quoted
+              or item.value:match('^[%-%d]')
+              or item.value == 'true'
+              or item.value == 'false'
+            then
+              table.insert(variables, {
+                key = key,
+                value = item.quoted and item.value:gsub('\\"', '"'):gsub('\\\\', '\\')
+                  or item.value,
+                start_index = item.start_index,
+                end_index = item.end_index,
+                line_number = M.get_line_number(content, item.start_index + 1),
+                is_nested = false,
+                is_commented = false,
+              })
+            end
+          end
+          current_pos = value_search_start + 1
         else
           current_pos = value_search_start + 1
         end

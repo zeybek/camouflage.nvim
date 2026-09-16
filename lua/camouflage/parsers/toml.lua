@@ -33,16 +33,31 @@ function M.parse_regex(content, lines)
   lines = lines or vim.split(content, '\n', { plain = true })
   local current_section = ''
   local current_index = 0
+  local offsets = nil
+  -- 0-based offset of the end of an array value that started on an earlier line
+  local skip_to = -1
 
   for line_num, line in ipairs(lines) do
     local line_start = current_index
-    local result = M.process_line(line, line_num, line_start, current_section, include_commented)
 
-    if result then
-      if result.type == 'section' then
-        current_section = result.section
-      elseif result.type == 'variable' then
-        table.insert(variables, result.data)
+    if line_start > skip_to then
+      offsets = offsets or require('camouflage.offsets').from_content(content)
+      local array_items, close_pos =
+        M.parse_array(content, line, line_start, current_section, offsets)
+      if array_items then
+        vim.list_extend(variables, array_items)
+        skip_to = close_pos - 1
+      else
+        local result =
+          M.process_line(line, line_num, line_start, current_section, include_commented)
+
+        if result then
+          if result.type == 'section' then
+            current_section = result.section
+          elseif result.type == 'variable' then
+            table.insert(variables, result.data)
+          end
+        end
       end
     end
 
@@ -50,6 +65,51 @@ function M.parse_regex(content, lines)
   end
 
   return variables
+end
+
+---Parse `key = [ ... ]`, which may span lines, into one variable per scalar
+---item. Returns nil when the line doesn't start an array or it never closes.
+---@param content string
+---@param line string
+---@param line_start number 0-based offset of the line
+---@param current_section string
+---@param offsets number[] Line start offsets of content
+---@return ParsedVariable[]|nil variables
+---@return number|nil close_pos 1-based position of the closing bracket
+function M.parse_array(content, line, line_start, current_section, offsets)
+  local key, bracket_col = line:match('^%s*([a-zA-Z_][a-zA-Z0-9_%.%-]*)%s*=%s*()%[')
+  if not key then
+    key, bracket_col = line:match('^%s*"([^"]+)"%s*=%s*()%[')
+  end
+  if not key then
+    key, bracket_col = line:match("^%s*'([^']+)'%s*=%s*()%[")
+  end
+  if not key then
+    return nil, nil
+  end
+
+  local items, close_pos = util.scan_array(content, line_start + bracket_col)
+  if not close_pos then
+    return nil, nil
+  end
+
+  local full_key = current_section ~= '' and (current_section .. '.' .. key) or key
+  local variables = {}
+  for _, item in ipairs(items) do
+    local start_row = util.row_of(offsets, item.start_index)
+    local end_row = util.row_of(offsets, math.max(item.start_index, item.end_index - 1))
+    table.insert(variables, {
+      key = full_key,
+      value = item.value,
+      start_index = item.start_index,
+      end_index = item.end_index,
+      line_number = start_row,
+      is_nested = current_section ~= '' or key:find('%.') ~= nil,
+      is_commented = false,
+      is_multiline = end_row ~= start_row or nil,
+    })
+  end
+  return variables, close_pos
 end
 
 ---Process a single TOML line and determine its type

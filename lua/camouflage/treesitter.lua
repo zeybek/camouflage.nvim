@@ -34,6 +34,17 @@ local hcl_query = [[
   (object_elem
     key: (expression) @key
     val: (expression (literal_value [(numeric_lit) (bool_lit)] @value)))
+
+  ; key = ["value", 1, true]
+  (attribute
+    (identifier) @key
+    (expression (collection_value (tuple
+      (expression (literal_value (string_lit (template_literal) @value)))))))
+
+  (attribute
+    (identifier) @key
+    (expression (collection_value (tuple
+      (expression (literal_value [(numeric_lit) (bool_lit)] @value))))))
 ]]
 
 ---@type table<string, boolean>
@@ -41,7 +52,12 @@ local parser_cache = {}
 
 -- Fallback TreeSitter queries for each language (used when no query file exists)
 local fallback_queries = {
-  json = '(pair key: (string) @key value: (_) @value)',
+  json = [[
+    (pair key: (string) @key value: (_) @value)
+    (pair
+      key: (string) @key
+      value: (array [(string) (number) (true) (false)] @value))
+  ]],
   yaml = [[
     (block_mapping_pair
       key: (_) @key
@@ -55,6 +71,19 @@ local fallback_queries = {
       key: (flow_node) @key
       value: (flow_node
         [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value))
+    (block_mapping_pair
+      key: (_) @key
+      value: (block_node
+        (block_sequence
+          (block_sequence_item
+            (flow_node
+              [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value)))))
+    (block_mapping_pair
+      key: (_) @key
+      value: (flow_node
+        (flow_sequence
+          (flow_node
+            [(plain_scalar) (double_quote_scalar) (single_quote_scalar)] @value))))
   ]],
   toml = [[
     (pair
@@ -67,6 +96,9 @@ local fallback_queries = {
        (local_time)
        (local_date_time)
        (offset_date_time)] @value)
+    (pair
+      [(bare_key) (dotted_key) (quoted_key)] @key
+      (array [(string) (integer) (float) (boolean)] @value))
   ]],
   xml = [[
     (element
