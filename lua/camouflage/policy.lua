@@ -761,8 +761,11 @@ function M.filter_variables(opts)
 
   local compiled = normalize_policy((cfg or {}).policy)
   local filename = opts.filename or ''
-  local root = opts.root or M.resolve_root(filename)
-  local rel = relative_path(filename, root)
+  -- The root and relative path only matter to path rules. With the default,
+  -- inactive policy skip the two upward filesystem searches in resolve_root:
+  -- this runs on every decoration pass.
+  local root = opts.root or (compiled.active and M.resolve_root(filename) or nil)
+  local rel = root and relative_path(filename, root) or filename
   local name = basename(filename)
   local parser_name = opts.parser_name or opts.parser or ''
   local filtered = {}

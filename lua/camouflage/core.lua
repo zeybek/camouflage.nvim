@@ -88,12 +88,68 @@ end
 
 M.restore_wrap = restore_wrap
 
+---Everything a decoration pass depends on, besides the parsers themselves.
+---@param bufnr number
+---@return string
+local function pass_signature(bufnr)
+  local b = vim.b[bufnr]
+  return table.concat({
+    vim.api.nvim_buf_get_changedtick(bufnr),
+    vim.api.nvim_buf_get_name(bufnr),
+    config.generation,
+    hooks.generation,
+    check_registry.generation,
+    parsers.generation,
+    tostring(b.camouflage_enabled),
+    tostring(b.camouflage_style),
+    tostring(b.camouflage_mask_char),
+    tostring(b.camouflage_mask_length),
+    tostring(b.camouflage_highlight_group),
+  }, '\0')
+end
+
+---True when the buffer was decorated with the same text, options, buffer-local
+---overrides, hooks, checks and parsers, so decorating it again would give the
+---same result.
+---@param bufnr number
+---@return boolean
+function M.is_up_to_date(bufnr)
+  local buf_state = state.buffers[bufnr]
+  return buf_state ~= nil
+    and buf_state.signature ~= nil
+    and not buf_state.dirty
+    and vim.api.nvim_buf_is_valid(bufnr)
+    and buf_state.signature == pass_signature(bufnr)
+end
+
+---Re-apply per-window options of a masked buffer (wrap is turned off in every
+---window that shows it), for windows opened since the last decoration pass.
+---@param bufnr number
+function M.refresh_windows(bufnr)
+  if state.is_buffer_masked(bufnr) then
+    disable_wrap(bufnr)
+  end
+end
+
+local decorate
+
 ---Apply decorations to mask sensitive values in a buffer
 ---@param bufnr number Buffer number
 ---@param override_filename string|nil Optional filename for buffers without names (e.g., snacks preview)
 function M.apply_decorations(bufnr, override_filename)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
+  decorate(bufnr, override_filename)
+  local buf_state = state.buffers[bufnr]
+  if buf_state and vim.api.nvim_buf_is_valid(bufnr) then
+    -- A pass with an override filename (picker previews) isn't tied to the
+    -- buffer's own name, so it is never treated as up to date.
+    buf_state.signature = not override_filename and pass_signature(bufnr) or nil
+  end
+end
 
+---@param bufnr number
+---@param override_filename string|nil
+decorate = function(bufnr, override_filename)
   -- The old masks stay in place until the new ones are set: hooks, the User
   -- autocmd, policy and checks run below, and anything that redraws in between
   -- would otherwise show the real values. Every no-mask exit clears them

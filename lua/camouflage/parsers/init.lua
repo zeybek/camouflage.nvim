@@ -36,6 +36,9 @@ M.parsers = {}
 ---@type table<string, CamouflageParserEntry>
 M.entries = {}
 
+-- Bumped whenever the cached lookup is cleared (registrations, config changes)
+M.generation = 0
+
 local DEFAULT_PRIORITY = 50
 
 -- Simple cache for find_parser_for_file to avoid repeated lookups
@@ -296,6 +299,7 @@ end
 ---Clear parser cache
 ---@return nil
 function M.clear_cache()
+  M.generation = M.generation + 1
   parser_cache.filename = nil
   parser_cache.parser = nil
   parser_cache.parser_name = nil

@@ -372,6 +372,9 @@ M.options = {}
 ---@type CamouflageConfig
 M.user_options = {}
 
+-- Bumped whenever effective options may have changed
+M.generation = 0
+
 -- Value of `enabled` set at runtime (:CamouflageToggle, config.set). Kept
 -- across project config reloads and applied to every buffer's config.
 ---@type boolean|nil
@@ -392,6 +395,7 @@ local options_by_project = {}
 
 ---Forget cached per-buffer project configs (after setup, reload or set).
 function M.clear_project_cache()
+  M.generation = M.generation + 1
   project_file_by_dir = {}
   options_by_project = {}
   -- The parser registry caches the last file -> parser lookup, which depends on
