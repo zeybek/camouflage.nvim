@@ -147,6 +147,64 @@ describe('camouflage.pwned', function()
     end)
   end)
 
+  describe('masking policy', function()
+    local original_system
+    local requests
+
+    before_each(function()
+      requests = 0
+      original_system = vim.system
+      vim.system = function(cmd, _, callback)
+        if table.concat(cmd, ' '):find('pwnedpasswords', 1, true) then
+          requests = requests + 1
+        end
+        if callback then
+          callback({ code = 0, stdout = '' })
+        end
+        return {}
+      end
+    end)
+
+    after_each(function()
+      vim.system = original_system
+    end)
+
+    local function check_buffer_with_policy(lines)
+      -- config.setup directly: camouflage.setup() is already done by the test init
+      require('camouflage.config').setup({
+        project_config = { enabled = false },
+        policy = { rules = { { id = 'ignore-password', action = 'ignore', key = '^PASSWORD$' } } },
+      })
+      require('camouflage.parsers').setup()
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_name(bufnr, vim.fn.tempname() .. '/policy.env')
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.api.nvim_set_current_buf(bufnr)
+      require('camouflage.core').apply_decorations(bufnr)
+
+      local done = false
+      pwned.check_buffer(function()
+        done = true
+      end)
+      vim.wait(1000, function()
+        return done
+      end)
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end
+
+    it('does not send values the policy ignores', function()
+      check_buffer_with_policy({ 'PASSWORD=policy-ignored-secret' })
+
+      assert.equals(0, requests)
+    end)
+
+    it('still checks values the policy masks', function()
+      check_buffer_with_policy({ 'PASSWORD=policy-ignored-secret', 'TOKEN=policy-masked-secret' })
+
+      assert.equals(1, requests)
+    end)
+  end)
+
   describe('API exposure', function()
     it('should expose check_current function', function()
       assert.is_function(pwned.check_current)

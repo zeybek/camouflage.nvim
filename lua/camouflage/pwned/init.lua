@@ -51,8 +51,17 @@ local function get_variables_for_pwned(bufnr)
   end
 
   local content = table.concat(lines, '\n')
-  local parsed = parsers.parse(filename, content, bufnr)
-  return parsed or {}
+  local parser, parser_name = parsers.find_parser_for_file(filename)
+  local parsed = parsers.parse(filename, content, bufnr, parser, parser_name) or {}
+  -- Apply the masking policy here too: a value the policy ignores must not be
+  -- hashed and sent to the HIBP API.
+  local filtered = require('camouflage.policy').filter_variables({
+    bufnr = bufnr,
+    filename = filename,
+    parser_name = parser_name,
+    variables = parsed,
+  })
+  return filtered
 end
 
 ---Setup pwned feature
