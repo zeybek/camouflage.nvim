@@ -424,6 +424,28 @@ describe('camouflage.treesitter', function()
         assert.equals('line-one-secret\nline-two-secret', by_key.cert.value)
         assert.is_true(by_key.cert.is_multiline)
       end)
+
+      it('should still parse HCL when an injection query cannot run', function()
+        -- Injection queries can come from other plugins and use directives this
+        -- Neovim has no handler for (0.9 errors on them while parsing).
+        vim.treesitter.query.set(
+          'hcl',
+          'injections',
+          '((heredoc_template) @injection.content (#camouflage-test-missing! @injection.content))'
+        )
+        local ok, result, by_key = pcall(parse_hcl, {
+          'password = "injection-safe-secret"',
+          'cert = <<EOT',
+          'heredoc-secret',
+          'EOT',
+        })
+        vim.treesitter.query.set('hcl', 'injections', '')
+
+        assert.is_true(ok, tostring(result))
+        assert.equals(2, #result)
+        assert.equals('injection-safe-secret', by_key.password.value)
+        assert.equals('heredoc-secret', by_key.cert.value)
+      end)
     end
   end)
 end)

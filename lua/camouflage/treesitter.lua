@@ -476,7 +476,7 @@ end
 ---@param lang string
 ---@param key_node userdata
 ---@param fallback_key string
----@param bufnr number
+---@param bufnr number|string Buffer number or the parsed source text
 ---@return string key_path
 ---@return boolean is_nested
 local function derive_key_path(lang, key_node, fallback_key, bufnr)
@@ -548,6 +548,47 @@ local function normalize_yaml_block_scalar(node_text, start_row, start_index, of
   return value, content_start, content_start + #value
 end
 
+---Parse `content` and return the root node plus the source to read node text
+---from. The buffer's parser is tried first (it may already be parsed); if
+---creating or parsing it fails, retry with a string parser that has this
+---language's injections turned off. Injection queries can come from other
+---plugins and fail on some Neovim versions (for example a `#downcase!`
+---directive that 0.9 has no handler for), and camouflage only needs the root
+---tree anyway.
+---@param bufnr number
+---@param lang string
+---@param content string
+---@return userdata|nil root
+---@return number|string|nil source
+local function parse_root(bufnr, lang, content)
+  local ok, parser = pcall(vim.treesitter.get_parser, bufnr, lang)
+  if ok and parser then
+    local parse_ok, trees = pcall(function()
+      return parser:parse()
+    end)
+    if parse_ok and trees and trees[1] then
+      return trees[1]:root(), bufnr
+    end
+    log.pcall_error('treesitter parse', trees, { bufnr = bufnr, lang = lang })
+  elseif not ok then
+    log.pcall_error('treesitter.get_parser', parser, { bufnr = bufnr, lang = lang })
+  end
+
+  local string_ok, string_parser =
+    pcall(vim.treesitter.get_string_parser, content, lang, { injections = { [lang] = '' } })
+  if not string_ok or not string_parser then
+    return nil, nil
+  end
+  local parse_ok, trees = pcall(function()
+    return string_parser:parse()
+  end)
+  if not parse_ok or not trees or not trees[1] then
+    log.pcall_error('treesitter string parse', trees, { lang = lang })
+    return nil, nil
+  end
+  return trees[1]:root(), content
+end
+
 ---Parse a buffer using TreeSitter and extract key-value pairs
 ---@param bufnr number Buffer number
 ---@param lang string Language name
@@ -563,21 +604,10 @@ function M.parse(bufnr, lang, content)
     return nil
   end
 
-  -- Get parser and parse
-  local ok, parser = pcall(vim.treesitter.get_parser, bufnr, lang)
-  if not ok or not parser then
-    if not ok then
-      log.pcall_error('treesitter.get_parser', parser, { bufnr = bufnr, lang = lang })
-    end
+  local root, source = parse_root(bufnr, lang, content)
+  if not root then
     return nil
   end
-
-  local trees = parser:parse()
-  if not trees or #trees == 0 then
-    return nil
-  end
-
-  local root = trees[1]:root()
 
   -- Compute line offsets ONCE, not per captured value: the old code re-split the
   -- whole content and re-summed line lengths inside the loop (O(values x lines)).
@@ -587,9 +617,9 @@ function M.parse(bufnr, lang, content)
   local current_key = nil
   local current_key_text = nil
 
-  for id, node in query:iter_captures(root, bufnr) do
+  for id, node in query:iter_captures(root, source) do
     local capture_name = query.captures[id]
-    local node_text = vim.treesitter.get_node_text(node, bufnr)
+    local node_text = vim.treesitter.get_node_text(node, source)
 
     if capture_name == 'key' then
       -- Store key for next value
@@ -652,7 +682,7 @@ function M.parse(bufnr, lang, content)
 
         -- Skip empty values
         if value ~= '' and not value:match('^%s*$') then
-          local key_path, is_nested = derive_key_path(lang, current_key, current_key_text, bufnr)
+          local key_path, is_nested = derive_key_path(lang, current_key, current_key_text, source)
           table.insert(variables, {
             key = key_path,
             value = value,
