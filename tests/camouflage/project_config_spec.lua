@@ -142,6 +142,109 @@ describe('camouflage.project_config', function()
     assert.equals('dotted', config.get().style)
   end)
 
+  describe('untrusted project files', function()
+    local function write_project(lines)
+      local dir = vim.fn.tempname()
+      vim.fn.mkdir(dir, 'p')
+      vim.fn.writefile(lines, dir .. '/.camouflage.yaml')
+      vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+      return dir
+    end
+
+    local function has_error(status, text)
+      for _, err in ipairs(status.errors) do
+        if err:find(text, 1, true) then
+          return true
+        end
+      end
+      return false
+    end
+
+    it('cannot turn on HIBP network checks', function()
+      write_project({
+        'version: 1',
+        'pwned:',
+        '  auto_check: true',
+        '  check_on_save: true',
+        '  sign_text: "P"',
+        'checks:',
+        '  pwned:',
+        '    check_on_change: true',
+      })
+
+      config.setup()
+      local cfg = config.get()
+      local status = project_config.status()
+
+      assert.is_true(status.loaded)
+      assert.is_false(cfg.pwned.auto_check)
+      assert.is_false(cfg.pwned.check_on_save)
+      assert.is_false(cfg.pwned.check_on_change)
+      assert.is_false(cfg.checks.pwned.check_on_change)
+      -- Other pwned options from the file still apply.
+      assert.equals('P', cfg.pwned.sign_text)
+      assert.is_true(has_error(status, 'pwned.auto_check'))
+      assert.is_true(has_error(status, 'checks.pwned.check_on_change'))
+    end)
+
+    it('does not create HIBP autocmds from an untrusted file', function()
+      write_project({ 'version: 1', 'pwned:', '  auto_check: true', '  check_on_change: true' })
+
+      config.setup()
+      local state = require('camouflage.state')
+      require('camouflage.autocmds').setup()
+
+      for _, au in ipairs(vim.api.nvim_get_autocmds({ group = state.augroup })) do
+        assert.is_falsy(au.desc and au.desc:find('Camouflage pwned', 1, true))
+      end
+    end)
+
+    it('can still turn HIBP network checks off', function()
+      write_project({ 'version: 1', 'pwned:', '  auto_check: false' })
+
+      config.setup({ pwned = { auto_check = true } })
+
+      assert.is_false(config.get().pwned.auto_check)
+      assert.is_false(has_error(project_config.status(), 'auto_check'))
+    end)
+
+    it('lets a trusted file turn on HIBP network checks', function()
+      write_project({ 'version: 1', 'pwned:', '  auto_check: true' })
+      local original = vim.secure.read
+      vim.secure.read = function(path)
+        return table.concat(vim.fn.readfile(path), '\n')
+      end
+      config.setup({ project_config = { secure = true } })
+      vim.secure.read = original
+
+      assert.is_true(config.get().pwned.auto_check)
+      assert.is_true(project_config.status().loaded)
+    end)
+
+    it('warns with the file path when it disables masking', function()
+      write_project({ 'version: 1', 'enabled: false' })
+      local messages = {}
+      local original = vim.notify_once
+      vim.notify_once = function(msg)
+        table.insert(messages, msg)
+      end
+      config.setup()
+      vim.notify_once = original
+
+      assert.is_false(config.get().enabled)
+      local path = project_config.status().path
+      local warned = false
+      for _, msg in ipairs(messages) do
+        if
+          msg:find('masking is disabled by project config', 1, true) and msg:find(path, 1, true)
+        then
+          warned = true
+        end
+      end
+      assert.is_true(warned)
+    end)
+  end)
+
   it('should ignore unknown top-level keys', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

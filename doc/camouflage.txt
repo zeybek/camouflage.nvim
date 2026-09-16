@@ -71,8 +71,12 @@ directly, because the real text is still present underneath the mask:
   real value deliberately, with a confirm prompt and timed auto-clear)
 
 Per-repo `.camouflage.yaml` files are applied as data only (no code execution).
-If you open untrusted repositories, set `project_config.secure = true` to gate
-the file behind Neovim's `vim.secure` / `:trust` mechanism.
+A project file can't turn on HIBP network checks (`pwned.auto_check`,
+`check_on_save`, `check_on_change`) unless it is trusted, those options are
+ignored with a warning. If a project file sets `enabled: false`, a warning
+shows its path. If you open untrusted repositories, set
+`project_config.secure = true` to gate the file behind Neovim's `vim.secure` /
+`:trust` mechanism.
 
 The `scramble` style is COSMETIC, not protective: the mask is a shuffle of the
 real characters, so it leaks the value's length and character set.
