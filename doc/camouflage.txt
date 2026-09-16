@@ -1180,8 +1180,8 @@ With custom options: >lua
       lualine_x = {
         {
           'camouflage',
-          icon_enabled = '',         -- Icon when enabled (default)
-          icon_disabled = '',        -- Icon when disabled
+          icon_enabled = '',        -- Icon when masking is on for the buffer (default)
+          icon_disabled = '',       -- Icon when masking is off for the buffer
           show_disabled = false,      -- Show icon when disabled
           show_count = false,         -- Show masked values count
           show_follow_indicator = true,  -- Show indicator when follow mode active
@@ -1192,7 +1192,7 @@ With custom options: >lua
   })
 <
 
-Example with count: ` 12` - Showing 12 masked values
+Example with count: ` 12` - Showing 12 masked values
 
 ==============================================================================
 PROJECT CONFIG                                       *camouflage-project-config*
