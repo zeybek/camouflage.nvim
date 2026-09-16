@@ -136,4 +136,78 @@ EMPTY=
       assert.equals(0, #result)
     end)
   end)
+
+  describe('multiline values', function()
+    local function slice(content, var)
+      return content:sub(var.start_index + 1, var.end_index)
+    end
+
+    it('spans a double-quoted value over the following lines', function()
+      local content = table.concat({
+        'PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----',
+        'MIIEowIBAAKCAQEA7secretbody',
+        '-----END RSA PRIVATE KEY-----"',
+      }, '\n')
+      local result = env_parser.parse(content)
+
+      assert.equals(1, #result)
+      assert.equals('PRIVATE_KEY', result[1].key)
+      assert.is_true(result[1].is_multiline)
+      assert.equals(
+        '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA7secretbody\n-----END RSA PRIVATE KEY-----',
+        result[1].value
+      )
+      assert.equals(result[1].value, slice(content, result[1]))
+      assert.equals(0, result[1].line_number)
+    end)
+
+    it('supports single quotes and backticks like dotenv', function()
+      local content = "A='one\ntwo'\nB=`three\nfour`"
+      local result = env_parser.parse(content)
+
+      assert.equals(2, #result)
+      assert.equals('one\ntwo', result[1].value)
+      assert.equals('one\ntwo', slice(content, result[1]))
+      assert.equals('B', result[2].key)
+      assert.equals('three\nfour', result[2].value)
+      assert.equals('three\nfour', slice(content, result[2]))
+    end)
+
+    it('ignores escaped quotes when looking for the end of the value', function()
+      local content = 'TOKEN="first \\" still open\nsecond"'
+      local result = env_parser.parse(content)
+
+      assert.equals(1, #result)
+      assert.equals('first \\" still open\nsecond', result[1].value)
+      assert.equals(result[1].value, slice(content, result[1]))
+    end)
+
+    it('keeps parsing keys after the multiline value with correct offsets', function()
+      local content = 'KEY="line1\nline2"\nNEXT=after\n'
+      local result = env_parser.parse(content)
+
+      assert.equals(2, #result)
+      assert.equals('NEXT', result[2].key)
+      assert.equals('after', slice(content, result[2]))
+      assert.equals(2, result[2].line_number)
+    end)
+
+    it('does not treat KEY=value lines inside the quotes as separate variables', function()
+      local content = 'CERT="begin\nINNER=notakey\nend"'
+      local result = env_parser.parse(content)
+
+      assert.equals(1, #result)
+      assert.equals('CERT', result[1].key)
+    end)
+
+    it('leaves a quote that never closes as a single-line value', function()
+      local content = 'BROKEN="no closing quote\nOTHER=value'
+      local result = env_parser.parse(content)
+
+      assert.equals(2, #result)
+      assert.equals('"no closing quote', result[1].value)
+      assert.is_nil(result[1].is_multiline)
+      assert.equals('OTHER', result[2].key)
+    end)
+  end)
 end)
