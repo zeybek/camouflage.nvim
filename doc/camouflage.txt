@@ -697,7 +697,9 @@ public API. Three levels are supported:
       file_patterns = { '*.myft' },
       priority = 60,             -- default 50, higher wins on conflict
       parser = {
-        parse = function(content, bufnr)
+        -- bufnr is nil and filename is the file path when the audit scans a
+        -- file that isn't loaded in a buffer
+        parse = function(content, bufnr, filename)
           -- return ParsedVariable[]
           return {
             {

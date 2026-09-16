@@ -428,7 +428,7 @@ local function process_file(result, filename, cfg)
   end
 
   local content = table.concat(lines, '\n')
-  local ok_parse, variables = pcall(parser.parse, content, nil)
+  local ok_parse, variables = pcall(parser.parse, content, nil, filename)
   if not ok_parse then
     add_error(result, filename, parser_name, 'parser failed')
     return
