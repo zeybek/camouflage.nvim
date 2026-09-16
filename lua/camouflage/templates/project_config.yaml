@@ -72,29 +72,32 @@ highlight_group: Comment
 
 # Define which files should be parsed and with which parser
 # Available parsers: env, json, yaml, toml, properties, netrc, xml, http, hcl, dockerfile
-patterns:
-  - file_pattern: ['.env*', '*.env', '.envrc']
-    parser: env
-  - file_pattern: ['*.sh']
-    parser: env
-  - file_pattern: ['*.json', '*.jsonc']
-    parser: json
-  - file_pattern: ['*.yaml', '*.yml']
-    parser: yaml
-  - file_pattern: ['*.toml']
-    parser: toml
-  - file_pattern: ['*.properties', '*.ini', '*.conf', 'credentials']
-    parser: properties
-  - file_pattern: ['.netrc', '_netrc']
-    parser: netrc
-  - file_pattern: ['*.xml']
-    parser: xml
-  - file_pattern: ['*.http']
-    parser: http
-  - file_pattern: ['*.tf', '*.tfvars', '*.hcl']
-    parser: hcl
-  - file_pattern: ['Dockerfile', 'Dockerfile.*', '*.dockerfile', 'Containerfile', 'Containerfile.*']
-    parser: dockerfile
+# Lists replace the defaults instead of merging with them, so these are
+# commented out: new built-in patterns reach this project automatically.
+# Uncomment to use exactly this list.
+# patterns:
+#   - file_pattern: ['.env*', '*.env', '.envrc']
+#     parser: env
+#   - file_pattern: ['*.sh']
+#     parser: env
+#   - file_pattern: ['*.json', '*.jsonc']
+#     parser: json
+#   - file_pattern: ['*.yaml', '*.yml']
+#     parser: yaml
+#   - file_pattern: ['*.toml']
+#     parser: toml
+#   - file_pattern: ['*.properties', '*.ini', '*.conf', 'credentials']
+#     parser: properties
+#   - file_pattern: ['.netrc', '_netrc']
+#     parser: netrc
+#   - file_pattern: ['*.xml']
+#     parser: xml
+#   - file_pattern: ['*.http']
+#     parser: http
+#   - file_pattern: ['*.tf', '*.tfvars', '*.hcl']
+#     parser: hcl
+#   - file_pattern: ['Dockerfile', 'Dockerfile.*', '*.dockerfile', 'Containerfile', 'Containerfile.*']
+#     parser: dockerfile
 
 # =============================================================================
 # CUSTOM PATTERNS
@@ -165,7 +168,8 @@ integrations:
 # Configuration for :CamouflageAudit
 audit:
   # Root-relative or basename globs skipped by workspace audit
-  ignore_patterns: ['.git', '.git/**', 'node_modules', 'node_modules/**']
+  # Commented out so the defaults apply. Uncomment to replace them.
+  # ignore_patterns: ['.git', '.git/**', 'node_modules', 'node_modules/**']
 
   # Number of files processed per scheduled command chunk
   max_files_per_chunk: 50
@@ -224,29 +228,32 @@ checks:
     min_length: 8
     min_sensitive_length: 12
     entropy_threshold: 3.0
-    sensitive_key_patterns:
-      - password
-      - passwd
-      - passphrase
-      - secret
-      - token
-      - api[_%-]*key
-      - access[_%-]*key
-      - private[_%-]*key
-      - client[_%-]*secret
-      - auth[_%-]*token
-      - credential
+    # Commented out so the defaults apply. Uncomment to replace them.
+    # sensitive_key_patterns:
+    #   - password
+    #   - passwd
+    #   - passphrase
+    #   - secret
+    #   - token
+    #   - api[_%-]*key
+    #   - access[_%-]*key
+    #   - private[_%-]*key
+    #   - client[_%-]*secret
+    #   - auth[_%-]*token
+    #   - credential
     ignored_key_patterns: []
     ignored_value_patterns: []
-    common_values:
-      - password
-      - password123
-      - secret
-      - changeme
-      - admin
-      - default
-      - test
-      - qwerty
+    # Commented out so the defaults apply (a list here replaces the whole default
+    # list). Uncomment to replace them.
+    # common_values:
+    #   - password
+    #   - password123
+    #   - secret
+    #   - changeme
+    #   - admin
+    #   - default
+    #   - test
+    #   - qwerty
     show_sign: false
     show_virtual_text: true
     virtual_text_format: '[weak: %s]'
