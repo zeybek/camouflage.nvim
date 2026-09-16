@@ -160,4 +160,83 @@ describe('camouflage.checks.badges', function()
     assert.is_table(get_mark(bufnr, 2))
     vim.api.nvim_buf_delete(bufnr, { force = true })
   end)
+
+  describe('when lines move', function()
+    local function badge_text(bufnr, lnum)
+      local mark = get_mark(bufnr, lnum)
+      if not mark or not mark[4].virt_text then
+        return nil
+      end
+      local parts = {}
+      for _, chunk in ipairs(mark[4].virt_text) do
+        table.insert(parts, chunk[1])
+      end
+      return table.concat(parts)
+    end
+
+    it('moves a result with its line when lines are inserted above', function()
+      local bufnr = fresh_buffer({ 'a', 'b', 'c' })
+      checks.set_result(bufnr, 1, 'pwned', { severity = 'error', text = 'PWNED' })
+
+      vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, { 'new first line' })
+      checks.render_buffer(bufnr)
+
+      assert.is_nil(store.get(bufnr, 1, 'pwned'))
+      assert.is_table(store.get(bufnr, 2, 'pwned'))
+      assert.equals('PWNED', badge_text(bufnr, 2))
+      assert.is_nil(badge_text(bufnr, 1))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('keeps each badge on its own line after a shift', function()
+      local bufnr = fresh_buffer({ 'a', 'b', 'c' })
+      checks.set_result(bufnr, 0, 'pwned', { severity = 'error', text = 'FIRST' })
+      checks.set_result(bufnr, 2, 'pwned', { severity = 'error', text = 'THIRD' })
+
+      vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, { 'new first line' })
+      checks.render_buffer(bufnr)
+
+      assert.equals('FIRST', badge_text(bufnr, 1))
+      assert.equals('THIRD', badge_text(bufnr, 3))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    if vim.fn.has('nvim-0.10') == 1 then
+      it('drops a result when its line is deleted', function()
+        local bufnr = fresh_buffer({ 'a', 'secret line', 'c' })
+        checks.set_result(bufnr, 1, 'pwned', { severity = 'error', text = 'PWNED' })
+
+        vim.api.nvim_buf_set_lines(bufnr, 1, 2, false, {})
+        checks.render_buffer(bufnr)
+
+        assert.same({}, store.lines_with_results(bufnr))
+        assert.is_nil(badge_text(bufnr, 1))
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+      end)
+    end
+
+    it('keeps the PWNED badge on its value when weak_secret redecorates', function()
+      require('camouflage').setup({ project_config = { enabled = false } })
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      vim.api.nvim_buf_set_name(bufnr, vim.fn.tempname() .. '/badge.env')
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'A=1', 'PASSWORD=hunter2', 'C=3' })
+      local core = require('camouflage.core')
+      core.apply_decorations(bufnr)
+      require('camouflage.pwned.ui').mark_pwned(bufnr, 1, 100)
+
+      vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, { '# new top line' })
+      core.apply_decorations(bufnr)
+
+      local pwned_line
+      for lnum = 0, vim.api.nvim_buf_line_count(bufnr) - 1 do
+        local text = badge_text(bufnr, lnum)
+        if text and text:find('PWNED', 1, true) then
+          pwned_line = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1]
+        end
+      end
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+
+      assert.equals('PASSWORD=hunter2', pwned_line)
+    end)
+  end)
 end)

@@ -119,14 +119,11 @@ function M.render(bufnr, lnum)
     end
   end
 
-  -- Deterministic per-line id (1-based; extmark ids must be > 0). This is safe,
-  -- not a collision risk: the line was cleared above, ids are unique per
-  -- (buffer, namespace), and set_extmark with an existing id MOVES that mark
-  -- rather than erroring — so a line carries at most one badge mark and a
-  -- re-render is idempotent.
+  -- No fixed id: the line was cleared above, so it carries at most one badge
+  -- mark. A per-line id (lnum + 1) would move another line's badge here once
+  -- lines shift after an edit.
   ---@type vim.api.keyset.set_extmark
   local opts = {
-    id = lnum + 1,
     priority = 200,
   }
   if #virt_text > 0 then
@@ -143,6 +140,20 @@ function M.render(bufnr, lnum)
 
   -- Only call set_extmark if at least one decoration is present.
   if opts.virt_text or opts.sign_text or opts.line_hl_group then
+    -- Cover the line's text and let Neovim hide the badge when that text is
+    -- deleted, so a deleted line doesn't leave its badge on the next line.
+    local text = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1] or ''
+    if #text > 0 then
+      local ranged = vim.tbl_extend('force', opts, {
+        end_row = lnum,
+        end_col = #text,
+        invalidate = true,
+      })
+      if pcall(vim.api.nvim_buf_set_extmark, bufnr, ns_id, lnum, 0, ranged) then
+        return
+      end
+    end
+    -- Neovim 0.9 has no `invalidate`
     vim.api.nvim_buf_set_extmark(bufnr, ns_id, lnum, 0, opts)
   end
 end
@@ -150,6 +161,9 @@ end
 ---Re-render every line in the buffer that currently has results.
 ---@param bufnr integer
 function M.render_buffer(bufnr)
+  -- Start clean: badges of results that moved or were dropped since the last
+  -- render would otherwise stay where they were.
+  M.clear_buffer(bufnr)
   for _, lnum in ipairs(store.lines_with_results(bufnr)) do
     M.render(bufnr, lnum)
   end
