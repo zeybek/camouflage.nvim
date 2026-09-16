@@ -174,7 +174,7 @@ local M = {}
 ---@field enabled? boolean
 ---@field debug? boolean Enable debug logging (default: false)
 ---@field auto_enable? boolean
----@field debounce_ms? number Debounce delay in ms for TextChanged masking (default: 150, 0 = instant)
+---@field debounce_ms? number Delay in ms before the full re-parse after a text change; edited rows are masked right away (default: 150)
 ---@field style? string
 ---@field mask_char? string
 ---@field mask_length? number|nil

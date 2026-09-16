@@ -11,6 +11,7 @@ local log = require('camouflage.log')
 local position = require('camouflage.position')
 local policy = require('camouflage.policy')
 local check_registry = require('camouflage.checks.registry')
+local guard = require('camouflage.guard')
 
 -- Position math lives in the leaf module camouflage.position so yank/pwned can
 -- reuse it without depending on the whole decoration engine. These permanent
@@ -144,6 +145,11 @@ function M.apply_decorations(bufnr, override_filename)
     -- A pass with an override filename (picker previews) isn't tied to the
     -- buffer's own name, so it is never treated as up to date.
     buf_state.signature = not override_filename and pass_signature(bufnr) or nil
+    -- Mask edits as they happen, before the debounced pass catches up. Picker
+    -- previews are skipped: their buffers get reused for other files.
+    if not override_filename then
+      guard.attach(bufnr)
+    end
   end
 end
 
@@ -371,6 +377,8 @@ function M.clear_decorations(bufnr)
   if not ok then
     log.pcall_error('nvim_buf_clear_namespace', err, { bufnr = bufnr })
   end
+  -- Provisional masks from edits are replaced by whatever this pass sets.
+  guard.clear(bufnr)
 end
 
 ---Clear all mask-owned buffer state without reparsing.
