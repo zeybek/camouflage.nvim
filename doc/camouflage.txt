@@ -159,7 +159,7 @@ Call the setup function with your options: >lua
     -- General
     enabled = true,              -- Enable camouflage on startup
     auto_enable = true,          -- Auto-enable on supported files
-    debounce_ms = 150,           -- Delay before masking (0 = instant)
+    debounce_ms = 150,           -- Delay before the full re-parse on edits
     max_lines = 5000,            -- Skip files larger than this
 
     -- Appearance
@@ -283,9 +283,13 @@ max_lines ~
 
 debounce_ms ~
     Type: `number`, Default: `150`
-    Delay in milliseconds before applying masking after text changes.
-    Set to `0` for instant masking (may increase CPU usage on large files).
-    Higher values reduce CPU usage but delay visual feedback.
+    Delay in milliseconds before the buffer is re-parsed after text changes.
+    Edited rows don't wait for it: they are masked while the change is
+    applied, before Neovim redraws, using a quick line-level match. The
+    re-parse then puts the exact masks in place, so a value your policy or
+    hooks exclude can stay covered until it runs.
+    Set to `0` to re-parse on the next event loop tick (more CPU on large
+    files). Higher values reduce CPU usage.
 
                                                             *camouflage-style*
 style ~
