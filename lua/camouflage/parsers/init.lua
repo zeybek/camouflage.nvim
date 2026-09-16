@@ -232,28 +232,29 @@ function M.find_entry_for_file(filename, filetype)
   return candidates[1]
 end
 
+-- Compiled glob -> vim.regex, or false when the glob can't be compiled
+---@type table<string, any>
+local glob_regex_cache = {}
+
+---Match a file name against a glob (`*`, `?`, `[abc]`, `{a,b}`), the same way
+---Vim matches file patterns. Case-sensitive regardless of 'ignorecase'.
 ---@param filename string
 ---@param pattern string
 ---@return boolean
 function M.match_pattern(filename, pattern)
-  local lua_pattern = pattern:gsub('%.', '%%.'):gsub('%*', '.*'):gsub('%?', '.')
-
-  if pattern:match('^%.') and pattern:match('%*$') then
-    local prefix = pattern:gsub('%*$', ''):gsub('%.', '%%.')
-    return filename:match('^' .. prefix) ~= nil
+  local regex = glob_regex_cache[pattern]
+  if regex == nil then
+    -- glob2regpat escapes every character that is special in a regex, which
+    -- the old Lua-pattern translation didn't do ('-' became a quantifier), and
+    -- handles '*' anywhere in the glob.
+    local ok, compiled = pcall(vim.regex, '\\C' .. vim.fn.glob2regpat(pattern))
+    regex = ok and compiled or false
+    glob_regex_cache[pattern] = regex
   end
-
-  if pattern:match('^%*%.') then
-    local suffix = pattern:gsub('^%*', ''):gsub('%.', '%%.')
-    return filename:match(suffix .. '$') ~= nil
+  if not regex then
+    return false
   end
-
-  if pattern:match('^%*') and not pattern:match('^%*%.') then
-    local suffix = pattern:sub(2):gsub('%.', '%%.')
-    return filename:match(suffix .. '$') ~= nil
-  end
-
-  return filename:match('^' .. lua_pattern .. '$') ~= nil
+  return regex:match_str(filename) ~= nil
 end
 
 ---@param filename string
