@@ -69,7 +69,9 @@ end
 ---@param secret string|nil The yanked value; the register is cleared only if it
 ---  still holds this exact value (so a later manual yank into the register is
 ---  preserved). When nil, clears unconditionally (legacy 2-arg behavior).
-function M.schedule_auto_clear(register, seconds, secret)
+---@param previous {value: string[], regtype: string}|nil For an uppercase
+---  register: what the lowercase register held before the secret was appended.
+function M.schedule_auto_clear(register, seconds, secret, previous)
   -- Cancel only this register's existing timer.
   local existing = clear_timers[register]
   if existing then
@@ -97,9 +99,16 @@ function M.schedule_auto_clear(register, seconds, secret)
       clear_timers[register] = nil
       timer:close()
 
-      if secret == nil or vim.fn.getreg(register) == secret then
-        vim.fn.setreg(register, '')
+      -- An uppercase register name appends to the lowercase register, so that
+      -- is the one to check and clean up.
+      local target = register:match('^%u$') and register:lower() or register
+      local current = vim.fn.getreg(target)
+      if secret == nil or current == secret then
+        vim.fn.setreg(target, '')
         vim.notify('[camouflage] Clipboard cleared', vim.log.levels.INFO)
+      elseif previous and #secret > 0 and current:sub(-#secret) == secret then
+        vim.fn.setreg(target, previous.value, previous.regtype)
+        vim.notify('[camouflage] Register restored', vim.log.levels.INFO)
       end
     end)
   )
@@ -123,6 +132,14 @@ function M.do_yank(var, opts)
     return
   end
 
+  -- Appending to an uppercase register keeps the old contents in front of the
+  -- secret; remember them so auto-clear can put them back.
+  local previous = nil
+  if register:match('^%u$') then
+    local lower = register:lower()
+    previous = { value = vim.fn.getreg(lower, 1, true), regtype = vim.fn.getregtype(lower) }
+  end
+
   -- Copy to register
   vim.fn.setreg(register, var.value)
 
@@ -137,7 +154,7 @@ function M.do_yank(var, opts)
 
   -- Schedule auto-clear
   if cfg.auto_clear_seconds and cfg.auto_clear_seconds > 0 then
-    M.schedule_auto_clear(register, cfg.auto_clear_seconds, var.value)
+    M.schedule_auto_clear(register, cfg.auto_clear_seconds, var.value, previous)
   end
 
   -- HOOK: after_yank
