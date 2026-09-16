@@ -8,6 +8,34 @@ local log = require('camouflage.log')
 
 local M = {}
 
+-- HCL and Terraform share one grammar. Values are captured below `expression`
+-- because the expression node itself is a container that is never masked.
+local hcl_query = [[
+  ; key = "value"
+  (attribute
+    (identifier) @key
+    (expression (literal_value (string_lit (template_literal) @value))))
+
+  ; key = 5432 / key = true
+  (attribute
+    (identifier) @key
+    (expression (literal_value [(numeric_lit) (bool_lit)] @value)))
+
+  ; key = "${var.prefix}-value" / key = <<EOT ... EOT
+  (attribute
+    (identifier) @key
+    (expression (template_expr [(quoted_template) (heredoc_template)] @value)))
+
+  ; object = { key = "value" }
+  (object_elem
+    key: (expression) @key
+    val: (expression (literal_value (string_lit (template_literal) @value))))
+
+  (object_elem
+    key: (expression) @key
+    val: (expression (literal_value [(numeric_lit) (bool_lit)] @value)))
+]]
+
 ---@type table<string, boolean>
 local parser_cache = {}
 
@@ -50,19 +78,9 @@ local fallback_queries = {
       (AttValue) @value)
   ]],
   http = '(variable_declaration name: (identifier) @key value: (value) @value)',
-  hcl = [[
-    ; Simple attribute: key = "value"
-    (attribute
-      (identifier) @key
-      (expression) @value)
-  ]],
+  hcl = hcl_query,
   -- Terraform uses the same syntax as HCL
-  terraform = [[
-    ; Simple attribute: key = "value"
-    (attribute
-      (identifier) @key
-      (expression) @value)
-  ]],
+  terraform = hcl_query,
   dockerfile = [[
     ; ENV KEY=value
     (env_instruction
@@ -495,6 +513,23 @@ local function normalize_toml_string(value, start_index, end_index)
   return value, start_index, end_index
 end
 
+---Strip the `<<EOT` opener line and the closing marker line from a heredoc.
+---@param node_text string
+---@param start_index number
+---@return string value
+---@return number start_index
+---@return number end_index
+local function normalize_hcl_heredoc(node_text, start_index)
+  local first_newline = node_text:find('\n', 1, true)
+  local last_newline = node_text:match('.*()\n')
+  if not first_newline or not last_newline or last_newline <= first_newline then
+    return '', start_index, start_index
+  end
+  local value = node_text:sub(first_newline + 1, last_newline - 1)
+  local value_start = start_index + first_newline
+  return value, value_start, value_start + #value
+end
+
 ---@param node_text string
 ---@param start_row number
 ---@param start_index number
@@ -598,6 +633,14 @@ function M.parse(bufnr, lang, content)
             normalize_yaml_block_scalar(node_text, start_row, start_index, offsets)
         elseif lang == 'toml' and node_type == 'string' then
           value, start_index, end_index = normalize_toml_string(value, start_index, end_index)
+        elseif (lang == 'hcl' or lang == 'terraform') and node_type == 'quoted_template' then
+          if value:match('^".*"$') then
+            value = value:sub(2, -2)
+            start_index = start_index + 1
+            end_index = end_index - 1
+          end
+        elseif (lang == 'hcl' or lang == 'terraform') and node_type == 'heredoc_template' then
+          value, start_index, end_index = normalize_hcl_heredoc(node_text, start_index)
         elseif lang == 'xml' and node_type == 'AttValue' then
           -- XML attribute values include quotes: "value" or 'value'
           if value:match('^".*"$') or value:match("^'.*'$") then

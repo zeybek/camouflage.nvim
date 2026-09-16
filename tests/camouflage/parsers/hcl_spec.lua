@@ -193,4 +193,32 @@ api_key = "secret"
       assert.equals('ab\\"cd', content:sub(result[1].start_index + 1, result[1].end_index))
     end)
   end)
+
+  describe('parse with a buffer', function()
+    -- With a buffer the tree-sitter path runs when the hcl grammar is installed
+    -- (CI installs it); without the grammar this exercises the regex fallback.
+    -- Either way attribute values must come back.
+    it('returns attribute values', function()
+      local lines = {
+        'api_key  = "top-secret"',
+        'port     = 5432',
+        'enabled  = true',
+      }
+      local content = table.concat(lines, '\n')
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+
+      local result = hcl_parser.parse(content, bufnr)
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+
+      local by_key = {}
+      for _, var in ipairs(result) do
+        by_key[var.key] = var
+        assert.equals(var.value, content:sub(var.start_index + 1, var.end_index))
+      end
+      assert.equals('top-secret', by_key.api_key and by_key.api_key.value)
+      assert.equals('5432', by_key.port and by_key.port.value)
+      assert.equals('true', by_key.enabled and by_key.enabled.value)
+    end)
+  end)
 end)
