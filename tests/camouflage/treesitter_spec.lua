@@ -96,6 +96,7 @@ describe('camouflage.treesitter', function()
     local yaml_parser_available = ts.has_parser('yaml')
     local toml_parser_available = ts.has_parser('toml')
     local xml_parser_available = ts.has_parser('xml')
+    local hcl_parser_available = ts.has_parser('hcl')
 
     if json_parser_available then
       it('should parse JSON content', function()
@@ -364,6 +365,86 @@ describe('camouflage.treesitter', function()
           assert.equals('localhost', by_key['settings.database@host'].value)
           assert.equals('dbpass', by_key['settings.database@password'].value)
         end
+      end)
+    end
+
+    if hcl_parser_available then
+      local function parse_hcl(lines)
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        local content = table.concat(lines, '\n')
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+        local result = ts.parse(bufnr, 'hcl', content)
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        local by_key = {}
+        for _, v in ipairs(result or {}) do
+          assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          by_key[v.key] = v
+        end
+        return result, by_key
+      end
+
+      it('should parse HCL string, number and bool attributes', function()
+        local result, by_key = parse_hcl({
+          'api_key  = "top-secret"',
+          'port     = 5432',
+          'enabled  = true',
+        })
+
+        assert.equals(3, #result)
+        assert.equals('top-secret', by_key.api_key.value)
+        assert.equals('5432', by_key.port.value)
+        assert.equals('true', by_key.enabled.value)
+      end)
+
+      it('should parse HCL attributes inside blocks and objects', function()
+        local _, by_key = parse_hcl({
+          'resource "aws_db_instance" "main" {',
+          '  password = "block-secret"',
+          '  tags = {',
+          '    token = "object-secret"',
+          '  }',
+          '}',
+        })
+
+        assert.equals('block-secret', by_key.password.value)
+        assert.equals('object-secret', by_key.token.value)
+      end)
+
+      it('should parse HCL interpolated strings and heredocs', function()
+        local _, by_key = parse_hcl({
+          'url = "${var.host}:secret-suffix"',
+          'cert = <<EOT',
+          'line-one-secret',
+          'line-two-secret',
+          'EOT',
+        })
+
+        assert.equals('${var.host}:secret-suffix', by_key.url.value)
+        assert.equals('line-one-secret\nline-two-secret', by_key.cert.value)
+        assert.is_true(by_key.cert.is_multiline)
+      end)
+
+      it('should still parse HCL when an injection query cannot run', function()
+        -- Injection queries can come from other plugins and use directives this
+        -- Neovim has no handler for (0.9 errors on them while parsing).
+        vim.treesitter.query.set(
+          'hcl',
+          'injections',
+          '((heredoc_template) @injection.content (#camouflage-test-missing! @injection.content))'
+        )
+        local ok, result, by_key = pcall(parse_hcl, {
+          'password = "injection-safe-secret"',
+          'cert = <<EOT',
+          'heredoc-secret',
+          'EOT',
+        })
+        vim.treesitter.query.set('hcl', 'injections', '')
+
+        assert.is_true(ok, tostring(result))
+        assert.equals(2, #result)
+        assert.equals('injection-safe-secret', by_key.password.value)
+        assert.equals('heredoc-secret', by_key.cert.value)
       end)
     end
   end)

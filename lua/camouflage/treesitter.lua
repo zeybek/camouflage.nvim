@@ -8,6 +8,34 @@ local log = require('camouflage.log')
 
 local M = {}
 
+-- HCL and Terraform share one grammar. Values are captured below `expression`
+-- because the expression node itself is a container that is never masked.
+local hcl_query = [[
+  ; key = "value"
+  (attribute
+    (identifier) @key
+    (expression (literal_value (string_lit (template_literal) @value))))
+
+  ; key = 5432 / key = true
+  (attribute
+    (identifier) @key
+    (expression (literal_value [(numeric_lit) (bool_lit)] @value)))
+
+  ; key = "${var.prefix}-value" / key = <<EOT ... EOT
+  (attribute
+    (identifier) @key
+    (expression (template_expr [(quoted_template) (heredoc_template)] @value)))
+
+  ; object = { key = "value" }
+  (object_elem
+    key: (expression) @key
+    val: (expression (literal_value (string_lit (template_literal) @value))))
+
+  (object_elem
+    key: (expression) @key
+    val: (expression (literal_value [(numeric_lit) (bool_lit)] @value)))
+]]
+
 ---@type table<string, boolean>
 local parser_cache = {}
 
@@ -50,19 +78,9 @@ local fallback_queries = {
       (AttValue) @value)
   ]],
   http = '(variable_declaration name: (identifier) @key value: (value) @value)',
-  hcl = [[
-    ; Simple attribute: key = "value"
-    (attribute
-      (identifier) @key
-      (expression) @value)
-  ]],
+  hcl = hcl_query,
   -- Terraform uses the same syntax as HCL
-  terraform = [[
-    ; Simple attribute: key = "value"
-    (attribute
-      (identifier) @key
-      (expression) @value)
-  ]],
+  terraform = hcl_query,
   dockerfile = [[
     ; ENV KEY=value
     (env_instruction
@@ -458,7 +476,7 @@ end
 ---@param lang string
 ---@param key_node userdata
 ---@param fallback_key string
----@param bufnr number
+---@param bufnr number|string Buffer number or the parsed source text
 ---@return string key_path
 ---@return boolean is_nested
 local function derive_key_path(lang, key_node, fallback_key, bufnr)
@@ -495,6 +513,23 @@ local function normalize_toml_string(value, start_index, end_index)
   return value, start_index, end_index
 end
 
+---Strip the `<<EOT` opener line and the closing marker line from a heredoc.
+---@param node_text string
+---@param start_index number
+---@return string value
+---@return number start_index
+---@return number end_index
+local function normalize_hcl_heredoc(node_text, start_index)
+  local first_newline = node_text:find('\n', 1, true)
+  local last_newline = node_text:match('.*()\n')
+  if not first_newline or not last_newline or last_newline <= first_newline then
+    return '', start_index, start_index
+  end
+  local value = node_text:sub(first_newline + 1, last_newline - 1)
+  local value_start = start_index + first_newline
+  return value, value_start, value_start + #value
+end
+
 ---@param node_text string
 ---@param start_row number
 ---@param start_index number
@@ -513,6 +548,47 @@ local function normalize_yaml_block_scalar(node_text, start_row, start_index, of
   return value, content_start, content_start + #value
 end
 
+---Parse `content` and return the root node plus the source to read node text
+---from. The buffer's parser is tried first (it may already be parsed); if
+---creating or parsing it fails, retry with a string parser that has this
+---language's injections turned off. Injection queries can come from other
+---plugins and fail on some Neovim versions (for example a `#downcase!`
+---directive that 0.9 has no handler for), and camouflage only needs the root
+---tree anyway.
+---@param bufnr number
+---@param lang string
+---@param content string
+---@return userdata|nil root
+---@return number|string|nil source
+local function parse_root(bufnr, lang, content)
+  local ok, parser = pcall(vim.treesitter.get_parser, bufnr, lang)
+  if ok and parser then
+    local parse_ok, trees = pcall(function()
+      return parser:parse()
+    end)
+    if parse_ok and trees and trees[1] then
+      return trees[1]:root(), bufnr
+    end
+    log.pcall_error('treesitter parse', trees, { bufnr = bufnr, lang = lang })
+  elseif not ok then
+    log.pcall_error('treesitter.get_parser', parser, { bufnr = bufnr, lang = lang })
+  end
+
+  local string_ok, string_parser =
+    pcall(vim.treesitter.get_string_parser, content, lang, { injections = { [lang] = '' } })
+  if not string_ok or not string_parser then
+    return nil, nil
+  end
+  local parse_ok, trees = pcall(function()
+    return string_parser:parse()
+  end)
+  if not parse_ok or not trees or not trees[1] then
+    log.pcall_error('treesitter string parse', trees, { lang = lang })
+    return nil, nil
+  end
+  return trees[1]:root(), content
+end
+
 ---Parse a buffer using TreeSitter and extract key-value pairs
 ---@param bufnr number Buffer number
 ---@param lang string Language name
@@ -528,21 +604,10 @@ function M.parse(bufnr, lang, content)
     return nil
   end
 
-  -- Get parser and parse
-  local ok, parser = pcall(vim.treesitter.get_parser, bufnr, lang)
-  if not ok or not parser then
-    if not ok then
-      log.pcall_error('treesitter.get_parser', parser, { bufnr = bufnr, lang = lang })
-    end
+  local root, source = parse_root(bufnr, lang, content)
+  if not root then
     return nil
   end
-
-  local trees = parser:parse()
-  if not trees or #trees == 0 then
-    return nil
-  end
-
-  local root = trees[1]:root()
 
   -- Compute line offsets ONCE, not per captured value: the old code re-split the
   -- whole content and re-summed line lengths inside the loop (O(values x lines)).
@@ -552,9 +617,9 @@ function M.parse(bufnr, lang, content)
   local current_key = nil
   local current_key_text = nil
 
-  for id, node in query:iter_captures(root, bufnr) do
+  for id, node in query:iter_captures(root, source) do
     local capture_name = query.captures[id]
-    local node_text = vim.treesitter.get_node_text(node, bufnr)
+    local node_text = vim.treesitter.get_node_text(node, source)
 
     if capture_name == 'key' then
       -- Store key for next value
@@ -598,6 +663,14 @@ function M.parse(bufnr, lang, content)
             normalize_yaml_block_scalar(node_text, start_row, start_index, offsets)
         elseif lang == 'toml' and node_type == 'string' then
           value, start_index, end_index = normalize_toml_string(value, start_index, end_index)
+        elseif (lang == 'hcl' or lang == 'terraform') and node_type == 'quoted_template' then
+          if value:match('^".*"$') then
+            value = value:sub(2, -2)
+            start_index = start_index + 1
+            end_index = end_index - 1
+          end
+        elseif (lang == 'hcl' or lang == 'terraform') and node_type == 'heredoc_template' then
+          value, start_index, end_index = normalize_hcl_heredoc(node_text, start_index)
         elseif lang == 'xml' and node_type == 'AttValue' then
           -- XML attribute values include quotes: "value" or 'value'
           if value:match('^".*"$') or value:match("^'.*'$") then
@@ -609,7 +682,7 @@ function M.parse(bufnr, lang, content)
 
         -- Skip empty values
         if value ~= '' and not value:match('^%s*$') then
-          local key_path, is_nested = derive_key_path(lang, current_key, current_key_text, bufnr)
+          local key_path, is_nested = derive_key_path(lang, current_key, current_key_text, source)
           table.insert(variables, {
             key = key_path,
             value = value,
