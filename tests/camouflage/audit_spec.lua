@@ -92,6 +92,71 @@ describe('camouflage.audit', function()
     assert.equals('db.password', result.findings[1].key)
   end)
 
+  describe('symlinks', function()
+    local uv = vim.uv or vim.loop
+
+    local function make_linked_project()
+      local base = vim.fn.tempname()
+      local real = base .. '/real'
+      writefile(real .. '/.env', { 'API_KEY=symlink-root-secret' })
+      assert.is_true(uv.fs_symlink(real, base .. '/link'))
+      return base, real
+    end
+
+    it('scans a symlinked directory given as the path', function()
+      local base = make_linked_project()
+      local audit = setup_in_dir(base)
+
+      local result = audit.run({ path = base .. '/link' })
+
+      assert.equals(1, #result.findings)
+      -- Findings keep the path the audit was started on.
+      assert.truthy(result.findings[1].filename:find('/link/.env', 1, true))
+    end)
+
+    it('scans a symlinked directory in async mode', function()
+      local base = make_linked_project()
+      local audit = setup_in_dir(base)
+      local final_result
+
+      audit.run({
+        path = base .. '/link',
+        async = true,
+        on_complete = function(result)
+          final_result = result
+        end,
+      })
+      vim.wait(1000, function()
+        return final_result ~= nil
+      end)
+
+      assert.is_not_nil(final_result)
+      assert.equals(1, #final_result.findings)
+    end)
+
+    it('scans a symlinked file given as the path', function()
+      local base, real = make_linked_project()
+      assert.is_true(uv.fs_symlink(real .. '/.env', base .. '/linked.env'))
+      local audit = setup_in_dir(base)
+
+      local result = audit.run({ path = base .. '/linked.env' })
+
+      assert.equals(1, #result.findings)
+    end)
+
+    it('still skips symlinks inside the scanned tree', function()
+      local base = make_linked_project()
+      writefile(base .. '/scan/.env', { 'OWN=own-secret' })
+      assert.is_true(uv.fs_symlink(base .. '/real', base .. '/scan/nested-link'))
+      local audit = setup_in_dir(base)
+
+      local result = audit.run({ path = base .. '/scan' })
+
+      assert.equals(1, #result.findings)
+      assert.equals('OWN', result.findings[1].key)
+    end)
+  end)
+
   it('uses runtime registered parsers', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

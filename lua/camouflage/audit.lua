@@ -240,13 +240,30 @@ local function add_error(result, filename, parser_name, message)
   })
 end
 
+---Stat a path for the audit walk. Symlinks inside the tree are not followed
+---(no loops, no scanning outside the project), but the path the audit was
+---started on is: `:CamouflageAudit ~/link-to-project` should scan the project.
+---@param path string
+---@param follow boolean
+---@return table|nil
+local function stat_path(path, follow)
+  if not uv then
+    return nil
+  end
+  if follow and uv.fs_stat then
+    return uv.fs_stat(path)
+  end
+  return uv.fs_lstat and uv.fs_lstat(path) or (uv.fs_stat and uv.fs_stat(path))
+end
+
 ---@param path string
 ---@param root string
 ---@param cfg table
 ---@param result CamouflageAuditResult
 ---@param files string[]
-local function collect_files(path, root, cfg, result, files)
-  local stat = uv and uv.fs_lstat and uv.fs_lstat(path) or (uv and uv.fs_stat and uv.fs_stat(path))
+---@param follow boolean|nil Follow a symlink at this path (the starting path only)
+local function collect_files(path, root, cfg, result, files, follow)
+  local stat = stat_path(path, follow == true)
   if not stat then
     add_error(result, path, nil, 'failed to stat path')
     return
@@ -297,7 +314,7 @@ local function new_discovery(target)
   return {
     done = false,
     stack = {
-      { kind = 'path', path = target },
+      { kind = 'path', path = target, follow = true },
     },
   }
 end
@@ -334,7 +351,7 @@ local function discover_one(state, root, cfg, result, files)
   end
 
   local path = frame.path
-  local stat = uv and uv.fs_lstat and uv.fs_lstat(path) or (uv and uv.fs_stat and uv.fs_stat(path))
+  local stat = stat_path(path, frame.follow == true)
   if not stat then
     add_error(result, path, nil, 'failed to stat path')
     return
@@ -482,7 +499,7 @@ function M.run_sync(opts)
   local started = vim.loop.hrtime()
   local files = {}
 
-  collect_files(target, root, cfg, result, files)
+  collect_files(target, root, cfg, result, files, true)
   for _, filename in ipairs(files) do
     process_file(result, filename, effective_config)
   end
