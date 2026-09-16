@@ -372,6 +372,30 @@ M.options = {}
 ---@type CamouflageConfig
 M.user_options = {}
 
+-- Value of `enabled` set at runtime (:CamouflageToggle, config.set). Kept
+-- across project config reloads and applied to every buffer's config.
+---@type boolean|nil
+M.runtime_enabled = nil
+
+-- Path of the project config applied to M.options (found from cwd), or nil.
+---@type string|nil
+local global_project_path = nil
+
+-- Per-buffer project config resolution: a buffer uses the .camouflage.yaml of
+-- its own repository, not the one found from cwd.
+-- directory -> project file path, or false when there is none
+---@type table<string, string|false>
+local project_file_by_dir = {}
+-- project file path (or '' for "no project file") -> merged options
+---@type table<string, CamouflageConfig>
+local options_by_project = {}
+
+---Forget cached per-buffer project configs (after setup, reload or set).
+function M.clear_project_cache()
+  project_file_by_dir = {}
+  options_by_project = {}
+end
+
 ---@param opts CamouflageConfig|nil
 ---@return CamouflageConfig|nil
 local function validate_config(opts)
@@ -437,7 +461,12 @@ function M.setup(opts)
     M.defaults.project_config or {},
     M.user_options.project_config or {}
   )
-  local project_config_opts = require('camouflage.project_config').load(effective_project_config)
+  local project_config = require('camouflage.project_config')
+  local project_config_opts = project_config.load(effective_project_config, vim.fn.getcwd())
+  global_project_path = project_config.status().path
+  global_project_path = global_project_path and vim.fn.resolve(global_project_path)
+  M.runtime_enabled = nil
+  M.clear_project_cache()
   M.options = vim.tbl_deep_extend(
     'force',
     {},
@@ -455,13 +484,15 @@ end
 ---@return CamouflageProjectConfigStatus status
 function M.reload_project_config()
   local project_config = require('camouflage.project_config')
-  local project_config_opts = project_config.load(M.user_options.project_config or {})
+  local project_config_opts = project_config.load(M.loader_options(), vim.fn.getcwd())
   local status = project_config.status()
+  M.clear_project_cache()
 
   -- Keep current effective options if the file exists but could not be parsed/validated.
   if status.path ~= nil and not status.loaded and #status.errors > 0 then
     return false, status
   end
+  global_project_path = status.path and vim.fn.resolve(status.path)
 
   M.options = vim.tbl_deep_extend(
     'force',
@@ -472,7 +503,77 @@ function M.reload_project_config()
   )
   apply_legacy_aliases(M.options)
   warn_cosmetic_styles(M.options)
+  if M.runtime_enabled ~= nil then
+    M.options.enabled = M.runtime_enabled
+  end
   return true, status
+end
+
+---Effective project config loader options (defaults merged with setup()).
+---@return CamouflageProjectConfigLoaderConfig
+function M.loader_options()
+  return vim.tbl_deep_extend(
+    'force',
+    {},
+    M.defaults.project_config or {},
+    M.user_options.project_config or {}
+  )
+end
+
+---Base config for a buffer: the global options, or the options built from the
+---project config of the buffer's own repository when that differs.
+---@param bufnr number
+---@return CamouflageConfig
+local function base_config_for_buffer(bufnr)
+  local base = M.get()
+  local loader = M.loader_options()
+  if loader.enabled == false then
+    return base
+  end
+
+  local name = vim.api.nvim_buf_get_name(bufnr)
+  if name == '' then
+    return base
+  end
+  local dir = vim.fn.fnamemodify(name, ':p:h')
+
+  local path = project_file_by_dir[dir]
+  if path == nil then
+    local found =
+      vim.fn.findfile(loader.filename or '.camouflage.yaml', vim.fn.fnameescape(dir) .. ';')
+    path = found ~= '' and vim.fn.resolve(vim.fn.fnamemodify(found, ':p')) or false
+    project_file_by_dir[dir] = path
+  end
+
+  -- Same file as the global project config, or no project config anywhere.
+  -- A buffer with no project file of its own while cwd has one lives outside
+  -- that project, so it must not inherit it.
+  if path == global_project_path or (not path and not global_project_path) then
+    return base
+  end
+
+  local cache_key = path or ''
+  local merged = options_by_project[cache_key]
+  if not merged then
+    local project_opts = {}
+    if path then
+      local project_config = require('camouflage.project_config')
+      project_opts = project_config.read(loader, vim.fn.fnamemodify(path, ':h'))
+    end
+    merged = vim.tbl_deep_extend(
+      'force',
+      {},
+      vim.deepcopy(M.defaults),
+      vim.deepcopy(M.user_options),
+      vim.deepcopy(project_opts)
+    )
+    apply_legacy_aliases(merged)
+    options_by_project[cache_key] = merged
+  end
+  if M.runtime_enabled ~= nil and merged.enabled ~= M.runtime_enabled then
+    merged.enabled = M.runtime_enabled
+  end
+  return merged
 end
 
 ---@return CamouflageConfig
@@ -518,9 +619,14 @@ function M.set(key, value)
   local last_key = keys[#keys]
   local old_value = tbl[last_key]
 
+  if key == 'enabled' then
+    M.runtime_enabled = value
+  end
+
   -- Only update and refresh if value actually changed
   if old_value ~= value then
     tbl[last_key] = value
+    M.clear_project_cache()
 
     -- Hot reload: refresh all buffers when config changes
     -- Use vim.schedule to avoid issues during startup
@@ -556,12 +662,12 @@ end
 ---@return CamouflageConfig
 function M.get_for_buffer(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local base_config = M.get()
 
   -- Check if buffer is valid
   if not vim.api.nvim_buf_is_valid(bufnr) then
-    return base_config
+    return M.get()
   end
+  local base_config = base_config_for_buffer(bufnr)
 
   -- Fast path: with no buffer-local overrides, return the shared config without
   -- the deep copy below (this runs on every decoration pass).
