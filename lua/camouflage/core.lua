@@ -63,6 +63,7 @@ end
 ---window wrap.
 ---@param bufnr number
 local function reset_mask_state(bufnr)
+  M.clear_decorations(bufnr)
   state.update_buffer(bufnr, {
     enabled = false,
     variables = {},
@@ -75,6 +76,7 @@ end
 ---@param parser_name string|nil
 ---@param policy_stats table|nil
 local function reset_mask_state_with_policy(bufnr, parser_name, policy_stats)
+  M.clear_decorations(bufnr)
   state.update_buffer(bufnr, {
     enabled = false,
     variables = {},
@@ -92,9 +94,10 @@ M.restore_wrap = restore_wrap
 function M.apply_decorations(bufnr, override_filename)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
-  -- Always clear first so a no-mask outcome (disabled, too large, no parser, no
-  -- variables) never leaves stale extmarks drifting over the buffer.
-  M.clear_decorations(bufnr)
+  -- The old masks stay in place until the new ones are set: hooks, the User
+  -- autocmd, policy and checks run below, and anything that redraws in between
+  -- would otherwise show the real values. Every no-mask exit clears them
+  -- through reset_mask_state, so no stale extmarks are left behind.
   local check_run_id = check_registry.begin_decorate(bufnr)
 
   -- Buffer-local config (vim.b.camouflage_*) overrides the global config; with
@@ -186,6 +189,8 @@ function M.apply_decorations(bufnr, override_filename)
     config = cfg,
     run_id = check_run_id,
   })
+
+  M.clear_decorations(bufnr)
 
   -- Pre-compute line offsets for O(1) index lookups
   local line_offsets = M.compute_line_offsets(lines)
