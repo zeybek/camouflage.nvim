@@ -44,9 +44,14 @@ function M.parse_regex(content, lines)
       offsets = offsets or require('camouflage.offsets').from_content(content)
       local array_items, close_pos =
         M.parse_array(content, line, line_start, current_section, offsets)
+      local string_var, string_close =
+        M.parse_multiline_string(content, line, line_start, current_section, offsets)
       if array_items then
         vim.list_extend(variables, array_items)
         skip_to = close_pos - 1
+      elseif string_var then
+        table.insert(variables, string_var)
+        skip_to = string_close - 1
       else
         local result =
           M.process_line(line, line_num, line_start, current_section, include_commented)
@@ -112,6 +117,83 @@ function M.parse_array(content, line, line_start, current_section, offsets)
   return variables, close_pos
 end
 
+---Parse a multi-line basic or literal string (key = """ ... """) that does
+---not close on its own line. Returns nil otherwise.
+---@param content string
+---@param line string
+---@param line_start number 0-based offset of the line
+---@param current_section string
+---@param offsets number[] Line start offsets of content
+---@return ParsedVariable|nil variable
+---@return number|nil close_pos 1-based position of the closing delimiter
+function M.parse_multiline_string(content, line, line_start, current_section, offsets)
+  local key, value_col = line:match('^%s*([a-zA-Z_][a-zA-Z0-9_%.%-]*)%s*=%s*()')
+  if not key then
+    key, value_col = line:match('^%s*"([^"]+)"%s*=%s*()')
+  end
+  if not key then
+    key, value_col = line:match("^%s*'([^']+)'%s*=%s*()")
+  end
+  if not key then
+    return nil, nil
+  end
+
+  local delimiter = line:sub(value_col, value_col + 2)
+  local basic = delimiter == '""' .. '"'
+  if not basic and delimiter ~= "'''" then
+    return nil, nil
+  end
+
+  local open_pos = line_start + value_col -- 1-based position of the delimiter in content
+  local value_pos = open_pos + 3
+  local close_pos
+  if basic then
+    local search = value_pos
+    while true do
+      close_pos = content:find(delimiter, search, true)
+      -- a backslash before the quotes escapes the first one
+      if not close_pos or content:sub(close_pos - 1, close_pos - 1) ~= '\\' then
+        break
+      end
+      search = close_pos + 1
+    end
+  else
+    close_pos = content:find(delimiter, value_pos, true)
+  end
+  if not close_pos then
+    return nil, nil
+  end
+  -- Closed on the same line: the single-line path handles it.
+  if util.row_of(offsets, close_pos - 1) == util.row_of(offsets, open_pos - 1) then
+    return nil, nil
+  end
+
+  -- A newline right after the opening delimiter is not part of the value.
+  if content:sub(value_pos, value_pos) == '\n' then
+    value_pos = value_pos + 1
+  end
+  local value = content:sub(value_pos, close_pos - 1)
+  if value:match('^%s*$') then
+    return nil, close_pos
+  end
+
+  local start_index = value_pos - 1
+  local end_index = close_pos - 1
+  return {
+    key = current_section ~= '' and (current_section .. '.' .. key) or key,
+    value = value,
+    start_index = start_index,
+    end_index = end_index,
+    line_number = util.row_of(offsets, start_index),
+    is_nested = current_section ~= '' or key:find('%.') ~= nil,
+    is_commented = false,
+    is_multiline = util.row_of(offsets, math.max(start_index, end_index - 1))
+        ~= util.row_of(offsets, start_index)
+      or nil,
+  },
+    close_pos
+end
+
 ---Process a single TOML line and determine its type
 ---@param line string The line content
 ---@param line_num number 1-indexed line number
@@ -169,30 +251,34 @@ end
 ---@param line_start number
 ---@return {key: string, value: string, value_start: number, value_end: number}|nil
 function M.parse_key_value(trimmed_line, original_line, line_start)
-  local key, raw_value = trimmed_line:match('^([a-zA-Z_][a-zA-Z0-9_%.%-]*)%s*=%s*(.+)$')
-
+  -- Take the value position from the key match itself. Searching the line for
+  -- the first '=' lands inside a quoted key that contains one ("a=b" = "x").
+  local key, value_col = trimmed_line:match('^([a-zA-Z_][a-zA-Z0-9_%.%-]*)%s*=%s*()')
   if not key then
-    key, raw_value = trimmed_line:match('^"([^"]+)"%s*=%s*(.+)$')
+    key, value_col = trimmed_line:match('^"([^"]+)"%s*=%s*()')
   end
   if not key then
-    key, raw_value = trimmed_line:match("^'([^']+)'%s*=%s*(.+)$")
+    key, value_col = trimmed_line:match("^'([^']+)'%s*=%s*()")
   end
 
-  if not key or not raw_value then
+  if not key or not value_col then
+    return nil
+  end
+  local raw_value = trimmed_line:sub(value_col)
+  if raw_value == '' then
     return nil
   end
 
   local value, quote_offset = M.parse_value(raw_value)
 
-  local eq_pos = original_line:find('=')
-  if not eq_pos then
+  -- trimmed_line is the line without surrounding whitespace (and without the
+  -- comment marker for commented lines), so it occurs in the original line.
+  local content_col = original_line:find(trimmed_line, 1, true)
+  if not content_col then
     return nil
   end
 
-  local after_eq = original_line:sub(eq_pos + 1)
-  local whitespace = #after_eq - #after_eq:gsub('^%s*', '')
-
-  local value_start = line_start + eq_pos + whitespace + quote_offset
+  local value_start = line_start + (content_col - 1) + (value_col - 1) + quote_offset
   local value_end = value_start + #value
 
   return {
