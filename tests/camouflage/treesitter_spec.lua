@@ -420,6 +420,27 @@ describe('camouflage.treesitter', function()
           'EOT',
         })
 
+        if not by_key.url then
+          local lines = {
+            'url = "${var.host}:secret-suffix"',
+            'cert = <<EOT',
+            'line-one-secret',
+            'line-two-secret',
+            'EOT',
+          }
+          local b = vim.api.nvim_create_buf(false, true)
+          vim.api.nvim_buf_set_lines(b, 0, -1, false, lines)
+          local root = vim.treesitter.get_parser(b, 'hcl'):parse()[1]:root()
+          print('DEBUG_HCL tree: ' .. root:sexpr())
+          print('DEBUG_HCL keys: ' .. vim.inspect(vim.tbl_keys(by_key)))
+          local q = vim.treesitter.query.get('hcl', 'camouflage')
+          print('DEBUG_HCL file query: ' .. tostring(q ~= nil))
+          for id, node in vim.treesitter.query.parse('hcl', '(template_expr) @t (quoted_template) @q (attribute (identifier) @k) @a'):iter_captures(root, b) do
+            print('DEBUG_HCL cap ' .. id .. ' ' .. node:type() .. ' ' .. vim.treesitter.get_node_text(node, b))
+          end
+          print('DEBUG_HCL rtp hcl: ' .. vim.inspect(vim.api.nvim_get_runtime_file('parser/hcl.so', true)))
+          print('DEBUG_HCL queries: ' .. vim.inspect(vim.api.nvim_get_runtime_file('queries/hcl/*.scm', true)))
+        end
         assert.equals('${var.host}:secret-suffix', by_key.url.value)
         assert.equals('line-one-secret\nline-two-secret', by_key.cert.value)
         assert.is_true(by_key.cert.is_multiline)
