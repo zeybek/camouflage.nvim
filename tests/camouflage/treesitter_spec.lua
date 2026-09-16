@@ -431,16 +431,15 @@ describe('camouflage.treesitter', function()
           local b = vim.api.nvim_create_buf(false, true)
           vim.api.nvim_buf_set_lines(b, 0, -1, false, lines)
           local root = vim.treesitter.get_parser(b, 'hcl'):parse()[1]:root()
-          local info = { 'DEBUG_HCL tree: ' .. root:sexpr() }
-          table.insert(info, 'DEBUG_HCL keys: ' .. vim.inspect(vim.tbl_keys(by_key)))
+          print('DEBUG_HCL tree: ' .. root:sexpr())
+          print('DEBUG_HCL keys: ' .. vim.inspect(vim.tbl_keys(by_key)))
           local q = vim.treesitter.query.get('hcl', 'camouflage')
-          table.insert(info, 'DEBUG_HCL file query: ' .. tostring(q ~= nil))
+          print('DEBUG_HCL file query: ' .. tostring(q ~= nil))
           for id, node in vim.treesitter.query.parse('hcl', '(template_expr) @t (quoted_template) @q (attribute (identifier) @k) @a'):iter_captures(root, b) do
-            table.insert(info, 'DEBUG_HCL cap ' .. id .. ' ' .. node:type() .. ' ' .. vim.treesitter.get_node_text(node, b))
+            print('DEBUG_HCL cap ' .. id .. ' ' .. node:type() .. ' ' .. vim.treesitter.get_node_text(node, b))
           end
-          table.insert(info, 'DEBUG_HCL rtp hcl: ' .. vim.inspect(vim.api.nvim_get_runtime_file('parser/hcl.so', true)))
-          table.insert(info, 'DEBUG_HCL queries: ' .. vim.inspect(vim.api.nvim_get_runtime_file('queries/hcl/*.scm', true)))
-          error(table.concat(info, ' || '))
+          print('DEBUG_HCL rtp hcl: ' .. vim.inspect(vim.api.nvim_get_runtime_file('parser/hcl.so', true)))
+          print('DEBUG_HCL queries: ' .. vim.inspect(vim.api.nvim_get_runtime_file('queries/hcl/*.scm', true)))
         end
         assert.equals('${var.host}:secret-suffix', by_key.url.value)
         assert.equals('line-one-secret\nline-two-secret', by_key.cert.value)
