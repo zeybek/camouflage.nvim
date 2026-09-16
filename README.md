@@ -56,9 +56,12 @@ directly, because the real text is still there underneath the mask:
   value deliberately with a confirm prompt and timed auto-clear)
 
 For per-repo `.camouflage.yaml` files, masking config is applied as data only
-(no code execution). If you don't trust the repositories you open, set
-`project_config.secure = true` to gate the file behind Neovim's
-`vim.secure`/`:trust` mechanism.
+(no code execution). A project file can't turn on HIBP network checks
+(`pwned.auto_check`, `check_on_save`, `check_on_change`) unless it is trusted,
+those options are ignored with a warning. If a project file sets
+`enabled: false`, you get a warning with its path. If you don't trust the
+repositories you open, set `project_config.secure = true` to gate the file
+behind Neovim's `vim.secure`/`:trust` mechanism.
 
 Have I Been Pwned checks use the network. They are manual/opt-in by default:
 the `:CamouflagePwnedCheck*` commands remain available, but automatic checks on

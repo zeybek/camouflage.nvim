@@ -144,6 +144,33 @@ local function add_error(msg)
   table.insert(state.errors, msg)
 end
 
+-- pwned options that make camouflage send requests to the HIBP API. A repo
+-- file can only turn these on after the user trusted it (secure = true).
+local NETWORK_KEYS = { 'auto_check', 'check_on_save', 'check_on_change' }
+
+---Drop network-enabling pwned options from an untrusted project config.
+---@param sanitized table
+---@return string[] dropped Dotted names of the options that were removed
+local function strip_network_options(sanitized)
+  local dropped = {}
+  local candidates = {
+    { name = 'pwned', tbl = sanitized.pwned },
+    { name = 'checks.pwned', tbl = type(sanitized.checks) == 'table' and sanitized.checks.pwned },
+  }
+  for _, candidate in ipairs(candidates) do
+    if type(candidate.tbl) == 'table' then
+      for _, key in ipairs(NETWORK_KEYS) do
+        -- Turning a check off is always allowed; only turning one on is dropped.
+        if candidate.tbl[key] ~= nil and candidate.tbl[key] ~= false then
+          table.insert(dropped, candidate.name .. '.' .. key)
+          candidate.tbl[key] = nil
+        end
+      end
+    end
+  end
+  return dropped
+end
+
 ---@param notify_enabled boolean
 local function maybe_notify_errors(notify_enabled)
   if not notify_enabled or #state.errors == 0 then
@@ -218,6 +245,7 @@ function M.load(opts)
   -- vim.secure.read so a never-trusted repo's config is not applied until the
   -- user views and :trusts it.
   local content
+  local trusted = false
   if opts.secure and vim.secure and vim.secure.read then
     local ok_secure, data = pcall(vim.secure.read, path)
     if not ok_secure or type(data) ~= 'string' then
@@ -226,6 +254,7 @@ function M.load(opts)
       return {}
     end
     content = data
+    trusted = true
   else
     local ok_read, lines = pcall(vim.fn.readfile, path)
     if not ok_read or type(lines) ~= 'table' then
@@ -288,8 +317,29 @@ function M.load(opts)
     end
   end
 
+  local notify_enabled = opts.notify ~= false
+
+  if not trusted then
+    local dropped = strip_network_options(sanitized)
+    if #dropped > 0 then
+      local message = string.format(
+        'ignored %s: network checks can only be turned on in setup() or in a trusted project config (project_config.secure = true)',
+        table.concat(dropped, ', ')
+      )
+      -- Added last, so maybe_notify_errors below reports it.
+      add_error(message)
+    end
+  end
+
+  if sanitized.enabled == false and notify_enabled then
+    vim.notify_once(
+      '[camouflage] masking is disabled by project config: ' .. path,
+      vim.log.levels.WARN
+    )
+  end
+
   state.loaded = true
-  maybe_notify_errors(opts.notify ~= false)
+  maybe_notify_errors(notify_enabled)
   return sanitized
 end
 
