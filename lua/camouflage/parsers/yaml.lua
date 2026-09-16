@@ -294,8 +294,31 @@ function M.parse_line(line)
     return nil
   end
 
-  local key, rest = trimmed:match('^([a-zA-Z_][a-zA-Z0-9_%.%-]*)%s*:%s*(.*)$')
-  if not key then
+  -- Keys are quoted ("db password", 'a:b') or plain. A plain key may start with
+  -- a digit or contain spaces, and ends at the first ': ' or a trailing ':'.
+  local key, rest, raw_key
+  local quote = trimmed:sub(1, 1)
+  if quote == '"' or quote == "'" then
+    local close = trimmed:find(quote, 2, true)
+    local after = close and trimmed:sub(close + 1)
+    if after and after:match('^%s*:%s') or (after and after:match('^%s*:$')) then
+      raw_key = trimmed:sub(1, close)
+      key = trimmed:sub(2, close - 1)
+      rest = after:gsub('^%s*:', '', 1)
+    end
+  else
+    local colon = trimmed:find(':%s') or (trimmed:match(':$') and #trimmed)
+    if colon and colon > 1 then
+      raw_key = trimmed:sub(1, colon - 1):match('^(.-)%s*$')
+      -- Not a key: flow collections, block scalar indicators, anchors, aliases,
+      -- tags, directives and comments.
+      if not raw_key:match('^[%[{|>&*!%%@`#]') then
+        key = raw_key
+        rest = trimmed:sub(colon + 1)
+      end
+    end
+  end
+  if not key or key == '' then
     return nil
   end
 
@@ -322,7 +345,10 @@ function M.parse_line(line)
     end
   end
 
-  local colon_pos = line:find(':')
+  -- The colon that ends this key: the first ':' on the line can be inside a
+  -- quoted key.
+  local key_pos = line:find(raw_key, 1, true)
+  local colon_pos = key_pos and line:find(':', key_pos + #raw_key, true)
   local value_offset = nil
   if has_value and colon_pos then
     local after_colon = line:sub(colon_pos + 1)
