@@ -360,6 +360,79 @@ describe('camouflage.project_config', function()
     end)
   end)
 
+  describe('parser lookup cache', function()
+    local custom_pattern_lines = {
+      'version: 1',
+      'custom_patterns:',
+      '  - file_pattern: "*.secrets"',
+      '    pattern: "^(%w+):%s*(.+)$"',
+      '    key_capture: 1',
+      '    value_capture: 2',
+    }
+
+    it('is cleared when the project config is reloaded', function()
+      local dir = vim.fn.tempname()
+      vim.fn.mkdir(dir, 'p')
+      vim.fn.writefile({ 'version: 1' }, dir .. '/.camouflage.yaml')
+      vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+      config.setup()
+      local parsers = require('camouflage.parsers')
+      parsers.setup()
+
+      local file = dir .. '/app.secrets'
+      assert.is_nil(parsers.find_parser_for_file(file))
+
+      vim.fn.writefile(custom_pattern_lines, dir .. '/.camouflage.yaml')
+      assert.is_true(config.reload_project_config())
+
+      local _, name = parsers.find_parser_for_file(file)
+      assert.equals('custom', name)
+    end)
+
+    it('is cleared when patterns change through config.set', function()
+      vim.cmd('cd ' .. vim.fn.fnameescape(vim.fn.tempname():match('^(.*)/')))
+      config.setup({ project_config = { enabled = false } })
+      local parsers = require('camouflage.parsers')
+      parsers.setup()
+
+      assert.is_nil(parsers.find_parser_for_file('/tmp/project/app.secrets'))
+
+      config.set('custom_patterns', {
+        {
+          file_pattern = '*.secrets',
+          pattern = '^(%w+):%s*(.+)$',
+          key_capture = 1,
+          value_capture = 2,
+        },
+      })
+
+      local _, name = parsers.find_parser_for_file('/tmp/project/app.secrets')
+      assert.equals('custom', name)
+    end)
+
+    it('masks the current file after a refresh adds a pattern for it', function()
+      local dir = vim.fn.tempname()
+      vim.fn.mkdir(dir, 'p')
+      vim.fn.writefile({ 'version: 1' }, dir .. '/.camouflage.yaml')
+      vim.fn.writefile({ 'token: cache-stale-secret' }, dir .. '/app.secrets')
+      vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+      local camouflage = require('camouflage')
+      camouflage.setup({ project_config = { watch_enabled = false } })
+      vim.cmd('edit ' .. vim.fn.fnameescape(dir .. '/app.secrets'))
+      local bufnr = vim.api.nvim_get_current_buf()
+      local state = require('camouflage.state')
+      assert.equals(0, #vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {}))
+
+      vim.fn.writefile(custom_pattern_lines, dir .. '/.camouflage.yaml')
+      camouflage.project_config_refresh()
+
+      local marks = #vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+      assert.equals(1, marks)
+    end)
+  end)
+
   it('should ignore unknown top-level keys', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')
