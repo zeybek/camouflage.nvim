@@ -83,6 +83,29 @@ describe('camouflage.project_config', function()
     assert.same({}, config.get().parsers.dockerfile)
   end)
 
+  it('should not replace default lists with copies from the generated template', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    local template = require('camouflage.init_command')._read_template()
+    vim.fn.writefile(vim.split(template, '\n', { plain = true }), dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local cfg = config.get()
+    local defaults = config.defaults
+
+    assert.equals(0, #project_config.status().errors)
+    -- Lists replace defaults instead of merging, so a template copy would freeze
+    -- them: later built-in patterns or weak values would never apply.
+    assert.same(defaults.patterns, cfg.patterns)
+    assert.same(defaults.audit.ignore_patterns, cfg.audit.ignore_patterns)
+    assert.same(
+      defaults.checks.weak_secret.sensitive_key_patterns,
+      cfg.checks.weak_secret.sensitive_key_patterns
+    )
+    assert.same(defaults.checks.weak_secret.common_values, cfg.checks.weak_secret.common_values)
+  end)
+
   it('should accept documented nil-default keys (e.g. mask_length)', function()
     -- mask_length has a nil default, so its type cannot be inferred from
     -- defaults; the NULLABLE_KEYS allowlist must accept it instead of rejecting
