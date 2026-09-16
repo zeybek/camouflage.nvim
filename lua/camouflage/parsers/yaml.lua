@@ -154,6 +154,51 @@ function M.process_line(line, line_num, line_start, key_stack, max_depth, includ
 
   local indent = M.get_indentation(line)
 
+  -- A scalar block sequence item ('- value') belongs to the nearest parent key
+  -- at or above its indentation ('tokens:' and '- a' may share an indent).
+  local item_line = is_commented and line:gsub('^%s*#%s*', '') or line
+  local item_col, item = item_line:match('^%s*%-%s+()(.-)%s*$')
+  if item then
+    if item == '' or item:match('^[%[{|>&*!#]') or M.parse_line(item) then
+      item = nil
+    end
+  end
+  if item then
+    local parent
+    for i = #key_stack, 1, -1 do
+      if key_stack[i].indent <= indent then
+        parent = key_stack[i]
+        break
+      end
+    end
+    if not parent then
+      return nil
+    end
+
+    local value, quote_offset = item, 0
+    if value:match('^".*"$') or value:match("^'.*'$") then
+      value, quote_offset = value:sub(2, -2), 1
+    end
+    if value == '' then
+      return nil
+    end
+
+    local prefix_len = is_commented and (#line - #item_line) or 0
+    local value_start = line_start + prefix_len + item_col - 1 + quote_offset
+    return {
+      type = 'variable',
+      data = {
+        key = parent.key,
+        value = value,
+        start_index = value_start,
+        end_index = value_start + #value,
+        line_number = line_num - 1,
+        is_nested = true,
+        is_commented = is_commented,
+      },
+    }
+  end
+
   while #key_stack > 0 and key_stack[#key_stack].indent >= indent do
     table.remove(key_stack)
   end

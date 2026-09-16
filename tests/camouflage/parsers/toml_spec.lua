@@ -134,4 +134,51 @@ disabled = false
       assert.equals('ab\\"cd', content:sub(result[1].start_index + 1, result[1].end_index))
     end)
   end)
+
+  describe('arrays', function()
+    local function values(content)
+      local result = toml_parser.parse(content)
+      for _, v in ipairs(result) do
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+      end
+      return result
+    end
+
+    it('reports each item of a single-line array', function()
+      local result = values('keys = ["one", \'two\', 3, true]')
+
+      assert.equals(4, #result)
+      for i, expected in ipairs({ 'one', 'two', '3', 'true' }) do
+        assert.equals('keys', result[i].key)
+        assert.equals(expected, result[i].value)
+      end
+    end)
+
+    it('reports each item of a multi-line array and keeps parsing after it', function()
+      local content = table.concat({
+        '[api]',
+        'keys = [',
+        '  "multi-one", # first',
+        '  "multi-two",',
+        ']',
+        'token = "after"',
+      }, '\n')
+      local result = values(content)
+
+      assert.equals(3, #result)
+      assert.equals('api.keys', result[1].key)
+      assert.equals('multi-one', result[1].value)
+      assert.equals(2, result[1].line_number)
+      assert.equals('multi-two', result[2].value)
+      assert.equals(3, result[2].line_number)
+      assert.equals('api.token', result[3].key)
+    end)
+
+    it('skips nested arrays and inline tables', function()
+      local result = values('mixed = [["nested"], { a = "table" }, "kept"]')
+
+      assert.equals(1, #result)
+      assert.equals('kept', result[1].value)
+    end)
+  end)
 end)

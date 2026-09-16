@@ -48,12 +48,26 @@ function M.parse_regex(content, lines)
   local current_index = 0
   local block_depth = 0
   local heredoc_state = nil ---@type HeredocState|nil
+  local offsets = nil
+  -- 0-based offset of the end of a list value that started on an earlier line
+  local skip_to = -1
 
   for line_num, line in ipairs(lines) do
     local line_start = current_index
+    local array_items, array_close = nil, nil
+    if not heredoc_state and line_start > skip_to then
+      offsets = offsets or require('camouflage.offsets').from_content(content)
+      array_items, array_close = M.parse_array(content, line, line_start, block_depth, offsets)
+    end
 
+    if line_start <= skip_to then
+      -- Inside a list handled on an earlier line
+      goto next_line
+    elseif array_items then
+      vim.list_extend(variables, array_items)
+      skip_to = array_close - 1
     -- Check if we're in heredoc mode
-    if heredoc_state then
+    elseif heredoc_state then
       local trimmed = line:match('^%s*(.-)%s*$')
 
       -- Check if this line ends the heredoc
@@ -108,6 +122,7 @@ function M.parse_regex(content, lines)
       block_depth = math.max(0, block_depth + depth_change)
     end
 
+    ::next_line::
     current_index = current_index + #line + 1
   end
 
@@ -128,6 +143,52 @@ function M.parse_regex(content, lines)
   end
 
   return variables
+end
+
+---Parse `key = [ ... ]`, which may span lines, into one variable per item.
+---Quoted strings, numbers and bools are kept. Bare references and function
+---calls are skipped, like single values are. Returns nil when the line
+---doesn't start a list or the list never closes.
+---@param content string
+---@param line string
+---@param line_start number 0-based offset of the line
+---@param block_depth number
+---@param offsets number[] Line start offsets of content
+---@return ParsedVariable[]|nil variables
+---@return number|nil close_pos 1-based position of the closing bracket
+function M.parse_array(content, line, line_start, block_depth, offsets)
+  local key, bracket_col = line:match('^%s*([a-zA-Z_][a-zA-Z0-9_%-]*)%s*=%s*()%[')
+  if not key then
+    return nil, nil
+  end
+
+  local items, close_pos = util.scan_array(content, line_start + bracket_col)
+  if not close_pos then
+    return nil, nil
+  end
+
+  local variables = {}
+  for _, item in ipairs(items) do
+    local literal = item.quoted
+      or item.value:match('^%-?%d[%d%.eE%+%-]*$')
+      or item.value == 'true'
+      or item.value == 'false'
+    if literal and not item.value:match('%$%{') then
+      local start_row = util.row_of(offsets, item.start_index)
+      local end_row = util.row_of(offsets, math.max(item.start_index, item.end_index - 1))
+      table.insert(variables, {
+        key = key,
+        value = item.value,
+        start_index = item.start_index,
+        end_index = item.end_index,
+        line_number = start_row,
+        is_nested = block_depth > 0,
+        is_commented = false,
+        is_multiline = end_row ~= start_row or nil,
+      })
+    end
+  end
+  return variables, close_pos
 end
 
 ---Calculate the net change in block depth from braces on a line

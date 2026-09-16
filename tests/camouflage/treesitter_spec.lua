@@ -423,6 +423,56 @@ describe('camouflage.treesitter', function()
       end)
     end
 
+    local function parse_values(lang, lines)
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      local content = table.concat(lines, '\n')
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      local result = ts.parse(bufnr, lang, content) or {}
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+
+      local pairs_found = {}
+      for _, v in ipairs(result) do
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+        table.insert(pairs_found, v.key .. '=' .. v.value)
+      end
+      return pairs_found
+    end
+
+    if json_parser_available then
+      it('should parse JSON scalar array items', function()
+        local found = parse_values('json', { '{"keys": ["json-one", 2, true], "n": [["nested"]]}' })
+
+        assert.same({ 'keys=json-one', 'keys=2', 'keys=true' }, found)
+      end)
+    end
+
+    if yaml_parser_available then
+      it('should parse YAML block and flow list items', function()
+        local found = parse_values('yaml', {
+          'app:',
+          '  tokens:',
+          '    - yaml-one',
+          '    - "yaml-two"',
+          '  inline: [yaml-three, yaml-four]',
+        })
+
+        assert.same({
+          'app.tokens=yaml-one',
+          'app.tokens=yaml-two',
+          'app.inline=yaml-three',
+          'app.inline=yaml-four',
+        }, found)
+      end)
+    end
+
+    if toml_parser_available then
+      it('should parse TOML array items', function()
+        local found = parse_values('toml', { 'keys = [', '  "toml-one",', '  2,', ']' })
+
+        assert.same({ 'keys=toml-one', 'keys=2' }, found)
+      end)
+    end
+
     if hcl_parser_available then
       local function parse_hcl(lines)
         local bufnr = vim.api.nvim_create_buf(false, true)
@@ -478,6 +528,14 @@ describe('camouflage.treesitter', function()
         assert.equals('${var.host}:secret-suffix', by_key.url.value)
         assert.equals('line-one-secret\nline-two-secret', by_key.cert.value)
         assert.is_true(by_key.cert.is_multiline)
+      end)
+
+      it('should parse HCL list items', function()
+        local _, by_key = parse_hcl({ 'tokens = ["hcl-list-one", 2]' })
+        local found = parse_values('hcl', { 'tokens = ["hcl-list-one", 2]' })
+
+        assert.is_not_nil(by_key.tokens)
+        assert.same({ 'tokens=hcl-list-one', 'tokens=2' }, found)
       end)
 
       it('should still parse HCL when an injection query cannot run', function()

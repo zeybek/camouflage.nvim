@@ -99,17 +99,48 @@ key: value
       assert.equals('key', result[1].key)
     end)
 
-    it('should skip list items', function()
+    it('should report scalar list items under the parent key', function()
       local content = [[
 items:
   - item1
-  - item2
+  - "item2"
 password: secret
 ]]
       local result = yaml_parser.parse(content)
 
-      assert.equals(1, #result)
-      assert.equals('password', result[1].key)
+      assert.equals(3, #result)
+      assert.equals('items', result[1].key)
+      assert.equals('item1', result[1].value)
+      assert.equals('items', result[2].key)
+      assert.equals('item2', result[2].value)
+      for _, v in ipairs(result) do
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+      end
+      assert.equals('password', result[3].key)
+    end)
+
+    it('should report list items indented at the same level as their key', function()
+      local content = 'app:\n  tokens:\n  - same-indent-token\n  other: value'
+      local result = yaml_parser.parse(content)
+
+      local by_key = {}
+      for _, v in ipairs(result) do
+        by_key[v.key] = v
+      end
+      assert.equals('same-indent-token', by_key['app.tokens'].value)
+      assert.equals('value', by_key['app.other'].value)
+    end)
+
+    it('should keep parsing mappings inside list items', function()
+      local content = 'users:\n  - name: bob\n    password: listmapsecret'
+      local result = yaml_parser.parse(content)
+
+      local by_key = {}
+      for _, v in ipairs(result) do
+        by_key[v.key] = v
+      end
+      assert.equals('listmapsecret', by_key['users.password'].value)
+      assert.is_nil(by_key['users'])
     end)
 
     it('should handle empty content', function()

@@ -94,27 +94,63 @@ describe('camouflage.parsers.json', function()
       assert.equals('false', values['disabled'])
     end)
 
-    it('should skip arrays', function()
+    it('should report scalar array items under the array key', function()
       local content = [[{
-  "items": ["a", "b", "c"],
+  "items": ["a", 42, true],
   "password": "secret"
 }]]
       local result = json_parser.parse(content)
 
-      assert.equals(1, #result)
-      assert.equals('password', result[1].key)
+      assert.equals(4, #result)
+      for i, expected in ipairs({ 'a', '42', 'true' }) do
+        assert.equals('items', result[i].key)
+        assert.equals(expected, result[i].value)
+        assert.equals(expected, content:sub(result[i].start_index + 1, result[i].end_index))
+      end
+      assert.equals('password', result[4].key)
     end)
 
-    it('should skip objects inside arrays', function()
+    it('should scan objects inside arrays', function()
       local content = [[{
   "items": [{ "password": "array_secret" }],
   "password": "secret"
 }]]
       local result = json_parser.parse(content)
 
+      assert.equals(2, #result)
+      assert.equals('items.password', result[1].key)
+      assert.equals('array_secret', result[1].value)
+      assert.equals('password', result[2].key)
+      assert.equals('secret', result[2].value)
+    end)
+
+    it('should skip nested arrays', function()
+      local content = '{"matrix": [["inner"]], "token": "outer"}'
+      local result = json_parser.parse(content)
+
       assert.equals(1, #result)
-      assert.equals('password', result[1].key)
-      assert.equals('secret', result[1].value)
+      assert.equals('token', result[1].key)
+    end)
+
+    it('should report array items when the file has comments (JSONC)', function()
+      local content = table.concat({
+        '{',
+        '  // api keys',
+        '  "keys": ["jsonc-one", "jsonc-two"],',
+        '  "users": [{ "password": "jsonc-obj" }]',
+        '}',
+      }, '\n')
+      local result = json_parser.parse(content)
+
+      local by_value = {}
+      for _, v in ipairs(result) do
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+        by_value[v.value] = v
+      end
+      assert.equals('keys', by_value['jsonc-one'].key)
+      assert.equals('keys', by_value['jsonc-two'].key)
+      assert.equals(2, by_value['jsonc-two'].line_number)
+      assert.equals('password', by_value['jsonc-obj'].key)
     end)
 
     it('should handle empty objects', function()
