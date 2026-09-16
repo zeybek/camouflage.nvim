@@ -38,6 +38,9 @@ local registry = {}
 ---@type table<integer, integer>
 local buffer_runs = {}
 
+-- Bumped when checks are registered or removed
+M.generation = 0
+
 local VALID_SEVERITY = { info = true, warning = true, error = true }
 local ALLOWED_RESULT_FIELDS = {
   severity = true,
@@ -421,6 +424,7 @@ function M.register(spec)
     default_enabled = spec.default_enabled ~= false,
   }
   registry[entry.name] = entry
+  M.generation = M.generation + 1
   log.debug('registered check %s async=%s priority=%d', entry.name, entry.async, entry.priority)
   return public_entry(entry)
 end
@@ -433,6 +437,7 @@ function M.unregister(name)
     return false
   end
   registry[name] = nil
+  M.generation = M.generation + 1
 
   local ok, checks = pcall(require, 'camouflage.checks')
   if ok then
@@ -525,6 +530,7 @@ end
 
 ---Internal: reset registry state for tests.
 function M._reset()
+  M.generation = M.generation + 1
   registry = {}
   buffer_runs = {}
 end

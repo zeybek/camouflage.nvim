@@ -104,12 +104,17 @@ local listeners = {}
 ---@type number
 local next_id = 1
 
+-- Bumped whenever listeners or config hooks change, so callers can tell that a
+-- cached decoration pass may no longer match.
+M.generation = 0
+
 ---@type CamouflageHooksConfig|nil
 local config_hooks = nil
 
 ---Initialize hooks with config
 ---@param hooks CamouflageHooksConfig|nil
 function M.setup(hooks)
+  M.generation = M.generation + 1
   config_hooks = hooks or {}
 end
 
@@ -124,6 +129,7 @@ function M.on(event, callback)
 
   local id = next_id
   next_id = next_id + 1
+  M.generation = M.generation + 1
 
   table.insert(listeners[event], {
     id = id,
@@ -158,6 +164,7 @@ function M.off(event, id)
   for i, listener in ipairs(listeners[event]) do
     if listener.id == id then
       table.remove(listeners[event], i)
+      M.generation = M.generation + 1
       return true
     end
   end
@@ -175,6 +182,7 @@ end
 ---Clear all listeners for an event (or all events if nil)
 ---@param event string|nil Event name or nil for all
 function M.clear(event)
+  M.generation = M.generation + 1
   if event then
     listeners[event] = {}
   else

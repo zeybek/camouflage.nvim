@@ -424,6 +424,7 @@ local function reveal_line_silent(bufnr, line)
   -- Store state
   revealed_state.bufnr = bufnr
   revealed_state.line = line
+  revealed_state.tick = vim.api.nvim_buf_get_changedtick(bufnr)
   set_anchor(bufnr, line_0)
 
   -- Setup hook to prevent re-masking
@@ -434,6 +435,45 @@ local function reveal_line_silent(bufnr, line)
 
   -- Apply highlight
   apply_revealed_highlight(bufnr, line_0)
+end
+
+---Mask a previously revealed line again from the variables that are already
+---parsed, instead of re-parsing the whole buffer. Returns false when that isn't
+---safe: the text changed since the reveal, the buffer needs a new pass, or a
+---multiline value touches the line.
+---@param bufnr number
+---@param line number 1-indexed
+---@return boolean
+local function remask_line(bufnr, line)
+  if
+    revealed_state.tick ~= vim.api.nvim_buf_get_changedtick(bufnr)
+    or state.is_dirty(bufnr)
+    or not state.is_buffer_masked(bufnr)
+  then
+    return false
+  end
+  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
+  if not ok then
+    return false
+  end
+
+  local line_offsets = core.compute_line_offsets(lines)
+  local on_line = {}
+  for _, var in ipairs(state.get_variables(bufnr)) do
+    if var_range_on_line(var, line - 1, lines, line_offsets) then
+      if var.is_multiline then
+        return false
+      end
+      table.insert(on_line, var)
+    end
+  end
+
+  clear_line_extmarks(bufnr, line - 1)
+  local cfg = config.get_for_buffer(bufnr)
+  for _, var in ipairs(on_line) do
+    core.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
+  end
+  return true
 end
 
 ---Internal: Hide current reveal without notifications (for follow mode)
@@ -457,13 +497,17 @@ local function hide_silent()
 
   -- Clear state BEFORE re-applying
   local was_bufnr = revealed_state.bufnr
+  local was_line = current_revealed_line()
   clear_anchor(was_bufnr)
   revealed_state.bufnr = nil
   revealed_state.line = nil
 
-  -- Re-apply decorations
+  -- Re-apply decorations: only the revealed line when that's safe, since this
+  -- runs on every cursor move in follow mode.
   if was_bufnr and vim.api.nvim_buf_is_valid(was_bufnr) then
-    core.apply_decorations(was_bufnr)
+    if not (was_line and remask_line(was_bufnr, was_line)) then
+      core.apply_decorations(was_bufnr)
+    end
   end
 end
 

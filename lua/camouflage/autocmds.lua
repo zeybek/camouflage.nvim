@@ -82,6 +82,12 @@ function M.setup()
     pattern = all_patterns,
     callback = function(args)
       if config.get().auto_enable and vim.api.nvim_buf_is_valid(args.buf) then
+        -- Entering a buffer that hasn't changed since its last pass: skip the
+        -- full re-parse, only fix up options of a window that is new to it.
+        if core.is_up_to_date(args.buf) then
+          core.refresh_windows(args.buf)
+          return
+        end
         state.init_buffer(args.buf)
         core.apply_decorations(args.buf)
       end
