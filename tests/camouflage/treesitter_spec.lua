@@ -368,6 +368,61 @@ describe('camouflage.treesitter', function()
       end)
     end
 
+    if xml_parser_available then
+      local function parse_xml(content)
+        local bufnr = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, vim.split(content, '\n'))
+        local result = ts.parse(bufnr, 'xml', content)
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+
+        local by_key = {}
+        for _, v in ipairs(result or {}) do
+          assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+          by_key[v.key] = by_key[v.key] or {}
+          table.insert(by_key[v.key], v)
+        end
+        return by_key
+      end
+
+      it('should parse XML element text when the element has attributes', function()
+        local by_key = parse_xml('<config><password type="t">xmlattrsecret</password></config>')
+
+        assert.equals('xmlattrsecret', by_key['config.password'][1].value)
+        assert.equals('t', by_key['config.password@type'][1].value)
+      end)
+
+      it('should parse XML element text with entity references as one value', function()
+        local by_key = parse_xml('<config><token>ab&amp;entitysecret</token></config>')
+
+        assert.equals(1, #by_key['config.token'])
+        assert.equals('ab&amp;entitysecret', by_key['config.token'][1].value)
+      end)
+
+      it('should parse the inner text of an XML CDATA section', function()
+        local by_key = parse_xml('<config><secret><![CDATA[cdata<secret>]]></secret></config>')
+
+        assert.equals('cdata<secret>', by_key['config.secret'][1].value)
+      end)
+
+      it('should parse multiline XML element text without surrounding whitespace', function()
+        local content = '<config>\n  <key>\n    line-one\n    line-two\n  </key>\n</config>'
+        local by_key = parse_xml(content)
+
+        local var = by_key['config.key'][1]
+        assert.equals('line-one\n    line-two', var.value)
+        assert.is_true(var.is_multiline)
+        assert.equals(2, var.line_number)
+      end)
+
+      it('should mask only the text pieces of XML mixed content', function()
+        local by_key =
+          parse_xml('<config><note>outer-text<inner>inner-text</inner></note></config>')
+
+        assert.equals('outer-text', by_key['config.note'][1].value)
+        assert.equals('inner-text', by_key['config.note.inner'][1].value)
+      end)
+    end
+
     if hcl_parser_available then
       local function parse_hcl(lines)
         local bufnr = vim.api.nvim_create_buf(false, true)
