@@ -446,6 +446,54 @@ describe('camouflage.yank', function()
     end)
   end)
 
+  describe('auto-clear with uppercase registers', function()
+    local function yank_to(register)
+      require('camouflage.config').get().yank.auto_clear_seconds = 0.05
+      yank.do_yank({ key = 'TOKEN', value = 'upper-secret' }, { register = register })
+    end
+
+    it('restores the previous contents of the lowercase register', function()
+      vim.fn.setreg('a', 'previous-')
+      yank_to('A')
+      assert.equals('previous-upper-secret', vim.fn.getreg('a'))
+
+      vim.wait(400, function()
+        return vim.fn.getreg('a') == 'previous-'
+      end)
+      assert.equals('previous-', vim.fn.getreg('a'))
+    end)
+
+    it('restores a linewise register with its type', function()
+      vim.fn.setreg('a', { 'line one' }, 'l')
+      yank_to('A')
+
+      vim.wait(400, function()
+        return not vim.fn.getreg('a'):find('upper-secret', 1, true)
+      end)
+      assert.equals('line one\n', vim.fn.getreg('a'))
+      assert.equals('V', vim.fn.getregtype('a'))
+    end)
+
+    it('clears the register when it was empty before the yank', function()
+      vim.fn.setreg('a', '')
+      yank_to('A')
+
+      vim.wait(400, function()
+        return vim.fn.getreg('a') == ''
+      end)
+      assert.equals('', vim.fn.getreg('a'))
+    end)
+
+    it('leaves the register alone when the user replaced it', function()
+      vim.fn.setreg('a', 'previous-')
+      yank_to('A')
+      vim.fn.setreg('a', 'user typed this')
+
+      vim.wait(200)
+      assert.equals('user typed this', vim.fn.getreg('a'))
+    end)
+  end)
+
   describe('register validation', function()
     it('rejects an invalid register without copying or throwing', function()
       vim.fn.setreg('z', 'original')
