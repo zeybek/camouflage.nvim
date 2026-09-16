@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/zeybek/camouflage.nvim/compare/v0.14.0...v0.14.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* **core:** mask typed and pasted values before they are drawn ([#96](https://github.com/zeybek/camouflage.nvim/issues/96)) ([c736293](https://github.com/zeybek/camouflage.nvim/commit/c7362933e5972613fef62740f13c9e1fe9861795))
+
 ## [0.14.0](https://github.com/zeybek/camouflage.nvim/compare/v0.13.0...v0.14.0) (2026-09-16)
 
 
