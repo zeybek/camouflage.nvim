@@ -72,11 +72,42 @@ describe('camouflage.integrations.terminal', function()
       assert.is_nil(terminal.line_key(''))
     end)
 
+    it('reads past a comment marker and a shell export', function()
+      -- The line-level matcher already sees through both, so a key behind one
+      -- has to reach the sensitive list the same way a bare one does.
+      assert.equals('OLD_API_KEY', terminal.line_key('# OLD_API_KEY=deprecated_key_12345'))
+      assert.equals('GITHUB_TOKEN', terminal.line_key('export GITHUB_TOKEN=ghp_yyyyyyyyyyyyyyyy'))
+      assert.equals('DB_PASSWORD', terminal.line_key('  ;; DB_PASSWORD=hunter2'))
+      assert.is_true(terminal.should_mask('# OLD_API_KEY=deprecated_key_12345'))
+      assert.is_true(terminal.should_mask('export GITHUB_TOKEN=ghp_yyyyyyyyyyyyyyyy'))
+    end)
+
+    it('leaves a word that merely starts with export alone', function()
+      assert.equals('exported', terminal.line_key('exported: true'))
+    end)
+
     it('reads build output as a key too, which is why keys are filtered', function()
       -- `make: build=release` has the shape of an assignment. The sensitive-key
       -- filter is what keeps it visible, not the shape.
       assert.equals('make', terminal.line_key('make: build=release'))
       assert.is_false(terminal.should_mask('make: build=release'))
+    end)
+  end)
+
+  describe('holds_credentials', function()
+    it('covers a value carrying a password, whatever the key is called', function()
+      -- `database_url` is not a sensitive key and should not become one, or
+      -- every `API_URL=` line in build output starts getting stars.
+      local line = 'DATABASE_URL=postgres://user:password123@localhost:5432/mydb'
+      assert.is_true(terminal.holds_credentials(line))
+      assert.is_true(terminal.should_mask(line))
+      assert.is_true(terminal.should_mask('conn = mongodb+srv://admin:s3cret@cluster0.example.net'))
+    end)
+
+    it('leaves a URL with no credentials in it readable', function()
+      assert.is_false(terminal.holds_credentials('API_URL=https://api.example.com/v1'))
+      assert.is_false(terminal.should_mask('API_URL=https://api.example.com/v1'))
+      assert.is_false(terminal.holds_credentials('repo: https://github.com/zeybek/camouflage.nvim'))
     end)
   end)
 
@@ -92,6 +123,22 @@ describe('camouflage.integrations.terminal', function()
     assert.equals('sk_live_terminal_secret', covered[0])
     assert.equals('hunter2', covered[1])
     assert.is_nil(covered[2])
+    assert.is_nil(covered[3])
+  end)
+
+  it('covers a printed .env the way the buffer does', function()
+    -- `:terminal cat .env` next to the file used to show values the buffer hid.
+    local bufnr = terminal_with({
+      'DATABASE_URL=postgres://user:password123@localhost:5432/mydb',
+      '# OLD_API_KEY=deprecated_key_12345',
+      'export GITHUB_TOKEN=ghp_yyyyyyyyyyyyyyyy',
+      'NODE_ENV=development',
+    })
+
+    local covered = drawn(bufnr)
+    assert.equals('postgres://user:password123@localhost:5432/mydb', covered[0])
+    assert.equals('deprecated_key_12345', covered[1])
+    assert.equals('ghp_yyyyyyyyyyyyyyyy', covered[2])
     assert.is_nil(covered[3])
   end)
 

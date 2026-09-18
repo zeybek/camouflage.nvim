@@ -46,18 +46,45 @@ function M.sensitive_patterns()
   return weak.sensitive_key_patterns or {}
 end
 
+-- A value of the shape `scheme://user:password@host`. The password rides in
+-- the value here, so the key it was printed under says nothing about it.
+local CREDENTIAL_URL = '%a[%w+.%-]*://[^:/?#%s]+:[^@/?#%s]+@'
+
+---What can sit in front of the key on a printed line: a comment marker and a
+---shell `export`. The line-level matcher already reads past both, so a key
+---behind one is a key all the same.
+---@param line string
+---@return string
+local function without_prefix(line)
+  local rest = line:gsub('^%s*[#;]+%s*', '')
+  return (rest:gsub('^%s*export%s+', ''))
+end
+
 ---The key on a line, if it reads like `KEY=value` or `KEY: value`.
 ---@param line string
 ---@return string|nil
 function M.line_key(line)
-  return line:match('^%s*["\']?([%w_.%-]+)["\']?%s*[=:]')
-    or line:match('^%s*[Ee][Nn][Vv]%s+([%w_]+)%s*[=%s]')
+  local rest = without_prefix(line)
+  return rest:match('^%s*["\']?([%w_.%-]+)["\']?%s*[=:]')
+    or rest:match('^%s*[Ee][Nn][Vv]%s+([%w_]+)%s*[=%s]')
+end
+
+---Whether the value on a line carries credentials of its own, whatever the key
+---it was printed under is called.
+---@param line string
+---@return boolean
+function M.holds_credentials(line)
+  local _, value = linemask.find_value(line)
+  return value ~= nil and value:find(CREDENTIAL_URL) ~= nil
 end
 
 ---Whether a line should be covered at all.
 ---@param line string
 ---@return boolean
 function M.should_mask(line)
+  if M.holds_credentials(line) then
+    return true
+  end
   local key = M.line_key(line)
   if not key then
     return false

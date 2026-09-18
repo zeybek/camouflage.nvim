@@ -1309,6 +1309,12 @@ while `HOME=/Users/demo` and build output stay readable. `keys = 'all'` covers
 every `KEY=value`, which hides more and is noisier. `key_patterns` replaces the
 list entirely.
 
+A comment marker or a shell `export` in front of the key is read past, so
+`# OLD_API_KEY=...` and `export GITHUB_TOKEN=...` go through the same list. A
+value carrying credentials of its own, such as
+`postgres://user:password@host`, is covered whatever its key is called, since
+`DATABASE_URL` says nothing about what is inside it.
+
 `vim.b.camouflage_terminal = false` turns it off for one terminal, which is
 useful for a TUI that repaints constantly.
 
