@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/zeybek/camouflage.nvim/compare/v0.15.0...v0.15.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **terminal:** mask exported, commented and credential-URL lines ([#129](https://github.com/zeybek/camouflage.nvim/issues/129)) ([adc310d](https://github.com/zeybek/camouflage.nvim/commit/adc310dd371e8af5560771d3beb805c361e6bce9))
+
 ## [0.15.0](https://github.com/zeybek/camouflage.nvim/compare/v0.14.1...v0.15.0) (2026-09-18)
 
 
