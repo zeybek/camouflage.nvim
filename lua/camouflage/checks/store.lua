@@ -68,6 +68,12 @@ local function drop_anchor(bufnr, lnum)
   end
 end
 
+-- Changedtick of the last sync per buffer. Anchors only move when the text
+-- moves, so between two ticks every anchor is still where the last sync left
+-- it. Without this, a pass that stores n results walked all n anchors n times.
+---@type table<integer, integer>
+local synced_tick = {}
+
 ---Move stored results to the current line of their anchors.
 ---@param bufnr integer
 local function sync(bufnr)
@@ -75,6 +81,12 @@ local function sync(bufnr)
   if not buf_anchors or not store[bufnr] or not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
+
+  local tick = vim.api.nvim_buf_get_changedtick(bufnr)
+  if synced_tick[bufnr] == tick then
+    return
+  end
+  synced_tick[bufnr] = tick
 
   local rows, changed = {}, false
   for lnum, id in pairs(buf_anchors) do
@@ -220,6 +232,7 @@ end
 function M.clear_buffer(bufnr)
   store[bufnr] = nil
   anchors[bufnr] = nil
+  synced_tick[bufnr] = nil
   if vim.api.nvim_buf_is_valid(bufnr) then
     vim.api.nvim_buf_clear_namespace(bufnr, anchor_ns, 0, -1)
   end
@@ -229,6 +242,7 @@ end
 function M._reset()
   store = {}
   anchors = {}
+  synced_tick = {}
 end
 
 return M
