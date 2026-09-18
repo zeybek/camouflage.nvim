@@ -32,6 +32,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
 - **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL/Dockerfile
+- **Terminal masking**: Opt-in masking for values printed by commands in `:terminal`
 - **Picker integrations**: Mask previews and grep result rows in Telescope, Snacks, fzf-lua and mini.pick
 - **Zero file modification**: All masking is purely visual
 - **Extensible**: Register custom parsers for unsupported formats via a public API
@@ -158,6 +159,11 @@ require('camouflage').setup({
   mask_char = '*',
   debounce_ms = 150,
   max_lines = 5000,
+
+  terminal = {
+    enabled = false,  -- opt in: mask KEY=value output in :terminal buffers
+    keys = 'sensitive',
+  },
 
   audit = {
     ignore_patterns = { '.git/**', 'node_modules/**' },
