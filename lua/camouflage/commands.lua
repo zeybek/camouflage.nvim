@@ -218,6 +218,35 @@ function M.setup()
     bang = true,
   })
 
+  vim.api.nvim_create_user_command('CamouflageShield', function()
+    require('camouflage.shield').open()
+  end, { desc = 'Cover the whole editor until a key is pressed' })
+
+  vim.api.nvim_create_user_command('CamouflageShieldPassword', function(opts)
+    local shield = require('camouflage.shield')
+    if opts.bang then
+      if shield.remove_password() then
+        vim.notify('[camouflage] shield password removed', vim.log.levels.INFO)
+      else
+        vim.notify('[camouflage] no shield password was set', vim.log.levels.INFO)
+      end
+      return
+    end
+    local hash = shield.prompt_password()
+    if not hash then
+      return
+    end
+    local ok, err = shield.save_password(hash)
+    if ok then
+      vim.notify('[camouflage] shield password set', vim.log.levels.INFO)
+    else
+      vim.notify(
+        '[camouflage] could not save the password: ' .. tostring(err),
+        vim.log.levels.ERROR
+      )
+    end
+  end, { desc = 'Set the shield password (! to remove it)', bang = true })
+
   vim.api.nvim_create_user_command('CamouflageReveal', function(opts)
     local reveal = require('camouflage.reveal')
     if require('camouflage.present').block_reveal() then

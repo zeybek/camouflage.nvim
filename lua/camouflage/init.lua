@@ -334,6 +334,8 @@ local function setup_integrations()
   if (config.terminal or {}).enabled then
     require('camouflage.integrations.terminal').setup()
   end
+
+  require('camouflage.shield').setup()
 end
 
 ---Setup custom highlight group if colors are configured

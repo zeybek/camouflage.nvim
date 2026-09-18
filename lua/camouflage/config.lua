@@ -34,6 +34,11 @@ local M = {}
 ---@field keys? string '"sensitive"' (default) or '"all"'
 ---@field key_patterns? string[] Lua patterns for keys worth covering, defaults to the weak-secret list
 
+---@class CamouflageShieldConfig
+---@field text? string Text on the card, \n for a new line (default depends on password_hash)
+---@field on_focus_lost? boolean Cover the editor when it loses focus (default: false)
+---@field password_hash? string Overrides the password saved by :CamouflageShieldPassword
+
 ---@class CamouflageIntegrationsConfig
 ---@field telescope? boolean
 ---@field picker_results? boolean Mask the matched line in picker result rows (default: true)
@@ -205,6 +210,7 @@ local M = {}
 ---@field audit? CamouflageAuditConfig Workspace audit configuration
 ---@field policy? CamouflagePolicyConfig Declarative data-only masking policy
 ---@field terminal? CamouflageTerminalConfig Masking inside :terminal buffers
+---@field shield? CamouflageShieldConfig Cover the whole editor until a key is pressed
 ---@field checks? CamouflageChecksConfig Per-check configuration (pwned, expiry, ...)
 
 ---@type CamouflageConfig
@@ -264,6 +270,9 @@ M.defaults = {
   terminal = {
     enabled = false,
     keys = 'sensitive',
+  },
+  shield = {
+    on_focus_lost = false,
   },
   hooks = nil,
   yank = {

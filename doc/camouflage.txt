@@ -217,6 +217,11 @@ Call the setup function with your options: >lua
       keys = 'sensitive',         -- 'sensitive' | 'all'
     },
 
+    -- Cover the whole editor, see |camouflage-shield|
+    shield = {
+      on_focus_lost = false,      -- tmux needs `focus-events on`
+    },
+
     -- Workspace audit
     audit = {
       ignore_patterns = { '.git/**', 'node_modules/**' },
@@ -474,6 +479,15 @@ COMMANDS                                                  *camouflage-commands*
   Turn presentation mode on: mask everything, drop any reveal, and refuse
   reveal commands until it is off. Use `!` to leave it and put back what was
   there before. See |camouflage-present|.
+
+:CamouflageShield                                          *:CamouflageShield*
+  Cover the whole editor with a camouflage pattern until a key is pressed,
+  or until the password is typed when one is set. The keys are swallowed.
+  See |camouflage-shield|.
+
+:CamouflageShieldPassword[!]                       *:CamouflageShieldPassword*
+  Ask for a password twice and make it the shield password, at once and for
+  every session. Use `!` to remove it. See |camouflage-shield-password|.
 
 ==============================================================================
 API                                                            *camouflage-api*
@@ -1281,6 +1295,64 @@ component shows `[P]`.
 
 Value lengths are not hidden: the mask stays as wide as the value so the file
 still lines up. Set `mask_length` if you want that too.
+
+                                                           *camouflage-shield*
+Screen shield ~
+
+|:CamouflageShield| covers everything Neovim draws, the file, the statusline,
+the command line and other plugins' windows, with a camouflage pattern and a
+small card in the middle. The first key pressed uncovers it, and that key
+never reaches the buffer underneath.
+>lua
+  require('camouflage').setup({
+    shield = {
+      on_focus_lost = false,     -- come down on its own
+      -- text = '...',           -- the card, \n for a new line
+    },
+  })
+<
+With `on_focus_lost = true` it comes down when Neovim loses focus, when you
+switch to another window or app. Coming back does not lift it, a key does.
+
+This relies on the terminal reporting focus changes. Most terminals do, but
+inside tmux it needs this in `~/.tmux.conf`, otherwise the event never
+arrives and nothing happens:
+>
+  set -g focus-events on
+<
+The colors are the highlight groups `CamouflageShield1` to
+`CamouflageShield4` for the pattern, and `CamouflageShieldCard`,
+`CamouflageShieldBorder`, `CamouflageShieldTitle`, `CamouflageShieldText`,
+`CamouflageShieldInput` and `CamouflageShieldError` for the card. All are
+default links, so a colorscheme can set them.
+
+Password ~
+                                                  *camouflage-shield-password*
+With a password set, a key is not enough: the password is typed onto the
+card, shown as dots, and <CR> checks it. <BS> deletes a character, <C-u> and
+<Esc> clear the input, and <C-c> does not get past it. A wrong password pauses
+input for a moment.
+
+|:CamouflageShieldPassword| sets it. It applies right away, in every project
+and every session, with nothing to add to the config, and `!` removes it. The
+password itself is kept nowhere. What is kept is SHA-256 over a random salt,
+applied 50000 times, in `stdpath('data')/camouflage/shield_password`,
+readable by you only. Checking it takes about 90 ms, which makes guessing a
+weak password slow.
+
+`shield.password_hash` in `setup()` overrides the saved one, for keeping it in
+your dotfiles instead. Its value is the content of that file. A value that is
+not in that form is ignored with a warning rather than used, since it would
+match nothing and lock the editor for good.
+
+Shield settings can only come from `setup()`. A project config that sets
+`shield` is refused, so a cloned repository can't lock your editor.
+
+It covers Neovim only: the terminal's title bar, its scrollback and the tmux
+status line are outside its reach. A password makes it a deterrent, not a
+lock: whoever is at the keyboard can still close the terminal window. For
+that, lock the machine. If you forget the password,
+close the terminal: your unsaved changes are in the swap file.
 
                                                          *camouflage-terminal*
 Terminal buffers ~

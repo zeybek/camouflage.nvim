@@ -34,6 +34,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml
 - **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL/Dockerfile
 - **Presentation mode**: One command that masks everything and blocks reveals while you share your screen
 - **Terminal masking**: Opt-in masking for values printed by commands in `:terminal`
+- **Screen shield**: Cover the whole editor with a camouflage pattern until a key is pressed, by hand or when Neovim loses focus
 - **Picker integrations**: Mask previews and grep result rows in Telescope, Snacks, fzf-lua and mini.pick
 - **Zero file modification**: All masking is purely visual
 - **Extensible**: Register custom parsers for unsupported formats via a public API
@@ -169,6 +170,10 @@ require('camouflage').setup({
     keys = 'sensitive',
   },
 
+  shield = {
+    on_focus_lost = false,  -- cover the editor when it loses focus (tmux: focus-events on)
+  },
+
   audit = {
     ignore_patterns = { '.git/**', 'node_modules/**' },
     destination = 'quickfix', -- 'quickfix' | 'loclist'
@@ -256,10 +261,39 @@ require('camouflage').setup({
 | `:CamouflageExpiryToggle` | Toggle JWT expiry check on/off |
 | `:CamouflageRegisters` | List registers with masked values redacted |
 | `:CamouflagePresent` | Presentation mode: mask everything, refuse reveals (`!` to leave) |
+| `:CamouflageShield` | Cover the whole editor until a key is pressed |
+| `:CamouflageShieldPassword` | Set the shield password (`!` removes it) |
 | `:CamouflageInit` | Create `.camouflage.yaml` in project root |
 | `:CamouflageParsers` | List registered parsers (debug) |
 
 > **[Full commands list](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)** on the wiki.
+
+## Screen Shield
+
+`:CamouflageShield` covers everything Neovim draws, file, statusline, command
+line and other plugins' windows, with a camouflage pattern and a small card in
+the middle. The first key you press uncovers it, and that key never reaches the
+buffer underneath.
+
+With `shield = { on_focus_lost = true }` it comes down on its own when you
+switch to another window or app. That relies on the terminal telling Neovim
+about focus changes. Most terminals do, but **inside tmux you need
+`set -g focus-events on`** in `~/.tmux.conf`, otherwise the event never arrives
+and nothing happens.
+
+To require a password instead of any key, run `:CamouflageShieldPassword`. It
+asks for the password twice and applies right away, in every project and every
+session, with nothing to add to your config. Only a salted, stretched hash is
+kept, in Neovim's data directory, never the password itself.
+`:CamouflageShieldPassword!` removes it.
+
+Shield settings can only come from `setup()`. A `.camouflage.yaml` that tries
+to set them is refused, so a cloned repository can't lock your editor.
+
+It covers Neovim only: the terminal's title bar, its scrollback and the tmux
+status line are outside its reach. A password makes it a deterrent, not a lock:
+whoever is at the keyboard can still close the terminal. For that, lock the
+machine.
 
 ## Workspace Audit
 
