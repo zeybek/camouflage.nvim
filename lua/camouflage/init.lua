@@ -313,6 +313,10 @@ local function setup_integrations()
   if config.integrations.picker_results then
     require('camouflage.integrations.picker').setup()
   end
+
+  if config.integrations.quickfix then
+    require('camouflage.integrations.quickfix').setup()
+  end
 end
 
 ---Setup custom highlight group if colors are configured
