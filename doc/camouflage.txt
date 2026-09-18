@@ -197,6 +197,7 @@ Call the setup function with your options: >lua
       telescope = true,           -- Mask in Telescope previews
       picker_results = true,      -- Mask matched lines in picker result rows
       quickfix = true,            -- Mask matched lines in quickfix/loclist rows
+      diff = true,                -- Mask values in diff and commit buffers
       cmp = {
         disable_in_masked = true, -- Disable completion in masked buffers
       },
@@ -1192,6 +1193,24 @@ the real text, which `:cnext`, `:cdo` and copying a row need.
 <
 `:CamouflageAudit` never puts a value in the list in the first place, see
 |camouflage-audit|.
+
+                                                           *camouflage-diff*
+Diffs and commit buffers ~
+
+A diff shows the old and the new value of every changed line, so hunks of a
+file a parser handles get their values covered. This covers `filetype=diff`
+buffers, the diff `git commit -v` puts under the message, and git buffers from
+plugins such as fugitive.
+
+Which file a row belongs to is read from the hunk header above it, so a diff of
+a source file is left readable.
+>lua
+  require('camouflage').setup({
+    integrations = {
+      diff = true,  -- default
+    },
+  })
+<
 
                                                         *camouflage-nvim-cmp*
 nvim-cmp ~
