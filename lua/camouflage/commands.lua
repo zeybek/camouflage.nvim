@@ -93,11 +93,44 @@ function M.setup()
     local cfg = require('camouflage.config').get().audit or {}
     local destination = opts.bang and 'loclist' or (cfg.destination or 'quickfix')
 
+    -- `--json=<path>` writes the report, `-` writes it to stdout. `--quit`
+    -- leaves with 1 when anything was found, which is what a CI step reads.
+    local json_path, quit, path_args = nil, false, {}
+    for _, arg in ipairs(opts.fargs) do
+      local json = arg:match('^%-%-json=(.+)$')
+      if json then
+        json_path = json
+      elseif arg == '--json' then
+        json_path = '-'
+      elseif arg == '--quit' then
+        quit = true
+      else
+        table.insert(path_args, arg)
+      end
+    end
+
     audit.run({
-      path = opts.args ~= '' and opts.args or nil,
+      path = path_args[1],
       async = true,
       destination = destination,
       on_complete = function(result)
+        if json_path then
+          local ok, err = audit.write_report(result, json_path)
+          if not ok then
+            vim.notify(
+              string.format('[camouflage] could not write %s: %s', json_path, tostring(err)),
+              vim.log.levels.ERROR
+            )
+          end
+          if quit then
+            vim.cmd(('cquit %d'):format(#result.findings > 0 and 1 or 0))
+            return
+          end
+        elseif quit then
+          vim.cmd(('cquit %d'):format(#result.findings > 0 and 1 or 0))
+          return
+        end
+
         audit.set_list(result, {
           destination = destination,
           open = cfg.open ~= false,
@@ -120,7 +153,7 @@ function M.setup()
   end, {
     desc = 'Audit workspace for masked values',
     bang = true,
-    nargs = '?',
+    nargs = '*',
     complete = 'file',
   })
 

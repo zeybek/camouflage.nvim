@@ -622,6 +622,93 @@ function M.to_quickfix_items(result)
   return items
 end
 
+---The audit as data: the same records the quickfix list is built from, minus
+---anything that could carry a value. Meant for a CI step, so it also carries
+---what produced it.
+---@param result CamouflageAuditResult
+---@return table
+function M.to_report(result)
+  local findings = {}
+  for _, finding in ipairs(result.findings or {}) do
+    table.insert(findings, {
+      filename = finding.filename,
+      lnum = finding.lnum,
+      col = finding.col,
+      end_col = finding.end_col,
+      key = finding.key,
+      parser = finding.parser,
+      is_nested = finding.is_nested and true or false,
+      is_commented = finding.is_commented and true or false,
+      is_multiline = finding.is_multiline and true or false,
+      value_length = finding.value_length,
+      policy = finding.policy and {
+        action = finding.policy.action,
+        reason = finding.policy.reason,
+        rule_id = finding.policy.rule_id,
+      } or nil,
+    })
+  end
+
+  local errors = {}
+  for _, err in ipairs(result.errors or {}) do
+    table.insert(errors, { filename = err.filename, message = err.message or err.reason })
+  end
+
+  local parser_names = {}
+  for _, entry in ipairs(parsers.list()) do
+    table.insert(parser_names, entry.name)
+  end
+  table.sort(parser_names)
+
+  return {
+    version = 1,
+    plugin_version = M.plugin_version(),
+    root = result.root,
+    parsers = parser_names,
+    cancelled = result.cancelled and true or false,
+    stats = result.stats,
+    findings = findings,
+    errors = errors,
+  }
+end
+
+---Version string of the plugin, read from the tag in the help file so there is
+---one place it lives.
+---@return string
+function M.plugin_version()
+  local doc = vim.api.nvim_get_runtime_file('doc/camouflage.txt', false)[1]
+  if doc then
+    for _, line in ipairs(vim.fn.readfile(doc, '', 20)) do
+      local version = line:match('[Vv]ersion:%s*([%w%.%-]+)')
+      if version then
+        return version
+      end
+    end
+  end
+  return 'unknown'
+end
+
+---Write the report next to wherever it was asked for. `-` means stdout, which
+---is what a headless run wants.
+---@param result CamouflageAuditResult
+---@param path string
+---@return boolean ok
+---@return string|nil err
+function M.write_report(result, path)
+  local encoded = vim.json.encode(M.to_report(result))
+  if path == '-' then
+    io.stdout:write(encoded .. '\n')
+    return true
+  end
+  local file, err = io.open(path, 'w')
+  if not file then
+    return false, err
+  end
+  file:write(encoded .. '\n')
+  file:close()
+  return true
+end
+
 ---@param result CamouflageAuditResult
 ---@param opts table|nil
 function M.set_list(result, opts)
