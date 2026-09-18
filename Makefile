@@ -9,8 +9,10 @@ help: ## Show this help
 test: ## Run tests
 	@$(NVIM) --headless -u tests/minimal_init.lua -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal_init.lua'}"
 
-wiki-update: ## Pull the latest wiki pages into wiki/
-	@git submodule update --init --remote wiki
+WIKI_URL := https://github.com/zeybek/camouflage.nvim.wiki.git
+
+wiki-update: ## Clone the wiki into wiki/, or pull it if it is already there
+	@if [ -e wiki/.git ]; then git -C wiki pull --ff-only; else git clone $(WIKI_URL) wiki; fi
 	@git -C wiki log --oneline -1
 
 lint: ## Run luacheck
