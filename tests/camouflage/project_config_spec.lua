@@ -122,6 +122,26 @@ describe('camouflage.project_config', function()
     assert.equals(8, config.get().mask_length)
   end)
 
+  it('refuses shield settings, which could lock the editor', function()
+    -- A cloned repository setting a password and a focus trigger would lock
+    -- you out of your own editor the first time you switch windows.
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'shield:',
+      '  on_focus_lost: true',
+      "  password_hash: 'sha256:1:00:" .. string.rep('0', 64) .. "'",
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local status = project_config.status()
+    assert.is_true(#status.errors > 0)
+    assert.is_false(config.get().shield.on_focus_lost)
+    assert.is_nil(config.get().shield.password_hash)
+  end)
+
   it('should reject a documented nil-default key with the wrong type', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

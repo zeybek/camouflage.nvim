@@ -296,6 +296,10 @@ function M.load(opts, start_dir)
     if key ~= 'version' then
       if key == 'project_config' then
         add_error('key "project_config" is reserved and cannot be set in project config file')
+      elseif key == 'shield' then
+        -- A repository must not be able to set a password or a focus trigger
+        -- on your editor and lock you out of it.
+        add_error('key "shield" can only be set in setup(), not in a project config file')
       elseif defaults[key] ~= nil then
         if has_compatible_type(value, defaults[key], key) then
           sanitized[key] = value
