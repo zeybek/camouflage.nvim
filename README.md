@@ -267,6 +267,14 @@ require('camouflage').setup({
 
 Audit results include file, line, column, parser, key, value length, and policy decision metadata, but never the plaintext value. The audit engine does not run HIBP or any other network check.
 
+For CI, the same records can be written as JSON, with an exit code that says whether anything was found:
+
+```sh
+nvim --headless -c 'CamouflageAudit --json=audit.json --quit .'
+```
+
+`--json` on its own writes to stdout. `--quit` exits with 1 when there are findings, 0 when there are none.
+
 ## Rule-Based Policy
 
 `policy` lets you declare data-only rules in `setup()` or `.camouflage.yaml`.

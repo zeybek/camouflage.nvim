@@ -457,6 +457,19 @@ COMMANDS                                                  *camouflage-commands*
   Toggle follow cursor mode (auto-reveal current line). Use `!` to force
   disable.
 
+:CamouflageAudit[!] [--json[=path]] [--quit] [path]         *:CamouflageAudit*
+  Scan the workspace (or `path`) and list every value that would be masked.
+  `!` writes to the location list instead of the quickfix list.
+
+  `--json=<path>` writes the same records as JSON, and `--json` alone writes
+  them to stdout. `--quit` leaves Neovim afterwards with exit code 1 when
+  anything was found, which is what a CI step reads:
+>sh
+  nvim --headless -c 'CamouflageAudit --json=audit.json --quit .'
+<
+  The report carries file, line, column, key, parser, value length and the
+  policy decision. It never carries a value, the same rule the list follows.
+
 :CamouflageRegisters                                    *:CamouflageRegisters*
   List the registers the way `:registers` does, with the contents of any
   register that holds a value masked in a loaded buffer replaced. The register
