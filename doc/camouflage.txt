@@ -389,13 +389,6 @@ COMMANDS                                                  *camouflage-commands*
 :CamouflageRefresh
   Refresh decorations for all visible buffers.
 
-                                                        *:CamouflageAudit*
-:CamouflageAudit[!] [path]
-  Scan supported files under the current project root or optional [path].
-  Results are written to quickfix by default. Use `!` to write to the current
-  window's location list. Audit entries include file, line, column, parser, and
-  key and policy metadata, but never plaintext values.
-
                                              *:CamouflageWeakSecretToggle*
 :CamouflageWeakSecretToggle
   Toggle the offline weak-secret quality check on/off.
@@ -458,8 +451,10 @@ COMMANDS                                                  *camouflage-commands*
   disable.
 
 :CamouflageAudit[!] [--json[=path]] [--quit] [path]         *:CamouflageAudit*
-  Scan the workspace (or `path`) and list every value that would be masked.
-  `!` writes to the location list instead of the quickfix list.
+  Scan the project root (or `path`) and list every value that would be
+  masked. `!` writes to the location list instead of the quickfix list.
+  Entries carry file, line, column, parser, key and policy metadata, never a
+  value.
 
   `--json=<path>` writes the same records as JSON, and `--json` alone writes
   them to stdout. `--quit` leaves Neovim afterwards with exit code 1 when
