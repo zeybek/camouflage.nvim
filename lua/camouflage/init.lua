@@ -293,6 +293,13 @@ local function setup_snacks_integration()
   })
 end
 
+---Whether setup() has run. Used by the health check, where "nothing is masked"
+---and "setup was never called" look the same from the outside.
+---@return boolean
+function M.is_initialized()
+  return initialized
+end
+
 ---Setup all plugin integrations based on config
 ---@return nil
 local function setup_integrations()

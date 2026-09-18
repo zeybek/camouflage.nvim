@@ -29,6 +29,7 @@ CONTENTS                                                  *camouflage-contents*
  20. JWT Expiry Hints ........................ |camouflage-expiry|
  21. Custom Queries .......................... |camouflage-custom-queries|
  22. Troubleshooting ......................... |camouflage-troubleshooting|
+ 23. Health Check ............................ |camouflage-health|
 
 ==============================================================================
 INTRODUCTION                                          *camouflage-introduction*
@@ -1833,6 +1834,28 @@ Getting help ~
 - GitHub Issues: https://github.com/zeybek/camouflage.nvim/issues
 - Check existing issues before creating new ones
 - Include `:CamouflageStatus` output in bug reports
+- Run |:checkhealth| camouflage first, it answers most "nothing is masked"
+  questions on its own
 
 ==============================================================================
-vim:tw=78:ts=8:ft=help:norl:
+HEALTH CHECK                                                 *camouflage-health*
+
+>vim
+  :checkhealth camouflage
+<
+Reports why a file is or is not masked:
+
+- whether |camouflage.setup()| has run at all
+- the registered parsers, and which one handles the buffer you were in
+- how many values are masked in that buffer
+- which TreeSitter grammars are installed, and which parsers fall back to the
+  Lua implementation without them
+- the project config file that was found, whether it was applied, and whether
+  it is waiting for |:trust| when `project_config.secure` is on
+- which checks run, and whether HIBP can reach the network
+- the integrations that were detected, and the surfaces masked beyond the file
+  itself (picker rows, quickfix, diffs)
+
+No value is ever printed in the report.
+
+vim:tw=78:ts=8:noet:ft=help:norl:

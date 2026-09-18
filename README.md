@@ -381,6 +381,17 @@ Runtime parser registrations with `file_patterns` are picked up by automatic mas
 
 When TreeSitter is available, JSON/YAML/XML nested keys are reported with their full path. XML attributes use `parent.path@attribute` so attributes and child elements with the same name stay distinct.
 
+## Health Check
+
+```vim
+:checkhealth camouflage
+```
+
+Reports whether `setup()` ran, which parser handles the current buffer and how
+many values it masks, which TreeSitter grammars are installed, the project
+config file that was found and whether it is trusted, which checks run, and the
+integrations that were detected. No value is printed.
+
 ## Documentation
 
 For detailed documentation, visit the **[Wiki](https://github.com/zeybek/camouflage.nvim/wiki)**:
