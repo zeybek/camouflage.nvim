@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/zeybek/camouflage.nvim/compare/v0.16.0...v0.16.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* **install:** drop the wiki submodule that breaks lazy.nvim updates ([#142](https://github.com/zeybek/camouflage.nvim/issues/142)) ([5b9b27e](https://github.com/zeybek/camouflage.nvim/commit/5b9b27e34dc00531f9b7b5c37f87ad9a38991b30))
+
 ## [0.16.0](https://github.com/zeybek/camouflage.nvim/compare/v0.15.1...v0.16.0) (2026-09-18)
 
 
