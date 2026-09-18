@@ -196,6 +196,7 @@ Call the setup function with your options: >lua
     integrations = {
       telescope = true,           -- Mask in Telescope previews
       picker_results = true,      -- Mask matched lines in picker result rows
+      quickfix = true,            -- Mask matched lines in quickfix/loclist rows
       cmp = {
         disable_in_masked = true, -- Disable completion in masked buffers
       },
@@ -1175,6 +1176,22 @@ A row is masked when its file is one a parser handles. The value is found from
 the line alone (`KEY=value`, `key: value`, an XML element and so on), without
 the file's structure, so a row can be masked that the full pass would have
 left visible.
+
+                                                       *camouflage-quickfix*
+Quickfix and location list ~
+
+Rows of a quickfix or location list carry the matched line of the file they
+point at, so rows from a supported file get their value masked. The list keeps
+the real text, which `:cnext`, `:cdo` and copying a row need.
+>lua
+  require('camouflage').setup({
+    integrations = {
+      quickfix = true,  -- default
+    },
+  })
+<
+`:CamouflageAudit` never puts a value in the list in the first place, see
+|camouflage-audit|.
 
                                                         *camouflage-nvim-cmp*
 nvim-cmp ~

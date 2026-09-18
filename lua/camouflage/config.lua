@@ -32,6 +32,7 @@ local M = {}
 ---@class CamouflageIntegrationsConfig
 ---@field telescope? boolean
 ---@field picker_results? boolean Mask the matched line in picker result rows (default: true)
+---@field quickfix? boolean Mask the matched line in quickfix and location list rows (default: true)
 ---@field cmp? CamouflageCmpConfig
 
 ---@class CamouflageColorsConfig
@@ -243,6 +244,7 @@ M.defaults = {
   integrations = {
     telescope = true,
     picker_results = true,
+    quickfix = true,
     cmp = { disable_in_masked = true },
   },
   hooks = nil,
