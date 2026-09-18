@@ -16,50 +16,12 @@ local state = require('camouflage.state')
 local config = require('camouflage.config')
 local styles = require('camouflage.styles')
 local parsers = require('camouflage.parsers')
+local linemask = require('camouflage.linemask')
 
 M.namespace = vim.api.nvim_create_namespace('camouflage_guard')
 
 ---@type table<number, boolean>
 local attached = {}
-
--- Patterns that find where the value starts on a single line. Each one captures
--- the position right after the separator and any opening quote.
-local VALUE_START_PATTERNS = {
-  -- KEY=value, export KEY=value, # KEY=value, key: value, - key: value
-  '^%s*[#;]*%s*export%s+[%w_.%-]+%s*=%s*["\']?()',
-  '^%s*[#;]*%s*%-?%s*["\']?[%w_.%-]+["\']?%s*[=:]%s*["\']?()',
-  -- "any key": value
-  '^%s*%-?%s*"[^"]*"%s*:%s*["\']?()',
-  "^%s*%-?%s*'[^']*'%s*:%s*[\"']?()",
-  -- Dockerfile ENV/ARG KEY=value and ENV KEY value
-  '^%s*[Ee][Nn][Vv]%s+[%w_]+[=%s]%s*["\']?()',
-  '^%s*[Aa][Rr][Gg]%s+[%w_]+=%s*["\']?()',
-  -- <element attr="x">value
-  '^%s*<[%w_.:%-]+[^>/]*>%s*()',
-}
-
----Find the byte column (0-indexed) where a value starts on the line.
----@param line string
----@return number|nil
-local function line_value_start(line)
-  for _, pattern in ipairs(VALUE_START_PATTERNS) do
-    local pos = line:match(pattern)
-    if pos and pos <= #line then
-      return pos - 1
-    end
-  end
-  return nil
-end
-
----Drop what follows a value on the same line: trailing space, a closing tag,
----a trailing comma and a closing quote.
----@param text string
----@return string
-local function trim_value(text)
-  local value = text:gsub('%s+$', ''):gsub('</[%w_.:%-]+>$', ''):gsub(',$', '')
-  value = value:gsub('["\']$', '')
-  return value
-end
 
 ---Leftmost column covered by an existing mask on the row, if any.
 ---@param bufnr number
@@ -120,24 +82,30 @@ function M.mask_rows(bufnr, first, last)
   for i, line in ipairs(lines) do
     local row = first + i - 1
     if row ~= revealed_row then
-      local col = line_value_start(line) or masked_start(bufnr, row)
-      if col and col < #line then
-        local value = trim_value(line:sub(col + 1))
-        if value ~= '' then
-          pcall(vim.api.nvim_buf_set_extmark, bufnr, M.namespace, row, col, {
-            end_col = col + #value,
-            virt_text = {
-              {
-                styles.generate_hidden_text(cfg.style, vim.fn.strdisplaywidth(value), value, cfg),
-                hl_group,
-              },
-            },
-            virt_text_pos = 'overlay',
-            hl_mode = 'combine',
-            -- above the pass's own masks, which a longer value outgrows
-            priority = 102,
-          })
+      -- A row the line-level match doesn't recognise still gets covered when a
+      -- mask was already there, which is how an edited multi-line value stays
+      -- hidden.
+      local col, value = linemask.find_value(line)
+      if not col then
+        local marked = masked_start(bufnr, row)
+        if marked and marked < #line then
+          col, value = marked, linemask.trim_value(line:sub(marked + 1))
         end
+      end
+      if col and value and value ~= '' then
+        pcall(vim.api.nvim_buf_set_extmark, bufnr, M.namespace, row, col, {
+          end_col = col + #value,
+          virt_text = {
+            {
+              styles.generate_hidden_text(cfg.style, vim.fn.strdisplaywidth(value), value, cfg),
+              hl_group,
+            },
+          },
+          virt_text_pos = 'overlay',
+          hl_mode = 'combine',
+          -- above the pass's own masks, which a longer value outgrows
+          priority = 102,
+        })
       end
     end
   end

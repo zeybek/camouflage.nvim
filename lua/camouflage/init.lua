@@ -309,6 +309,10 @@ local function setup_integrations()
   -- Snacks integration is always enabled (used by LazyVim and others)
   -- It only activates when snacks preview buffers are detected
   setup_snacks_integration()
+
+  if config.integrations.picker_results then
+    require('camouflage.integrations.picker').setup()
+  end
 end
 
 ---Setup custom highlight group if colors are configured

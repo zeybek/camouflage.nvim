@@ -62,8 +62,9 @@ screen sharing, pair programming, screenshots, and demos.
 
 It does NOT protect against anything that reads the buffer or file contents
 directly, because the real text is still present underneath the mask:
-- search/grep tools, including Telescope `live_grep` result lines (only the
-  PREVIEW buffer is masked, not the matched result rows)
+- grep tools outside the editor, and any picker camouflage has no integration
+  for (Telescope and Snacks result rows are masked, see
+  |camouflage-picker-results|)
 - LSP servers, completion sources, and AI assistants
 - `:print`, `:substitute` previews, writing the file, and yanking with
   `yy` / `"+y`
@@ -194,6 +195,7 @@ Call the setup function with your options: >lua
     -- Integrations
     integrations = {
       telescope = true,           -- Mask in Telescope previews
+      picker_results = true,      -- Mask matched lines in picker result rows
       cmp = {
         disable_in_masked = true, -- Disable completion in masked buffers
       },
@@ -1151,6 +1153,28 @@ Snacks.nvim ~
 
 Camouflage automatically masks values in Snacks.nvim picker preview buffers.
 This integration is always enabled when snacks.nvim is detected.
+
+                                                  *camouflage-picker-results*
+Picker result rows ~
+
+Previews are masked by the normal decoration pass. The result rows of a grep
+are drawn by the picker itself from the matched line, so they are masked
+separately, before the row reaches the list. Works with Snacks.nvim and
+Telescope.
+
+The item keeps the real line, so opening the hit, yanking it or sending it to
+the quickfix list still use the real text.
+>lua
+  require('camouflage').setup({
+    integrations = {
+      picker_results = true,  -- default
+    },
+  })
+<
+A row is masked when its file is one a parser handles. The value is found from
+the line alone (`KEY=value`, `key: value`, an XML element and so on), without
+the file's structure, so a row can be masked that the full pass would have
+left visible.
 
                                                         *camouflage-nvim-cmp*
 nvim-cmp ~

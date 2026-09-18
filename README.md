@@ -31,7 +31,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
 - **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL/Dockerfile
-- **Telescope/Snacks Integration**: Mask values in preview buffers
+- **Telescope/Snacks Integration**: Mask values in preview buffers and in grep result rows
 - **Zero file modification**: All masking is purely visual
 - **Extensible**: Register custom parsers for unsupported formats via a public API
 - **Programmable Checks**: Add local or async value checks with `register_check`
@@ -48,8 +48,9 @@ screen sharing, pair programming, screenshots, and demos.
 **It does not protect against** anything that reads the buffer or file contents
 directly, because the real text is still there underneath the mask:
 
-- search results and grep tools, including Telescope `live_grep` result lines
-  (only the **preview** buffer is masked, not the matched result rows)
+- grep tools outside the editor, and any picker camouflage has no integration
+  for (Telescope and Snacks result rows are masked, previews are masked
+  everywhere, but the match itself is still real text the picker reads)
 - LSP servers, completion sources, and AI assistants
 - `:%print`, `:substitute` previews, `:w`/`:saveas`, and yanking with `yy`/`"+y`
 - the `+`/`*` clipboard registers (use `:CamouflageYank`, which copies the real
@@ -210,6 +211,7 @@ require('camouflage').setup({
 
   integrations = {
     telescope = true,
+    picker_results = true,
     cmp = { disable_in_masked = true },
   },
 })
