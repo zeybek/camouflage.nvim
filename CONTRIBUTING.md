@@ -7,8 +7,21 @@ Thank you for your interest in contributing to camouflage.nvim!
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/zeybek/camouflage.nvim.git
+git clone --recurse-submodules https://github.com/zeybek/camouflage.nvim.git
 cd camouflage.nvim
+```
+
+The `wiki/` directory is the GitHub wiki as a submodule. If you cloned without
+`--recurse-submodules`, run `git submodule update --init` to fill it in, or skip
+it entirely if you are not touching the wiki.
+
+To edit the wiki, commit and push inside `wiki/` (it is its own repository, on
+the `master` branch), then commit the new pointer here:
+
+```bash
+make wiki-update   # pull the latest wiki
+cd wiki && $EDITOR Configuration.md && git commit -am "docs: ..." && git push
+cd .. && git add wiki && git commit -m "docs(wiki): point at the new pages"
 ```
 
 2. Install git hooks for conventional commits:
