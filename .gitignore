@@ -34,3 +34,6 @@ Thumbs.db
 .tests/
 
 doc/tags
+
+# The GitHub wiki, cloned by `make wiki-update`. Not part of the plugin.
+/wiki/

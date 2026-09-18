@@ -458,7 +458,7 @@ integrations that were detected. No value is printed.
 
 ## Documentation
 
-For detailed documentation, visit the **[Wiki](https://github.com/zeybek/camouflage.nvim/wiki)**, which is also in this repository as the `wiki/` submodule (`git clone --recurse-submodules`):
+For detailed documentation, visit the **[Wiki](https://github.com/zeybek/camouflage.nvim/wiki)**:
 
 - **[Getting Started](https://github.com/zeybek/camouflage.nvim/wiki/Getting-Started)** — Installation and first steps
 - **[Configuration](https://github.com/zeybek/camouflage.nvim/wiki/Configuration)** — Full configuration reference
