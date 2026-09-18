@@ -209,6 +209,12 @@ Call the setup function with your options: >lua
       },
     },
 
+    -- Terminal output (opt in)
+    terminal = {
+      enabled = false,            -- Mask values printed in terminal buffers
+      keys = 'sensitive',         -- 'sensitive' | 'all'
+    },
+
     -- Workspace audit
     audit = {
       ignore_patterns = { '.git/**', 'node_modules/**' },
@@ -1232,6 +1238,31 @@ accidental exposure of sensitive values in completion menu.
     },
   })
 <
+
+                                                         *camouflage-terminal*
+Terminal buffers ~
+
+`env`, `printenv`, a failed curl echoing its headers: a terminal next to the
+file puts real values on the same screen. Masking them is off by default,
+because there is no file behind the output, so there is no parser and no key
+structure to rely on, only the shape of a line.
+>lua
+  require('camouflage').setup({
+    terminal = {
+      enabled = false,      -- opt in
+      keys = 'sensitive',   -- 'sensitive' | 'all'
+      -- key_patterns = { 'password', 'token' },
+    },
+  })
+<
+With `keys = 'sensitive'` (the default once turned on) a line is covered when
+its key matches the weak-check's sensitive key list, so `API_KEY=...` is hidden
+while `HOME=/Users/demo` and build output stay readable. `keys = 'all'` covers
+every `KEY=value`, which hides more and is noisier. `key_patterns` replaces the
+list entirely.
+
+`vim.b.camouflage_terminal = false` turns it off for one terminal, which is
+useful for a TUI that repaints constantly.
 
                                                         *camouflage-blink-cmp*
 blink.cmp ~

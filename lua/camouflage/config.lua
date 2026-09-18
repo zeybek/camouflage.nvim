@@ -29,6 +29,11 @@ local M = {}
 ---@class CamouflageCmpConfig
 ---@field disable_in_masked? boolean
 
+---@class CamouflageTerminalConfig
+---@field enabled? boolean Mask values printed in terminal buffers (default: false)
+---@field keys? string '"sensitive"' (default) or '"all"'
+---@field key_patterns? string[] Lua patterns for keys worth covering, defaults to the weak-secret list
+
 ---@class CamouflageIntegrationsConfig
 ---@field telescope? boolean
 ---@field picker_results? boolean Mask the matched line in picker result rows (default: true)
@@ -199,6 +204,7 @@ local M = {}
 ---@field project_config? CamouflageProjectConfigLoaderConfig Repo-level project config loading
 ---@field audit? CamouflageAuditConfig Workspace audit configuration
 ---@field policy? CamouflagePolicyConfig Declarative data-only masking policy
+---@field terminal? CamouflageTerminalConfig Masking inside :terminal buffers
 ---@field checks? CamouflageChecksConfig Per-check configuration (pwned, expiry, ...)
 
 ---@type CamouflageConfig
@@ -254,6 +260,10 @@ M.defaults = {
     mini_pick = true,
     cmp = { disable_in_masked = true },
     blink = { disable_in_masked = true },
+  },
+  terminal = {
+    enabled = false,
+    keys = 'sensitive',
   },
   hooks = nil,
   yank = {
