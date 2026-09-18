@@ -9,6 +9,7 @@
 local M = {}
 
 local checks = require('camouflage.checks')
+local memo = require('camouflage.checks.memo')
 local config_mod = require('camouflage.config')
 local hooks = require('camouflage.hooks')
 local jwt = require('camouflage.checks.expiry.jwt')
@@ -94,7 +95,11 @@ local function inspect_variable(bufnr, var)
     return
   end
 
-  local token = jwt.decode(var.value)
+  -- Decoding is the expensive half and depends only on the value. The time left
+  -- is worked out below on every pass, so a badge never goes stale.
+  local token = memo.get(bufnr, config_mod.generation, 'expiry\0' .. var.value, function()
+    return jwt.decode(var.value)
+  end)
   if not token then
     return
   end

@@ -195,6 +195,16 @@ end
 ---@param ... any Event arguments
 ---@return boolean|nil result Combined result for filter events
 function M.emit(event, ...)
+  -- Nothing listens to most events most of the time, and variable_detected is
+  -- emitted once per value.
+  if
+    not AUTOCMD_EVENTS[event]
+    and not (config_hooks and type(config_hooks['on_' .. event]) == 'function')
+    and not (listeners[event] and #listeners[event] > 0)
+  then
+    return nil
+  end
+
   local results = {}
 
   -- 1. Call config hook first (if exists)
