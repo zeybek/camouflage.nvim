@@ -23,7 +23,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml
 - **Reveal & Yank**: Temporarily reveal or copy masked values
 - **Follow Cursor Mode**: Auto-reveal current line as you navigate
 - **Workspace Audit**: Scan supported files into quickfix/location list without exposing values
-- **Masked result rows**: Values stay hidden in picker results and in quickfix/location lists
+- **Masked result rows**: Values stay hidden in picker results, quickfix/location lists, and diffs
 - **Rule-Based Policy**: Data-only ignore/force-mask rules for paths, parsers, keys, metadata, and safe value shapes
 - **Weak Secret Check**: Offline badges for obvious defaults, placeholders, short values, repeated values, and low-entropy tokens
 - **Custom Check API**: Register trusted Lua checks that render through the shared badge pipeline
@@ -214,6 +214,7 @@ require('camouflage').setup({
     telescope = true,
     picker_results = true,
     quickfix = true,
+    diff = true,
     cmp = { disable_in_masked = true },
   },
 })

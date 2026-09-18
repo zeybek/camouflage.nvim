@@ -33,6 +33,7 @@ local M = {}
 ---@field telescope? boolean
 ---@field picker_results? boolean Mask the matched line in picker result rows (default: true)
 ---@field quickfix? boolean Mask the matched line in quickfix and location list rows (default: true)
+---@field diff? boolean Mask values in diff and commit buffers (default: true)
 ---@field cmp? CamouflageCmpConfig
 
 ---@class CamouflageColorsConfig
@@ -245,6 +246,7 @@ M.defaults = {
     telescope = true,
     picker_results = true,
     quickfix = true,
+    diff = true,
     cmp = { disable_in_masked = true },
   },
   hooks = nil,
