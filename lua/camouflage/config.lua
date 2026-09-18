@@ -34,6 +34,9 @@ local M = {}
 ---@field picker_results? boolean Mask the matched line in picker result rows (default: true)
 ---@field quickfix? boolean Mask the matched line in quickfix and location list rows (default: true)
 ---@field diff? boolean Mask values in diff and commit buffers (default: true)
+---@field fzf? boolean Mask fzf-lua previews (default: true)
+---@field mini_pick? boolean Mask mini.pick previews (default: true)
+---@field blink? CamouflageCmpConfig blink.cmp handling (default: disable in masked buffers)
 ---@field cmp? CamouflageCmpConfig
 
 ---@class CamouflageColorsConfig
@@ -247,7 +250,10 @@ M.defaults = {
     picker_results = true,
     quickfix = true,
     diff = true,
+    fzf = true,
+    mini_pick = true,
     cmp = { disable_in_masked = true },
+    blink = { disable_in_masked = true },
   },
   hooks = nil,
   yank = {
