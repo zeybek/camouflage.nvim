@@ -9,7 +9,31 @@ M.STYLES = {
   DOTTED = 'dotted',
   STARS = 'stars',
   SCRAMBLE = 'scramble',
+  PARTIAL = 'partial',
 }
+
+---Keep the first and last few characters of a value and cover the rest, the way
+---a dashboard shows a key id. Leaks what it is asked to leak, so it is only
+---reachable per key through a policy rule.
+---@param text string
+---@param cfg table show_start / show_end, both optional
+---@return string
+function M.partial_text(text, cfg)
+  local chars = vim.fn.strchars(text)
+  local show_start = math.max(0, math.floor(tonumber(cfg.show_start) or 0))
+  local show_end = math.max(0, math.floor(tonumber(cfg.show_end) or 0))
+  local mask_char = cfg.mask_char or '*'
+
+  -- Never reveal the whole value: if the visible ends would meet, fall back to
+  -- covering everything.
+  if show_start + show_end >= chars then
+    return string.rep(mask_char, chars)
+  end
+
+  local head = show_start > 0 and vim.fn.strcharpart(text, 0, show_start) or ''
+  local tail = show_end > 0 and vim.fn.strcharpart(text, chars - show_end, show_end) or ''
+  return head .. string.rep(mask_char, chars - show_start - show_end) .. tail
+end
 
 ---Generate masked text based on style and configuration.
 ---
@@ -36,6 +60,9 @@ function M.generate_hidden_text(style, width, original_text, cfg)
     masked = string.rep('•', target_length)
   elseif style == M.STYLES.STARS then
     masked = string.rep(cfg.mask_char, target_length)
+  elseif style == M.STYLES.PARTIAL then
+    masked = original_text and M.partial_text(original_text, cfg)
+      or string.rep(cfg.mask_char, target_length)
   elseif style == M.STYLES.SCRAMBLE then
     if original_text and vim.fn.strchars(original_text) > 2 then
       masked = M.scramble_text(original_text)

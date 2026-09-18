@@ -443,6 +443,72 @@ local function any_value_shape_matches(value, shapes)
   return false
 end
 
+-- Presentation a rule can ask for. Data only: a style name and a few numbers,
+-- nothing that runs, so a project file can carry them safely.
+local VALID_STYLES = {
+  text = true,
+  dotted = true,
+  stars = true,
+  scramble = true,
+  partial = true,
+}
+
+---@param rule table
+---@param rule_id string
+---@return table|nil display nil when the rule asks for nothing
+---@return boolean ok
+local function display_fields(rule, rule_id)
+  local display = {}
+
+  if rule.style ~= nil then
+    if type(rule.style) ~= 'string' or not VALID_STYLES[rule.style] then
+      warn_once(
+        string.format(
+          '[camouflage] invalid policy rule "%s": style must be one of text, dotted, stars, scramble, partial',
+          rule_id
+        )
+      )
+      return nil, false
+    end
+    display.style = rule.style
+  end
+
+  if rule.mask_char ~= nil then
+    if type(rule.mask_char) ~= 'string' or vim.fn.strchars(rule.mask_char) ~= 1 then
+      warn_once(
+        string.format(
+          '[camouflage] invalid policy rule "%s": mask_char must be a single character',
+          rule_id
+        )
+      )
+      return nil, false
+    end
+    display.mask_char = rule.mask_char
+  end
+
+  for _, field in ipairs({ 'mask_length', 'show_start', 'show_end' }) do
+    local value = rule[field]
+    if value ~= nil then
+      if type(value) ~= 'number' or value < 0 or value ~= math.floor(value) then
+        warn_once(
+          string.format(
+            '[camouflage] invalid policy rule "%s": %s must be a whole number',
+            rule_id,
+            field
+          )
+        )
+        return nil, false
+      end
+      display[field] = value
+    end
+  end
+
+  if next(display) == nil then
+    return nil, true
+  end
+  return display, true
+end
+
 ---@param rule table
 ---@param index integer
 ---@return table|nil
@@ -524,6 +590,10 @@ local function normalize_rule(rule, index)
     return nil
   end
   normalized.value_suffix, ok = string_list(rule.value_suffix, 'value_suffix', rule_id)
+  if not ok then
+    return nil
+  end
+  normalized.display, ok = display_fields(rule, rule_id)
   if not ok then
     return nil
   end
@@ -667,6 +737,7 @@ local function decision(action, reason, rule)
     action = action,
     reason = reason,
     rule_id = rule and rule.id or nil,
+    display = rule and rule.display or nil,
   }
 end
 

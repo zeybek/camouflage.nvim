@@ -1431,6 +1431,33 @@ Decision order ~
 3. Otherwise, rules are evaluated in order and the first match wins.
 4. If no rule matches, `default_action` is used. The default is `mask`.
 
+How a rule masks ~
+                                              *camouflage-policy-display*
+A rule can also say how its values are masked, not only whether they are:
+
+- `style`: one of `text`, `dotted`, `stars`, `scramble`, `partial`
+- `mask_char`: single character used for the mask
+- `mask_length`: fixed mask width, which hides the value's length
+- `show_start`: with `partial`, characters kept at the start
+- `show_end`: with `partial`, characters kept at the end
+
+>yaml
+  version: 1
+  policy:
+    rules:
+      - id: aws-key-id
+        action: mask
+        key: ['^AWS_ACCESS_KEY_ID$']
+        style: partial
+        show_end: 4
+<
+That draws `AKIAIOSFODNN7EXAMPLE` as `****************MPLE`, so the key can be
+told apart without being read. `partial` reveals what it is asked to reveal, so
+it belongs on identifiers rather than on passwords.
+
+A rule with an invalid style or a fractional number is dropped with a warning,
+and its values are masked the usual way.
+
 Supported predicates ~
                                            *camouflage-policy-predicates*
 Rules can match on:
