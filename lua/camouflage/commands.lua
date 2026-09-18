@@ -146,6 +146,7 @@ function M.setup()
       '  Masked values: ' .. #vars,
       '  Policy: ' .. (policy_cfg.enabled == false and 'disabled' or 'enabled'),
       '  Policy ignored: ' .. tostring(policy_stats.ignored or 0),
+      '  Presentation mode: ' .. require('camouflage.present').status(),
     }
     vim.notify(table.concat(lines, '\n'), vim.log.levels.INFO)
   end, { desc = 'Show Camouflage status' })
@@ -162,8 +163,29 @@ function M.setup()
     nargs = '?',
   })
 
+  vim.api.nvim_create_user_command('CamouflagePresent', function(opts)
+    local present = require('camouflage.present')
+    if opts.bang then
+      if present.stop() then
+        vim.notify('[camouflage] presentation mode off', vim.log.levels.INFO)
+      end
+      return
+    end
+    if present.start() then
+      vim.notify('[camouflage] presentation mode on', vim.log.levels.INFO)
+    else
+      vim.notify('[camouflage] presentation mode is already on', vim.log.levels.INFO)
+    end
+  end, {
+    desc = 'Mask everything for a demo (! to leave)',
+    bang = true,
+  })
+
   vim.api.nvim_create_user_command('CamouflageReveal', function(opts)
     local reveal = require('camouflage.reveal')
+    if require('camouflage.present').block_reveal() then
+      return
+    end
     if opts.bang then
       reveal.hide()
     else
@@ -176,6 +198,9 @@ function M.setup()
 
   vim.api.nvim_create_user_command('CamouflageFollowCursor', function(opts)
     local reveal = require('camouflage.reveal')
+    if not opts.bang and require('camouflage.present').block_reveal() then
+      return
+    end
     reveal.toggle_follow_cursor({
       force_disable = opts.bang,
     })

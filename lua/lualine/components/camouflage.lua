@@ -10,6 +10,8 @@ M.default_options = {
   show_count = false,
   show_follow_indicator = true,
   follow_indicator = '[F]',
+  show_present_indicator = true,
+  present_indicator = '[P]',
 }
 
 function M:init(options)
@@ -46,6 +48,15 @@ function M:update_status()
         if #vars > 0 then
           result = result .. ' ' .. #vars
         end
+      end
+    end
+
+    -- Presentation mode is the one state worth knowing at a glance: it is what
+    -- you check before you start sharing the screen.
+    if self.options.show_present_indicator then
+      local present_ok, present = pcall(require, 'camouflage.present')
+      if present_ok and present.is_active() then
+        result = result .. ' ' .. self.options.present_indicator
       end
     end
 

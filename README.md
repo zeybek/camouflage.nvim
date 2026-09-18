@@ -32,6 +32,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
 - **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL/Dockerfile
+- **Presentation mode**: One command that masks everything and blocks reveals while you share your screen
 - **Terminal masking**: Opt-in masking for values printed by commands in `:terminal`
 - **Picker integrations**: Mask previews and grep result rows in Telescope, Snacks, fzf-lua and mini.pick
 - **Zero file modification**: All masking is purely visual
@@ -250,6 +251,7 @@ require('camouflage').setup({
 | `:CamouflagePwnedClear` | Clear pwned indicators from buffer |
 | `:CamouflagePwnedClearCache` | Clear local pwned check cache |
 | `:CamouflageExpiryToggle` | Toggle JWT expiry check on/off |
+| `:CamouflagePresent` | Presentation mode: mask everything, refuse reveals (`!` to leave) |
 | `:CamouflageInit` | Create `.camouflage.yaml` in project root |
 | `:CamouflageParsers` | List registered parsers (debug) |
 
