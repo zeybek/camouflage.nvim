@@ -36,6 +36,7 @@ end
 function M.clear_buffer(bufnr)
   M.store.clear_buffer(bufnr)
   M.badges.clear_buffer(bufnr)
+  require('camouflage.checks.memo').clear(bufnr)
 end
 
 ---Clear everything on a single line.

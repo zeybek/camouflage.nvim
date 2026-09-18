@@ -8,6 +8,7 @@ local M = {}
 
 local checks = require('camouflage.checks')
 local config_mod = require('camouflage.config')
+local memo = require('camouflage.checks.memo')
 local hooks = require('camouflage.hooks')
 local log = require('camouflage.log')
 
@@ -403,7 +404,16 @@ end
 ---@param var ParsedVariable
 function M.inspect_variable(bufnr, var)
   local cfg = get_config()
-  local classification = M.classify(var, cfg)
+  -- Scoring a value is the same answer until the value or the config changes,
+  -- and a pass over a large file asks the same questions again every time.
+  local classification = memo.get(
+    bufnr,
+    config_mod.generation,
+    'weak_secret\0' .. tostring(var.key) .. '\0' .. tostring(var.value),
+    function()
+      return M.classify(var, cfg)
+    end
+  )
   if not classification then
     return
   end
