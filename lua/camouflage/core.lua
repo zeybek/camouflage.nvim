@@ -267,6 +267,22 @@ decorate = function(bufnr, override_filename)
   hooks.emit('after_decorate', bufnr, filtered_variables)
 end
 
+---A policy rule can ask for its own style, mask character or partial reveal.
+---Those fields ride along on the variable's policy decision, so the mask for
+---one key can differ from the buffer's.
+---@param var table
+---@param cfg table
+---@return table
+local function display_config(var, cfg)
+  local display = var.policy and var.policy.display
+  if not display then
+    return cfg
+  end
+  return vim.tbl_extend('force', {}, cfg, display)
+end
+
+M.display_config = display_config
+
 ---@param bufnr number
 ---@param var table
 ---@param cfg table
@@ -284,6 +300,7 @@ function M.apply_single_decoration(bufnr, var, cfg, lines, line_offsets)
     return
   end
 
+  cfg = display_config(var, cfg)
   local hl_group = get_highlight_group(cfg)
 
   -- Handle multiline values: apply extmark per line

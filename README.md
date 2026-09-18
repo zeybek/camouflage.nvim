@@ -19,7 +19,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml
 - **Multi-format support**: `.env`, `.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`, `.tf`, `.tfvars`, `.hcl`, `Dockerfile`, `Containerfile`
 - **Nested key support**: Handles `database.connection.password` in JSON/YAML/XML
 - **All value types**: Masks strings, numbers, and booleans
-- **Multiple styles**: `stars`, `dotted`, `text`, `scramble`
+- **Multiple styles**: `stars`, `dotted`, `text`, `scramble`, and `partial` per key through policy rules
 - **Reveal & Yank**: Temporarily reveal or copy masked values
 - **Follow Cursor Mode**: Auto-reveal current line as you navigate
 - **Workspace Audit**: Scan supported files into quickfix/location list without exposing values
@@ -280,6 +280,11 @@ policy:
     - id: ignore-debug
       action: ignore
       key: ['^DEBUG$', '^PORT$']
+    - id: aws-key-id
+      action: mask
+      key: ['^AWS_ACCESS_KEY_ID$']
+      style: partial
+      show_end: 4
     - id: force-client-secrets
       action: mask
       allow_force: true
