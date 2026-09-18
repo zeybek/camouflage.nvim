@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.15.0](https://github.com/zeybek/camouflage.nvim/compare/v0.14.1...v0.15.0) (2026-09-18)
+
+
+### Features
+
+* **audit:** machine readable report and exit code ([#124](https://github.com/zeybek/camouflage.nvim/issues/124)) ([c0c5afe](https://github.com/zeybek/camouflage.nvim/commit/c0c5afe1ec696d6492e0eda3608d88c256f15b07))
+* **health:** add :checkhealth camouflage ([#116](https://github.com/zeybek/camouflage.nvim/issues/116)) ([fde2ab8](https://github.com/zeybek/camouflage.nvim/commit/fde2ab8cd1c41eb1af1b46ae1f34eec040edba5d))
+* **integrations:** mask values in diff and commit buffers ([#115](https://github.com/zeybek/camouflage.nvim/issues/115)) ([2161735](https://github.com/zeybek/camouflage.nvim/commit/2161735c20c4561b3e740747ddcc8a38df93b174))
+* **integrations:** mask values in picker result rows ([#113](https://github.com/zeybek/camouflage.nvim/issues/113)) ([9590fe5](https://github.com/zeybek/camouflage.nvim/commit/9590fe5c83d78241012a56e6ec5da70bb2ae04de))
+* **integrations:** mask values in quickfix and location list rows ([#114](https://github.com/zeybek/camouflage.nvim/issues/114)) ([9d7c2c9](https://github.com/zeybek/camouflage.nvim/commit/9d7c2c9860f0f1d9bd5007786ef49099b2e67334))
+* **integrations:** support blink.cmp, fzf-lua and mini.pick ([#120](https://github.com/zeybek/camouflage.nvim/issues/120)) ([36134b3](https://github.com/zeybek/camouflage.nvim/commit/36134b3de03316beadcfab42d0041b9c8e630398))
+* **policy:** let a rule choose the mask style for its keys ([#118](https://github.com/zeybek/camouflage.nvim/issues/118)) ([9a5c16e](https://github.com/zeybek/camouflage.nvim/commit/9a5c16e5a7f6be8adc0c90d139a968377da5d239))
+* **present:** add presentation mode ([#122](https://github.com/zeybek/camouflage.nvim/issues/122)) ([f2298b8](https://github.com/zeybek/camouflage.nvim/commit/f2298b84581fb59e6ab6722b31fe579f20887be5))
+* **registers:** list registers with masked values redacted ([#123](https://github.com/zeybek/camouflage.nvim/issues/123)) ([2172d83](https://github.com/zeybek/camouflage.nvim/commit/2172d83535f6b57e5386186955d1eb23b384bb26))
+* **terminal:** opt-in masking for values printed in a terminal ([#121](https://github.com/zeybek/camouflage.nvim/issues/121)) ([f49af00](https://github.com/zeybek/camouflage.nvim/commit/f49af0055d9404da5c5d8408369b2ea4356c53ae))
+
+
+### Bug Fixes
+
+* **checks:** sync check anchors once per pass instead of per result ([#111](https://github.com/zeybek/camouflage.nvim/issues/111)) ([38c8361](https://github.com/zeybek/camouflage.nvim/commit/38c8361d7dfafb48c7b6a62d367e797c6d794cf6))
+
+
+### Performance Improvements
+
+* **checks:** reuse check answers for values that did not change ([#119](https://github.com/zeybek/camouflage.nvim/issues/119)) ([161a284](https://github.com/zeybek/camouflage.nvim/commit/161a2847aac4ee7e5412817f78e9aac40c48d2ee))
+
 ## [0.14.1](https://github.com/zeybek/camouflage.nvim/compare/v0.14.0...v0.14.1) (2026-09-16)
 
 
