@@ -264,6 +264,8 @@ require('camouflage').setup({
 | `:CamouflageShield` | Cover the whole editor until a key is pressed |
 | `:CamouflageShieldPassword` | Set the shield password (`!` removes it) |
 | `:CamouflageInit` | Create `.camouflage.yaml` in project root |
+| `:CamouflageProjectConfigStatus` | Show the project config status |
+| `:CamouflageProjectConfigWatchStatus` | Show the project config watcher status |
 | `:CamouflageParsers` | List registered parsers (debug) |
 
 > **[Full commands list](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)** on the wiki.

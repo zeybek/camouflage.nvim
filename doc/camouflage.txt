@@ -278,6 +278,9 @@ Call the setup function with your options: >lua
     yank = {
       default_register = '+',     -- Default register for yanking
       notify = true,              -- Show notification after yank
+      auto_clear_seconds = 30,    -- Clear the register after, 0 keeps it
+      confirm = true,             -- Ask before copying
+      confirm_message = 'Copy value of "%s" to clipboard?', -- %s is the key
     },
 
     -- Reveal
@@ -515,6 +518,11 @@ camouflage.disable()
 camouflage.is_enabled()
   Returns `true` if camouflage is enabled, `false` otherwise.
 
+                                                  *camouflage.is_initialized()*
+camouflage.is_initialized()
+  Returns `true` once |camouflage.setup()| has run. Useful in a config that
+  may load before the plugin does, such as a statusline component.
+
                                                          *camouflage.refresh()*
 camouflage.refresh()
   Refresh decorations for all visible buffers.
@@ -636,6 +644,42 @@ camouflage.once({event}, {callback})
                                                           *camouflage.off()*
 camouflage.off({event}, {id})
   Unregister an event listener by ID.
+
+                                                          *camouflage-hooks*
+Hooks in setup() ~
+Three of the events can also be handled from `setup()`. Returning `false`
+from the first two skips the buffer or the value.
+>lua
+  require('camouflage').setup({
+    hooks = {
+      on_before_decorate = function(bufnr, filename) end,  -- false: skip buffer
+      on_variable_detected = function(bufnr, var) end,  -- false: leave shown
+      on_after_decorate = function(bufnr, variables) end,
+    },
+  })
+<
+`var.value` is the real value. Hooks are trusted Lua code, see
+|camouflage-security-model|.
+
+                                                      *camouflage-autocmds*
+User autocmds ~
+For code that would rather not require the module:
+
+  `CamouflageBeforeDecorate`  data: `{ bufnr, filename }`
+  `CamouflageAfterDecorate`   data: `{ bufnr, filename, variables }`,
+                              values redacted
+  `CamouflageConfigChanged`   not fired by camouflage: fire it yourself to
+                              make it re-apply masks everywhere, e.g. after
+                              changing options from your own code
+>lua
+  vim.api.nvim_create_autocmd('User', {
+    pattern = 'CamouflageAfterDecorate',
+    callback = function(args)
+      print(#args.data.variables .. ' values masked')
+    end,
+  })
+<
+`variable_detected` has no autocmd, it fires once per value.
 
                                             *camouflage.start_follow_cursor()*
 camouflage.start_follow_cursor()
@@ -1179,6 +1223,28 @@ scramble ~
   Deterministically shuffles characters while preserving first and last.
   Example: `API_KEY=sk-1234` -> `API_KEY=s1-k324`
   Same input always produces the same output.
+
+A fifth style, `partial`, keeps a few characters at the start and end. It is
+set per key through a policy rule, not globally, see |camouflage-policy|.
+
+                                                      *camouflage-highlights*
+Highlight groups ~
+
+  `CamouflageMask`              masks, built from `colors` when it is set,
+                                otherwise `highlight_group` is used
+  `CamouflageRevealed`          a revealed value
+  `CamouflagePwned`             line of a breached password
+  `CamouflagePwnedSign`         its sign
+  `CamouflagePwnedVirtualText`  its breach count
+  `CamouflageShield1`..`4`      the shield pattern, see |camouflage-shield|
+  `CamouflageShieldCard`, `CamouflageShieldBorder`, `CamouflageShieldTitle`,
+  `CamouflageShieldText`, `CamouflageShieldInput`, `CamouflageShieldError`
+                                the shield card
+
+The pwned and shield groups are defined with `default`, so a colorscheme or
+your config can set them. Badges use the groups named in their config:
+`checks.expiry.hl_*`, `checks.weak_secret.virtual_text_hl`,
+`pwned.virtual_text_hl` and `checks.badges.separator_hl`.
 
 ==============================================================================
 INTEGRATIONS                                          *camouflage-integrations*
@@ -1836,6 +1902,8 @@ Configuration ~
     },
   })
 <
+`virtual_text_prefix` is still read when `virtual_text_format` is not set,
+as `prefix .. '%s exposures'`. It is deprecated: use `virtual_text_format`.
 
 Visual Indicators ~
                                                 *camouflage-pwned-indicators*
@@ -1875,13 +1943,23 @@ Config: ~
       checks = {
         badges = {
           position = 'right_align',  -- 'right_align' | 'eol' | 'inline'
+          separator = ' ',           -- between two badges on one line
+          separator_hl = 'Comment',
         },
         expiry = {
           enabled = true,
           show_threshold_seconds = 86400,   -- show badge when < 24h left
           warn_threshold_seconds = 3600,    -- warning color when < 1h
           show_provider = true,
-          refresh = { auto_interval = 60 }, -- 0 disables timer
+          refresh = {
+            on_buf_enter = true,            -- re-check on BufEnter
+            on_save = true,                 -- re-check on BufWritePost
+            on_change = true,               -- re-check on TextChanged
+            auto_interval = 60,             -- seconds, 0 disables the timer
+          },
+          hl_valid = 'Comment',             -- badge while more than warn left
+          hl_warning = 'DiagnosticWarn',    -- badge under the warn threshold
+          hl_expired = 'DiagnosticError',   -- badge once expired
         },
       },
     })
