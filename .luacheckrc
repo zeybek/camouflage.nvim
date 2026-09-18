@@ -23,6 +23,7 @@ exclude_files = {
   "lua_modules/",
   ".luarocks/",
   ".tests/",
+  "wiki/",
 }
 
 max_line_length = 120

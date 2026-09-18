@@ -1,4 +1,4 @@
-.PHONY: test lint format check clean help
+.PHONY: test lint format check clean help wiki-update
 
 NVIM ?= nvim
 PLENARY_DIR ?= ~/.local/share/nvim/site/pack/vendor/start/plenary.nvim
@@ -8,6 +8,10 @@ help: ## Show this help
 
 test: ## Run tests
 	@$(NVIM) --headless -u tests/minimal_init.lua -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal_init.lua'}"
+
+wiki-update: ## Pull the latest wiki pages into wiki/
+	@git submodule update --init --remote wiki
+	@git -C wiki log --oneline -1
 
 lint: ## Run luacheck
 	@luacheck lua/ tests/
