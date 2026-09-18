@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0](https://github.com/zeybek/camouflage.nvim/compare/v0.15.1...v0.16.0) (2026-09-18)
+
+
+### Features
+
+* **shield:** cover the whole editor until a key or a password ([#137](https://github.com/zeybek/camouflage.nvim/issues/137)) ([dfdaf9b](https://github.com/zeybek/camouflage.nvim/commit/dfdaf9bb88113365bd31bcb881c2c77c76fbb6c5))
+
+
+### Bug Fixes
+
+* **docs:** drop the duplicate :CamouflageAudit help tag ([#134](https://github.com/zeybek/camouflage.nvim/issues/134)) ([7d3452d](https://github.com/zeybek/camouflage.nvim/commit/7d3452d367c718e7733387995b42e67167de9973))
+
 ## [0.15.1](https://github.com/zeybek/camouflage.nvim/compare/v0.15.0...v0.15.1) (2026-09-18)
 
 
