@@ -199,6 +199,11 @@ Call the setup function with your options: >lua
       picker_results = true,      -- Mask matched lines in picker result rows
       quickfix = true,            -- Mask matched lines in quickfix/loclist rows
       diff = true,                -- Mask values in diff and commit buffers
+      fzf = true,                 -- Mask fzf-lua previews
+      mini_pick = true,           -- Mask mini.pick previews
+      blink = {
+        disable_in_masked = true, -- Disable blink.cmp in masked buffers
+      },
       cmp = {
         disable_in_masked = true, -- Disable completion in masked buffers
       },
@@ -1227,6 +1232,36 @@ accidental exposure of sensitive values in completion menu.
     },
   })
 <
+
+                                                        *camouflage-blink-cmp*
+blink.cmp ~
+
+blink.cmp reads `vim.b.completion` before it runs, so camouflage turns it off
+in masked buffers the same way it turns nvim-cmp off, and puts the buffer back
+the way it was when masking stops.
+>lua
+  require('camouflage').setup({
+    integrations = {
+      blink = { disable_in_masked = true },  -- default
+    },
+  })
+<
+
+                                                     *camouflage-more-pickers*
+fzf-lua and mini.pick ~
+
+Their previews are masked as well, through the one function each of them draws
+file previews with.
+>lua
+  require('camouflage').setup({
+    integrations = {
+      fzf = true,        -- default
+      mini_pick = true,  -- default
+    },
+  })
+<
+oil.nvim needs nothing: its preview opens the file in a normal buffer, which is
+masked by the usual path.
 
                                                          *camouflage-lualine*
 Lualine ~
