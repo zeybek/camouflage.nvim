@@ -58,6 +58,9 @@ directly, because the real text is still there underneath the mask:
 - `:%print`, `:substitute` previews, `:w`/`:saveas`, and yanking with `yy`/`"+y`
 - the `+`/`*` clipboard registers (use `:CamouflageYank`, which copies the real
   value deliberately with a confirm prompt and timed auto-clear)
+- `:registers`, which prints what a register holds, including a value you
+  copied with `yy` (`:CamouflageRegisters` lists them with masked values
+  redacted)
 
 For per-repo `.camouflage.yaml` files, masking config is applied as data only
 (no code execution). A project file can't turn on HIBP network checks
@@ -251,6 +254,7 @@ require('camouflage').setup({
 | `:CamouflagePwnedClear` | Clear pwned indicators from buffer |
 | `:CamouflagePwnedClearCache` | Clear local pwned check cache |
 | `:CamouflageExpiryToggle` | Toggle JWT expiry check on/off |
+| `:CamouflageRegisters` | List registers with masked values redacted |
 | `:CamouflagePresent` | Presentation mode: mask everything, refuse reveals (`!` to leave) |
 | `:CamouflageInit` | Create `.camouflage.yaml` in project root |
 | `:CamouflageParsers` | List registered parsers (debug) |

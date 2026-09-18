@@ -69,6 +69,8 @@ directly, because the real text is still present underneath the mask:
 - LSP servers, completion sources, and AI assistants
 - `:print`, `:substitute` previews, writing the file, and yanking with
   `yy` / `"+y`
+- `:registers`, which prints a register's contents, including a value copied
+  with `yy`. |:CamouflageRegisters| lists them with masked values redacted
 - the `+` / `*` clipboard registers (use |:CamouflageYank|, which copies the
   real value deliberately, with a confirm prompt and timed auto-clear)
 
@@ -454,6 +456,11 @@ COMMANDS                                                  *camouflage-commands*
 :CamouflageFollowCursor[!]                            *:CamouflageFollowCursor*
   Toggle follow cursor mode (auto-reveal current line). Use `!` to force
   disable.
+
+:CamouflageRegisters                                    *:CamouflageRegisters*
+  List the registers the way `:registers` does, with the contents of any
+  register that holds a value masked in a loaded buffer replaced. The register
+  itself is untouched.
 
 :CamouflagePresent[!]                                      *:CamouflagePresent*
   Turn presentation mode on: mask everything, drop any reveal, and refuse

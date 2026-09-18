@@ -163,6 +163,10 @@ function M.setup()
     nargs = '?',
   })
 
+  vim.api.nvim_create_user_command('CamouflageRegisters', function()
+    require('camouflage.registers').show()
+  end, { desc = 'List registers with masked values redacted' })
+
   vim.api.nvim_create_user_command('CamouflagePresent', function(opts)
     local present = require('camouflage.present')
     if opts.bang then
