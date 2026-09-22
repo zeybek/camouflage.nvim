@@ -424,7 +424,7 @@ With `debug = true`, custom check logs include check names, run counts, failures
 | Properties | `.properties`, `.ini`, `.conf`, `credentials` | Yes (sections) |
 | Netrc | `.netrc`, `_netrc` | No |
 | XML | `.xml` | Yes |
-| HTTP | `.http` | No |
+| HTTP | `.http` | Yes (headers, query, JSON body) |
 | HCL / Terraform | `.tf`, `.tfvars`, `.hcl` | Yes |
 | Dockerfile | `Dockerfile`, `Containerfile`, `*.dockerfile` | No |
 
