@@ -345,6 +345,70 @@ describe('camouflage.autocmds', function()
     end)
   end)
 
+  describe("the window's 'wrap'", function()
+    local dir
+    local wrap
+
+    before_each(function()
+      wrap = vim.o.wrap
+      dir = vim.fn.tempname()
+      vim.fn.mkdir(dir, 'p')
+      vim.fn.writefile({ 'API_KEY=wrapsecretvalue' }, dir .. '/.env')
+      vim.fn.writefile({ 'just text' }, dir .. '/README.md')
+      vim.fn.writefile({ 'more text' }, dir .. '/notes.txt')
+      require('camouflage.config').setup({ project_config = { enabled = false } })
+      require('camouflage.parsers').setup()
+      autocmds.setup()
+      vim.cmd('enew!')
+    end)
+
+    after_each(function()
+      vim.cmd('enew!')
+      for _, name in ipairs({ '.env', 'README.md', 'notes.txt' }) do
+        local bufnr = vim.fn.bufnr(dir .. '/' .. name)
+        if bufnr > 0 then
+          vim.api.nvim_buf_delete(bufnr, { force = true })
+        end
+      end
+      vim.o.wrap = wrap
+      vim.fn.delete(dir, 'rf')
+    end)
+
+    local function edit(name)
+      vim.cmd('edit ' .. vim.fn.fnameescape(dir .. '/' .. name))
+    end
+
+    it('comes back when the window moves on to a buffer that is not masked', function()
+      vim.wo.wrap = true
+      edit('.env')
+      assert.is_false(vim.wo.wrap, 'a masked buffer turns it off')
+
+      edit('README.md')
+
+      assert.is_true(vim.wo.wrap)
+      assert.is_false(pcall(vim.api.nvim_win_get_var, 0, 'camouflage_saved_wrap'))
+    end)
+
+    it('goes off again when the masked buffer comes back', function()
+      vim.wo.wrap = true
+      edit('.env')
+      edit('README.md')
+
+      edit('.env')
+
+      assert.is_false(vim.wo.wrap)
+    end)
+
+    it("leaves a user's own nowrap alone", function()
+      vim.wo.wrap = false
+      edit('.env')
+
+      edit('notes.txt')
+
+      assert.is_false(vim.wo.wrap)
+    end)
+  end)
+
   describe('apply_to_loaded_buffers', function()
     it('should not error when called', function()
       autocmds.setup()
