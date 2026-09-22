@@ -193,4 +193,122 @@ Authorization: Bearer {{api_key}}
       assert.equals(12, result[1].end_index)
     end)
   end)
+
+  describe('requests', function()
+    local function parsed(lines)
+      local content = table.concat(lines, '\n')
+      local out = {}
+      for _, v in ipairs(http_parser.parse(content)) do
+        -- Every range points at the value itself.
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+        table.insert(out, v.key .. '=' .. v.value)
+      end
+      return out
+    end
+
+    it('masks the credential of an Authorization header, not its scheme', function()
+      assert.same(
+        { 'header.Authorization=http-bearer', 'header.Proxy-Authorization=dXNlcjpwYXNz' },
+        parsed({
+          'GET https://api.example.com/users',
+          'Authorization: Bearer http-bearer',
+          'Proxy-Authorization: Basic dXNlcjpwYXNz',
+        })
+      )
+    end)
+
+    it('masks sensitive headers and leaves the others alone', function()
+      assert.same(
+        { 'header.X-Api-Key=http-header', 'header.X-Auth-Token=auth-token' },
+        parsed({
+          'POST https://api.example.com/users',
+          'X-Api-Key: http-header',
+          'Content-Type: application/json',
+          'Accept: */*',
+          'X-Auth-Token: auth-token',
+        })
+      )
+    end)
+
+    it('keeps cookie names and masks their values', function()
+      assert.same(
+        { 'header.Cookie.session=http-cookie', 'header.Cookie.csrf=csrf-value' },
+        parsed({ 'GET https://x.test/', 'Cookie: session=http-cookie; csrf=csrf-value' })
+      )
+    end)
+
+    it('masks sensitive query parameters', function()
+      assert.same(
+        { 'query.api_key=http-query', 'query.access_token=query-token' },
+        parsed({ 'GET https://x.test/users?api_key=http-query&page=3&access_token=query-token' })
+      )
+    end)
+
+    it('masks a JSON body and a form body', function()
+      assert.same(
+        {
+          'body.password=http-body',
+          'body.name=John',
+          'body.client_secret=form-secret',
+        },
+        parsed({
+          'POST https://x.test/login',
+          'Content-Type: application/json',
+          '',
+          '{"password": "http-body", "name": "John"}',
+          '',
+          '###',
+          'POST https://x.test/charges',
+          'Content-Type: application/x-www-form-urlencoded',
+          '',
+          'amount=2000&client_secret=form-secret&source=tok_visa',
+        })
+      )
+    end)
+
+    it('leaves {{variable}} references, comments and response scripts alone', function()
+      assert.same(
+        {},
+        parsed({
+          '# Authorization: Bearer not-a-header',
+          'GET {{base_url}}/users?token={{token}}',
+          'Authorization: Bearer {{api_key}}',
+          'X-API-Secret: {{api_secret}}',
+          '',
+          '{"password": "{{db.password}}"}',
+          '',
+          '> {% client.global.set("token", response.body.token); %}',
+        })
+      )
+    end)
+
+    it('reads a request line that is only a URL', function()
+      assert.same(
+        { 'header.Authorization=bare-url' },
+        parsed({ 'https://x.test/users', 'Authorization: Bearer bare-url' })
+      )
+    end)
+
+    it('reads requests on the tree-sitter path too', function()
+      local lines = { '@token = ts-var', 'GET https://x.test/', 'Authorization: Bearer ts-header' }
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.bo[bufnr].filetype = 'http'
+
+      local keys = {}
+      for _, v in ipairs(http_parser.parse(table.concat(lines, '\n'), bufnr)) do
+        table.insert(keys, v.key .. '=' .. v.value)
+      end
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+
+      assert.same({ 'token=ts-var', 'header.Authorization=ts-header' }, keys)
+    end)
+
+    it('keeps the variables and puts everything in file order', function()
+      assert.same(
+        { 'token=http-var', 'header.Authorization=after-var' },
+        parsed({ '@token = http-var', 'GET https://x.test/', 'Authorization: Bearer after-var' })
+      )
+    end)
+  end)
 end)

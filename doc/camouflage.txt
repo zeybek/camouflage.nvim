@@ -1062,16 +1062,25 @@ XML files ~
 
 HTTP files ~
   Extensions: .http
-  REST client format used by Kulala.nvim and similar tools
-  Masks variable declarations: @variable_name = value
+  REST client format used by Kulala.nvim, rest.nvim and similar tools
+  Masks variable declarations (`@variable_name = value`) and, in each request:
+  - the values of query parameters with a sensitive name (`api_key`, `token`,
+    `signature`, ...)
+  - the values of headers with a sensitive name (`Authorization`, `Cookie`,
+    `X-Api-Key`, ...). `Authorization: Bearer x` keeps `Bearer` visible, and
+    a cookie header keeps its cookie names
+  - a JSON body, value by value, and sensitive fields of a form body
+  `{{variable}}` references are left as they are.
   Example: >http
     @api_key = sk-live-abc123xyz789
-    @db_password = SuperSecret123!
     @base_url = https://api.example.com
 
     ### Get Users
-    GET {{base_url}}/users
-    Authorization: Bearer {{api_key}}
+    GET {{base_url}}/users?access_token=abc123
+    Authorization: Bearer sk-live-abc123xyz789
+    Content-Type: application/json
+
+    {"password": "SuperSecret123!"}
 <
 
                                                               *camouflage-hcl*
