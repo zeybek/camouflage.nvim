@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.17.0](https://github.com/zeybek/camouflage.nvim/compare/v0.16.1...v0.17.0) (2026-09-22)
+
+
+### Features
+
+* **http:** mask headers, query parameters and bodies in .http files ([#178](https://github.com/zeybek/camouflage.nvim/issues/178)) ([492f386](https://github.com/zeybek/camouflage.nvim/commit/492f38650da9f37e039da9fb88334ef414db0dfa))
+
+
+### Bug Fixes
+
+* **autocmds:** keep masking builtin formats when patterns is set ([#159](https://github.com/zeybek/camouflage.nvim/issues/159)) ([9a14b4d](https://github.com/zeybek/camouflage.nvim/commit/9a14b4d2c0ec24013262306e3e960aa0a3f87b30))
+* **config:** keep values set at runtime across project config reloads ([#163](https://github.com/zeybek/camouflage.nvim/issues/163)) ([4499613](https://github.com/zeybek/camouflage.nvim/commit/449961369974a72727f388d853810a420cdfe9b5))
+* **core:** give a window its wrap back when it leaves a masked buffer ([#176](https://github.com/zeybek/camouflage.nvim/issues/176)) ([7f68658](https://github.com/zeybek/camouflage.nvim/commit/7f68658a77bcb2d19588210e90d065997c2175fa))
+* **env:** mask assignments behind readonly, declare, typeset and local ([#173](https://github.com/zeybek/camouflage.nvim/issues/173)) ([58e7e9a](https://github.com/zeybek/camouflage.nvim/commit/58e7e9af258d3f4b46e265cfb9ff8f475b569933))
+* **env:** mask dotted and dashed keys in dotenv files ([#174](https://github.com/zeybek/camouflage.nvim/issues/174)) ([d232b94](https://github.com/zeybek/camouflage.nvim/commit/d232b949b84ceb81509d379a3fa8837dfe492e2a))
+* **hcl:** mask values in one-line objects without the grammar ([#175](https://github.com/zeybek/camouflage.nvim/issues/175)) ([eee3923](https://github.com/zeybek/camouflage.nvim/commit/eee39233598aba7b19611ef45c40cda8f35131fd))
+* **init:** keep highlight groups across colorschemes and user overrides ([#177](https://github.com/zeybek/camouflage.nvim/issues/177)) ([5a23f24](https://github.com/zeybek/camouflage.nvim/commit/5a23f24d8672a8c86ff39c609be09bf4e6800aeb))
+* **init:** keep picker and completion guards across parser and config changes ([#161](https://github.com/zeybek/camouflage.nvim/issues/161)) ([6a17303](https://github.com/zeybek/camouflage.nvim/commit/6a1730367ffc60e3405603accbb37a81995e67d2))
+* **picker:** hook pickers that load after camouflage ([#172](https://github.com/zeybek/camouflage.nvim/issues/172)) ([c68e1e8](https://github.com/zeybek/camouflage.nvim/commit/c68e1e8e6e3a995706bfbb4d971dcc8e5cc1b3da))
+* **present:** mask buffers whose project config turns masking off ([#162](https://github.com/zeybek/camouflage.nvim/issues/162)) ([a0e7915](https://github.com/zeybek/camouflage.nvim/commit/a0e7915b282362e3300037237cdf38300d8ff3fe))
+* **present:** refuse to turn masking off while presentation mode is on ([#166](https://github.com/zeybek/camouflage.nvim/issues/166)) ([368176a](https://github.com/zeybek/camouflage.nvim/commit/368176a9a424a54ad19c00ec76c58f7c28ea2b5f))
+* **project-config:** warn when a project file can leave values unmasked ([#171](https://github.com/zeybek/camouflage.nvim/issues/171)) ([d051082](https://github.com/zeybek/camouflage.nvim/commit/d051082ffc088098a0029a143222117b9da5c45e))
+* **yank:** clear pending registers when Neovim exits ([#168](https://github.com/zeybek/camouflage.nvim/issues/168)) ([8be63de](https://github.com/zeybek/camouflage.nvim/commit/8be63de9b0e3614a1a5f28f950363fbc0b177537))
+
+
+### Performance Improvements
+
+* **reveal:** stop reading the whole buffer once per value while a line is revealed ([#167](https://github.com/zeybek/camouflage.nvim/issues/167)) ([bcb6bb7](https://github.com/zeybek/camouflage.nvim/commit/bcb6bb73b2e53d131025f5a5aa141c153ab12070))
+
 ## [0.16.1](https://github.com/zeybek/camouflage.nvim/compare/v0.16.0...v0.16.1) (2026-09-18)
 
 
