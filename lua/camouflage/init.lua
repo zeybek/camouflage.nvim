@@ -471,9 +471,13 @@ function M.enable()
   require('camouflage.core').refresh_all()
 end
 
----Disable camouflage globally and clear all decorations
+---Disable camouflage globally and clear all decorations. Refused while
+---presentation mode is on.
 ---@return nil
 function M.disable()
+  if require('camouflage.present').block_reveal() then
+    return
+  end
   require('camouflage.config').set('enabled', false)
   local state = require('camouflage.state')
   local core = require('camouflage.core')

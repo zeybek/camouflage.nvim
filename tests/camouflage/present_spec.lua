@@ -151,6 +151,115 @@ describe('camouflage.present', function()
     assert.is_false(reveal.is_revealed())
   end)
 
+  describe('refuses to unmask while it is on', function()
+    local notify = vim.notify
+    local messages
+
+    before_each(function()
+      messages = {}
+      vim.notify = function(msg)
+        table.insert(messages, msg)
+      end
+    end)
+
+    after_each(function()
+      vim.notify = notify
+    end)
+
+    local function marks(bufnr)
+      local ns = require('camouflage.state').namespace
+      return #vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {})
+    end
+
+    local function refused()
+      for _, msg in ipairs(messages) do
+        if msg:find('presentation mode is on', 1, true) then
+          return true
+        end
+      end
+      return false
+    end
+
+    it('through :CamouflageToggle', function()
+      local bufnr = open('toggle.env', { 'API_KEY=present-secret' })
+      present.start()
+
+      vim.cmd('CamouflageToggle')
+
+      assert.is_true(config.get().enabled)
+      assert.equals(1, marks(bufnr))
+      assert.is_true(refused())
+      assert.is_false(vim.tbl_contains(messages, '[camouflage] disabled'))
+    end)
+
+    it('through disable()', function()
+      local bufnr = open('disable.env', { 'API_KEY=present-secret' })
+      present.start()
+
+      require('camouflage').disable()
+
+      assert.is_true(config.get().enabled)
+      assert.equals(1, marks(bufnr))
+      assert.is_true(refused())
+    end)
+
+    it('through toggle()', function()
+      local bufnr = open('toggle-api.env', { 'API_KEY=present-secret' })
+      present.start()
+
+      require('camouflage').toggle()
+
+      assert.is_true(config.get().enabled)
+      assert.equals(1, marks(bufnr))
+    end)
+
+    it('through reveal_line() and reveal.toggle()', function()
+      open('reveal.env', { 'API_KEY=present-secret' })
+      vim.api.nvim_win_set_cursor(0, { 1, 0 })
+      present.start()
+
+      require('camouflage').reveal.reveal_line()
+      assert.is_false(reveal.is_revealed())
+      reveal.toggle()
+      assert.is_false(reveal.is_revealed())
+      assert.is_true(refused())
+    end)
+
+    it('through start_follow_cursor()', function()
+      open('follow.env', { 'API_KEY=present-secret' })
+      present.start()
+
+      require('camouflage').start_follow_cursor()
+
+      assert.is_false(reveal.is_follow_cursor_enabled())
+      assert.is_false(reveal.is_revealed())
+    end)
+
+    it('through toggle_follow_cursor()', function()
+      open('follow-toggle.env', { 'API_KEY=present-secret' })
+      present.start()
+
+      require('camouflage').toggle_follow_cursor()
+
+      assert.is_false(reveal.is_follow_cursor_enabled())
+    end)
+
+    it('and lets all of it through again once it is off', function()
+      local bufnr = open('after.env', { 'API_KEY=present-secret' })
+      vim.api.nvim_win_set_cursor(0, { 1, 0 })
+      present.start()
+      present.stop()
+
+      reveal.reveal_line()
+      assert.is_true(reveal.is_revealed())
+      reveal.hide()
+
+      require('camouflage').disable()
+      assert.is_false(config.get().enabled)
+      assert.equals(0, marks(bufnr))
+    end)
+  end)
+
   it('allows reveal again once it is off', function()
     present.start()
     present.stop()
