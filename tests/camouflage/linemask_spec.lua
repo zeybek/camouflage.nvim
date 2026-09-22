@@ -18,6 +18,9 @@ describe('camouflage.linemask', function()
       { 'ARG API_TOKEN=secret-value', 14, 'secret-value' },
       { '  <password>secret-value</password>', 12, 'secret-value' },
       { 'key = "secret-value"', 7, 'secret-value' },
+      { 'readonly API_KEY="secret-value"', 18, 'secret-value' },
+      { 'declare -x API_KEY=secret-value', 19, 'secret-value' },
+      { '  local TOKEN=secret-value', 14, 'secret-value' },
     }
 
     for _, case in ipairs(cases) do

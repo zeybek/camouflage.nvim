@@ -34,6 +34,42 @@ describe('camouflage.parsers.env', function()
       assert.equals('postgres://localhost', result[1].value)
     end)
 
+    it('parses assignments behind readonly, declare, typeset and local', function()
+      local content = table.concat({
+        'readonly API_TOKEN="readonly_secret_1"',
+        'declare -x DB_PASSWORD=declare_secret_2',
+        '  local PASSWORD="local_secret_3"',
+        'typeset -r SECRET_KEY=typeset_secret_4',
+        'declare -gx -r MULTI=multi_flag_5',
+      }, '\n')
+      local result = env_parser.parse(content)
+
+      assert.equals(5, #result)
+      local expected = {
+        { 'API_TOKEN', 'readonly_secret_1' },
+        { 'DB_PASSWORD', 'declare_secret_2' },
+        { 'PASSWORD', 'local_secret_3' },
+        { 'SECRET_KEY', 'typeset_secret_4' },
+        { 'MULTI', 'multi_flag_5' },
+      }
+      for i, want in ipairs(expected) do
+        assert.equals(want[1], result[i].key)
+        assert.equals(want[2], result[i].value)
+        -- The range points at the value itself in the original text.
+        assert.equals(want[2], content:sub(result[i].start_index + 1, result[i].end_index))
+      end
+    end)
+
+    it('does not take a name that starts like a declaration for one', function()
+      local result = env_parser.parse(
+        'local_var=plain_value\nreadonly_mode=true\nlocal\ndeclare -a arr\nlocal value = 42'
+      )
+
+      assert.equals(2, #result)
+      assert.equals('local_var', result[1].key)
+      assert.equals('readonly_mode', result[2].key)
+    end)
+
     it('should parse multiple lines', function()
       local content = [[
 API_KEY=key1

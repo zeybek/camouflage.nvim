@@ -3,6 +3,7 @@
 local M = {}
 
 local config = require('camouflage.config')
+local util = require('camouflage.parsers.util')
 
 ---@param content string
 ---@param _bufnr number|nil Buffer number (unused, no TreeSitter support for .env)
@@ -120,7 +121,9 @@ function M.parse_line(line, line_num, current_index, parser_config)
     key, value = parse_line:match('^%s*export%s+([A-Za-z_][A-Za-z0-9_]*)%s*=%s*(.*)$')
   end
   if not key then
-    key, value = parse_line:match('^%s*([A-Za-z_][A-Za-z0-9_]*)%s*=%s*(.*)$')
+    -- `readonly KEY=value`, `declare -x KEY=value`, `local KEY=value`, ...
+    local rest = util.strip_shell_declaration(parse_line)
+    key, value = rest:match('^%s*([A-Za-z_][A-Za-z0-9_]*)%s*=%s*(.*)$')
   end
 
   if not key or not value then

@@ -980,9 +980,13 @@ HTTP            .http                           No
 
 Environment files ~
   Extensions: .env, .env.*, .envrc, .sh
+  Besides `export`, the shell declarations `readonly`, `declare`, `typeset`
+  and `local` (with flags such as `-x`) are read the same way.
   Example: >
     API_KEY=secret123
     export DATABASE_URL=postgres://user:pass@localhost/db
+    readonly API_TOKEN="abc123"
+    declare -x DB_PASSWORD=hunter2
 <
 
 JSON files ~

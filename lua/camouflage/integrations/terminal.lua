@@ -57,7 +57,8 @@ local CREDENTIAL_URL = '%a[%w+.%-]*://[^:/?#%s]+:[^@/?#%s]+@'
 ---@return string
 local function without_prefix(line)
   local rest = line:gsub('^%s*[#;]+%s*', '')
-  return (rest:gsub('^%s*export%s+', ''))
+  rest = rest:gsub('^%s*export%s+', '')
+  return (require('camouflage.parsers.util').strip_shell_declaration(rest))
 end
 
 ---The key on a line, if it reads like `KEY=value` or `KEY: value`.
