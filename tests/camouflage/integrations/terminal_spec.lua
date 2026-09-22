@@ -82,6 +82,13 @@ describe('camouflage.integrations.terminal', function()
       assert.is_true(terminal.should_mask('export GITHUB_TOKEN=ghp_yyyyyyyyyyyyyyyy'))
     end)
 
+    it('reads past a shell declaration such as readonly or declare -x', function()
+      assert.equals('API_TOKEN', terminal.line_key('readonly API_TOKEN=abc123'))
+      assert.equals('DB_PASSWORD', terminal.line_key('declare -x DB_PASSWORD="hunter2"'))
+      assert.equals('SECRET', terminal.line_key('local SECRET=abc'))
+      assert.is_true(terminal.should_mask('declare -x DB_PASSWORD="hunter2"'))
+    end)
+
     it('leaves a word that merely starts with export alone', function()
       assert.equals('exported', terminal.line_key('exported: true'))
     end)

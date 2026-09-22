@@ -113,4 +113,29 @@ function M.row_of(offsets, index)
   return lo - 1
 end
 
+-- Shell builtins that assign a variable the way `export` does.
+local SHELL_DECLARATIONS = { readonly = true, declare = true, typeset = true, ['local'] = true }
+
+---Strip a shell declaration (`readonly`, `declare`, `typeset`, `local`, with
+---any flags such as `-x` or `-gr`) from the front of an assignment.
+---@param text string
+---@return string rest The text from the variable name on
+---@return number length Bytes removed from the front
+function M.strip_shell_declaration(text)
+  local word = text:match('^%s*(%a+)%s')
+  if not (word and SHELL_DECLARATIONS[word]) then
+    return text, 0
+  end
+  local rest = text:gsub('^%s*%a+%s+', '', 1)
+  while rest:match('^[%-+]%a+%s') do
+    rest = rest:gsub('^[%-+]%a+%s+', '', 1)
+  end
+  -- The shell only assigns `NAME=value`, with nothing around the `=`. Anything
+  -- else (`local value = 42` in a Lua file) is not a declaration.
+  if not rest:match('^[%a_][%w_]*=') then
+    return text, 0
+  end
+  return rest, #text - #rest
+end
+
 return M

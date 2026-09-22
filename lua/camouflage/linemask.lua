@@ -10,6 +10,7 @@
 local M = {}
 
 local styles = require('camouflage.styles')
+local util = require('camouflage.parsers.util')
 
 -- Each pattern captures the position right after the separator and any opening
 -- quote, so the capture is where the value starts.
@@ -32,10 +33,13 @@ local VALUE_START_PATTERNS = {
 ---@param line string
 ---@return number|nil
 function M.value_start(line)
+  -- A shell declaration (`readonly`, `declare -x`, `local`, ...) in front of
+  -- the key reads like `export`: match past it and shift the column back.
+  local rest, offset = util.strip_shell_declaration(line)
   for _, pattern in ipairs(VALUE_START_PATTERNS) do
-    local pos = line:match(pattern)
-    if pos and pos <= #line then
-      return pos - 1
+    local pos = rest:match(pattern)
+    if pos and pos <= #rest then
+      return offset + pos - 1
     end
   end
   return nil
