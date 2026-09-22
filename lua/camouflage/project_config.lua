@@ -171,6 +171,99 @@ local function strip_network_options(sanitized)
   return dropped
 end
 
+-- Globs that match every file.
+local CATCH_ALL_GLOBS = { ['*'] = true, ['**'] = true, ['**/*'] = true }
+
+---True when a glob field is absent or only holds globs that match everything.
+---@param value any
+---@return boolean
+local function matches_everything(value)
+  if value == nil then
+    return true
+  end
+  local globs = type(value) == 'table' and value or { value }
+  if #globs == 0 then
+    return true
+  end
+  for _, glob in ipairs(globs) do
+    if not CATCH_ALL_GLOBS[glob] then
+      return false
+    end
+  end
+  return true
+end
+
+-- Rule fields that narrow which values a rule applies to, besides path and
+-- basename.
+local RULE_SELECTORS = {
+  'parser',
+  'key',
+  'nested',
+  'commented',
+  'value_length',
+  'value_shape',
+  'value_prefix',
+  'value_suffix',
+}
+
+---@param rule any
+---@return boolean
+local function ignores_everything(rule)
+  if type(rule) ~= 'table' or rule.action ~= 'ignore' then
+    return false
+  end
+  for _, field in ipairs(RULE_SELECTORS) do
+    if rule[field] ~= nil then
+      return false
+    end
+  end
+  return matches_everything(rule.path) and matches_everything(rule.basename)
+end
+
+---Options in a project file that leave values unmasked without turning
+---masking off outright, which `enabled: false` does and warns about on its
+---own. Each is a legitimate setting (an allowlist-only policy starts from
+---`default_action: ignore`), so they are reported, not refused.
+---@param sanitized table
+---@return string[]
+function M.unmasking_options(sanitized)
+  local found = {}
+  if sanitized.auto_enable == false then
+    table.insert(found, 'auto_enable: false')
+  end
+  local default_max = require('camouflage.config').defaults.max_lines
+  if type(sanitized.max_lines) == 'number' and sanitized.max_lines < default_max then
+    table.insert(found, 'max_lines: ' .. sanitized.max_lines)
+  end
+
+  local policy = sanitized.policy
+  if type(policy) == 'table' then
+    if policy.enabled == false then
+      table.insert(found, 'policy.enabled: false')
+    end
+    if policy.default_action == 'ignore' then
+      table.insert(found, 'policy.default_action: ignore')
+    end
+    local terminal = policy.terminal_path_ignores
+    if type(terminal) == 'table' and #terminal > 0 then
+      for _, glob in ipairs(terminal) do
+        if CATCH_ALL_GLOBS[glob] then
+          table.insert(found, 'policy.terminal_path_ignores: ' .. glob)
+          break
+        end
+      end
+    end
+    if type(policy.rules) == 'table' then
+      for index, rule in ipairs(policy.rules) do
+        if ignores_everything(rule) then
+          table.insert(found, ('policy.rules[%d] ignores every value'):format(index))
+        end
+      end
+    end
+  end
+  return found
+end
+
 ---@param notify_enabled boolean
 local function maybe_notify_errors(notify_enabled)
   if not notify_enabled or #state.errors == 0 then
@@ -345,6 +438,17 @@ function M.load(opts, start_dir)
       '[camouflage] masking is disabled by project config: ' .. path,
       vim.log.levels.WARN
     )
+  elseif notify_enabled then
+    local unmasking = M.unmasking_options(sanitized)
+    if #unmasking > 0 then
+      vim.notify_once(
+        ('[camouflage] project config can leave values unmasked (%s): %s'):format(
+          table.concat(unmasking, ', '),
+          path
+        ),
+        vim.log.levels.WARN
+      )
+    end
   end
 
   state.loaded = true

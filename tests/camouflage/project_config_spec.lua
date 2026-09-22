@@ -286,6 +286,94 @@ describe('camouflage.project_config', function()
       end
       assert.is_true(warned)
     end)
+
+    describe('options that leave values unmasked', function()
+      local function warnings_for(lines)
+        write_project(lines)
+        local messages = {}
+        local original = vim.notify_once
+        vim.notify_once = function(msg)
+          table.insert(messages, msg)
+        end
+        config.setup()
+        vim.notify_once = original
+        local found = {}
+        for _, msg in ipairs(messages) do
+          if msg:find('can leave values unmasked', 1, true) then
+            table.insert(found, msg)
+          end
+        end
+        return found
+      end
+
+      local function assert_warns(lines, fragment)
+        local found = warnings_for(lines)
+        assert.equals(1, #found, 'expected one warning for ' .. fragment)
+        assert.truthy(found[1]:find(fragment, 1, true), found[1])
+        assert.truthy(
+          found[1]:find(project_config.status().path, 1, true),
+          'no path in ' .. found[1]
+        )
+      end
+
+      it('warns about auto_enable: false', function()
+        assert_warns({ 'version: 1', 'auto_enable: false' }, 'auto_enable: false')
+      end)
+
+      it('warns about a max_lines below the default', function()
+        assert_warns({ 'version: 1', 'max_lines: 1' }, 'max_lines: 1')
+      end)
+
+      it('warns about a policy that ignores by default', function()
+        assert_warns(
+          { 'version: 1', 'policy:', '  default_action: ignore' },
+          'policy.default_action: ignore'
+        )
+      end)
+
+      it('warns about a disabled policy', function()
+        assert_warns({ 'version: 1', 'policy:', '  enabled: false' }, 'policy.enabled: false')
+      end)
+
+      it('warns about a rule that ignores every value', function()
+        assert_warns({
+          'version: 1',
+          'policy:',
+          '  rules:',
+          '    - action: ignore',
+          '      path: "**"',
+        }, 'policy.rules[1] ignores every value')
+      end)
+
+      it('warns about a catch-all terminal path ignore', function()
+        assert_warns({
+          'version: 1',
+          'policy:',
+          '  terminal_path_ignores: ["**"]',
+        }, 'policy.terminal_path_ignores: **')
+      end)
+
+      it('lists every such option in one warning', function()
+        local found = warnings_for({ 'version: 1', 'auto_enable: false', 'max_lines: 10' })
+        assert.equals(1, #found)
+        assert.truthy(found[1]:find('auto_enable: false, max_lines: 10', 1, true), found[1])
+      end)
+
+      it('stays quiet about rules that only narrow what is masked', function()
+        assert.equals(0, #warnings_for({
+          'version: 1',
+          'max_lines: 20000',
+          'policy:',
+          '  rules:',
+          '    - action: ignore',
+          '      key: "^DEBUG$"',
+          '    - action: ignore',
+          '      path: "fixtures/**"',
+          '    - action: mask',
+          '      path: "**"',
+        }))
+      end)
+    end)
   end)
 
   describe('per repository', function()
