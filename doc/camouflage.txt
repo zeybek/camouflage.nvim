@@ -1299,6 +1299,12 @@ the line alone (`KEY=value`, `key: value`, an XML element and so on), without
 the file's structure, so a row can be masked that the full pass would have
 left visible.
 
+The picker doesn't have to be loaded before camouflage. A picker that is not
+there when |camouflage.setup()| runs is hooked as soon as it shows up
+(lazy.nvim's `User LazyLoad`, `:packadd`, or its first window), and setup never
+loads a picker itself. This applies to the previews of Snacks, Telescope,
+fzf-lua and mini.pick as well.
+
                                                        *camouflage-quickfix*
 Quickfix and location list ~
 

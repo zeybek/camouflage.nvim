@@ -37,17 +37,18 @@ local wrapped = {}
 
 ---fzf-lua draws file previews through one method, whatever the picker was.
 ---@return nil
+---@return boolean installed
 local function setup_fzf()
   if wrapped.fzf then
-    return
+    return true
   end
   local ok, builtin = pcall(require, 'fzf-lua.previewer.builtin')
-  if not ok or type(builtin.buffer_or_file) ~= 'table' then
-    return
+  if not ok or type(builtin) ~= 'table' or type(builtin.buffer_or_file) ~= 'table' then
+    return false
   end
   local original = builtin.buffer_or_file.preview_buf_post
   if type(original) ~= 'function' then
-    return
+    return false
   end
 
   builtin.buffer_or_file.preview_buf_post = function(self, entry, ...)
@@ -57,17 +58,19 @@ local function setup_fzf()
     return result
   end
   wrapped.fzf = true
+  return true
 end
 
 ---mini.pick renders every preview through one function.
 ---@return nil
+---@return boolean installed
 local function setup_mini_pick()
   if wrapped.mini_pick then
-    return
+    return true
   end
   local ok, pick = pcall(require, 'mini.pick')
-  if not ok or type(pick.default_preview) ~= 'function' then
-    return
+  if not ok or type(pick) ~= 'table' or type(pick.default_preview) ~= 'function' then
+    return false
   end
 
   local original = pick.default_preview
@@ -78,6 +81,7 @@ local function setup_mini_pick()
     return result
   end
   wrapped.mini_pick = true
+  return true
 end
 
 ---blink.cmp reads `vim.b.completion` before it runs, so a masked buffer can
@@ -161,11 +165,16 @@ end
 ---@return nil
 function M.setup()
   local integrations = config.get().integrations or {}
+  local later = require('camouflage.integrations.later')
   if integrations.fzf ~= false then
-    setup_fzf()
+    later.add('preview.fzf', { module = 'fzf-lua.previewer.builtin', install = setup_fzf })
+  else
+    later.remove('preview.fzf')
   end
   if integrations.mini_pick ~= false then
-    setup_mini_pick()
+    later.add('preview.mini_pick', { module = 'mini.pick', install = setup_mini_pick })
+  else
+    later.remove('preview.mini_pick')
   end
   setup_blink((integrations.blink or {}).disable_in_masked ~= false)
 end
