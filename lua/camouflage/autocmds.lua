@@ -78,6 +78,16 @@ function M.setup()
 
   local all_patterns = M.file_patterns()
 
+  -- Every buffer, before the masking handler below: a window that turned
+  -- 'wrap' off for a masked buffer gets it back for anything else. A masked
+  -- buffer entering the window turns it off again right after.
+  vim.api.nvim_create_autocmd('BufEnter', {
+    group = group,
+    callback = function(args)
+      core.release_window(args.buf)
+    end,
+  })
+
   vim.api.nvim_create_autocmd({ 'BufEnter' }, {
     group = group,
     pattern = all_patterns,

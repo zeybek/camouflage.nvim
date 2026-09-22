@@ -89,6 +89,22 @@ end
 
 M.restore_wrap = restore_wrap
 
+---Give a window its 'wrap' back when it now shows a buffer that isn't masked.
+---'wrap' is window-local, so turning it off for a masked buffer stayed with the
+---window when it moved on to a README or a log.
+---@param bufnr number The buffer the current window shows now
+function M.release_window(bufnr)
+  if state.is_buffer_masked(bufnr) then
+    return
+  end
+  local win = vim.api.nvim_get_current_win()
+  local ok, saved = pcall(vim.api.nvim_win_get_var, win, 'camouflage_saved_wrap')
+  if ok and saved then
+    vim.api.nvim_set_option_value('wrap', true, { win = win })
+    pcall(vim.api.nvim_win_del_var, win, 'camouflage_saved_wrap')
+  end
+end
+
 ---Everything a decoration pass depends on, besides the parsers themselves.
 ---@param bufnr number
 ---@return string
