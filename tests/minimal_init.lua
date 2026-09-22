@@ -16,5 +16,10 @@ vim.cmd('runtime plugin/plenary.vim')
 -- Disable swap files
 vim.opt.swapfile = false
 
+-- PlenaryBustedDirectory runs every spec in its own Neovim at the same time.
+-- With ShaDa on they all read and write one file, and a read that lands in the
+-- middle of another process's write fails with E576.
+vim.o.shadafile = 'NONE'
+
 -- Set up camouflage with defaults
 require('camouflage').setup()

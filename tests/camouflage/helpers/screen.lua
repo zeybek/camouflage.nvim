@@ -206,11 +206,13 @@ function Session:frames_with(text, from)
 end
 
 ---Wait until `text` is on screen, so a test never races the first redraw.
+---The limit is generous: it returns as soon as the text shows up, and on a
+---busy CI runner starting an embedded Neovim can take a few seconds.
 ---@param text string
 ---@param ms number|nil
 ---@return boolean
 function Session:wait_for(text, ms)
-  return vim.wait(ms or 2000, function()
+  return vim.wait(ms or 10000, function()
     return self:screen():find(text, 1, true) ~= nil
   end, 10)
 end

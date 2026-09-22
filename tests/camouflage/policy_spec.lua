@@ -262,7 +262,9 @@ describe('camouflage.policy', function()
           variables[i] = parsed_var('RULE_100', 'token-value-' .. i)
         end
 
-        local start = (vim.uv or vim.loop).hrtime()
+        -- CPU time of this process, not wall-clock time: the other specs run
+        -- in parallel and would count against the budget.
+        local start = os.clock()
         local filtered = policy.filter_variables({
           filename = '/repo/app.env',
           root = '/repo',
@@ -274,7 +276,7 @@ describe('camouflage.policy', function()
             },
           },
         })
-        local elapsed_ms = ((vim.uv or vim.loop).hrtime() - start) / 1000000
+        local elapsed_ms = (os.clock() - start) * 1000
         local budget_ms = 100
 
         assert.equals(0, #filtered)

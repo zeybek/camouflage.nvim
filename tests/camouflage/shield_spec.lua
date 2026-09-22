@@ -253,7 +253,7 @@ describe('camouflage.shield', function()
 
       s:type('letmeinz', 10)
       s:request('nvim_input', '<BS><CR>')
-      assert.is_true(s:wait_for('DATABASE_URL', 3000))
+      assert.is_true(s:wait_for('DATABASE_URL'))
       assert.is_true(s:request('nvim_exec_lua', 'return not vim.bo.modified', {}))
     end)
 
@@ -276,7 +276,7 @@ describe('camouflage.shield', function()
       assert.is_true(s:wait_for('enter password'))
       s:type('opensesame', 5)
       s:request('nvim_input', '<CR>')
-      assert.is_true(s:wait_for('DATABASE_URL', 3000))
+      assert.is_true(s:wait_for('DATABASE_URL'))
 
       shield.remove_password()
     end)
