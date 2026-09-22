@@ -387,4 +387,82 @@ describe('camouflage.reveal', function()
       assert.is_false(reveal.is_revealed())
     end)
   end)
+
+  describe('cost of a pass while a line is revealed', function()
+    local function env_buffer(lines, fileformat)
+      test_counter = test_counter + 1
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.api.nvim_buf_set_name(bufnr, ('/tmp/test_reveal_cost_%d.env'):format(test_counter))
+      if fileformat then
+        vim.bo[bufnr].fileformat = fileformat
+      end
+      vim.api.nvim_set_current_buf(bufnr)
+      state.init_buffer(bufnr)
+      core.apply_decorations(bufnr)
+      return bufnr
+    end
+
+    local function masked_rows(bufnr)
+      local rows = {}
+      local marks = vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, { details = true })
+      for _, mark in ipairs(marks) do
+        if mark[4].virt_text then
+          rows[mark[2]] = true
+        end
+      end
+      return rows
+    end
+
+    ---Count whole-buffer reads while `fn` runs.
+    local function full_reads(fn)
+      local original = vim.api.nvim_buf_get_lines
+      local count = 0
+      vim.api.nvim_buf_get_lines = function(buf, first, last, strict)
+        if first == 0 and last == -1 then
+          count = count + 1
+        end
+        return original(buf, first, last, strict)
+      end
+      local ok, err = pcall(fn)
+      vim.api.nvim_buf_get_lines = original
+      assert(ok, err)
+      return count
+    end
+
+    it('does not read the whole buffer once per value', function()
+      local content = {}
+      for i = 1, 300 do
+        content[i] = ('KEY_%d=value_%d_secret'):format(i, i)
+      end
+      local bufnr = env_buffer(content)
+      vim.api.nvim_win_set_cursor(0, { 150, 0 })
+      reveal.reveal_line()
+      assert.is_true(reveal.is_revealed())
+
+      local reads = full_reads(function()
+        core.apply_decorations(bufnr)
+      end)
+
+      -- One read for the pass itself, whatever the number of values.
+      assert.is_true(reads <= 2, ('%d whole-buffer reads for 300 values'):format(reads))
+      local rows = masked_rows(bufnr)
+      assert.is_nil(rows[149], 'the revealed line was masked again')
+      assert.is_true(rows[148] and rows[150], 'the lines around it lost their masks')
+    end)
+
+    it('finds the revealed line in a buffer with CRLF line endings', function()
+      local bufnr =
+        env_buffer({ 'FIRST=first_secret', 'SECOND=second_secret', 'THIRD=third_secret' }, 'dos')
+      vim.api.nvim_win_set_cursor(0, { 3, 0 })
+      reveal.reveal_line()
+      assert.is_true(reveal.is_revealed())
+
+      core.apply_decorations(bufnr)
+
+      local rows = masked_rows(bufnr)
+      assert.is_nil(rows[2], 'the revealed line was masked again')
+      assert.is_true(rows[0] and rows[1])
+    end)
+  end)
 end)
