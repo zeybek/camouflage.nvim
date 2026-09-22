@@ -66,17 +66,25 @@ function M.start(opts)
     end
   end
 
-  self.stdin, self.stdout = uv.new_pipe(false), uv.new_pipe(false)
+  self.stdin, self.stdout, self.stderr = uv.new_pipe(false), uv.new_pipe(false), uv.new_pipe(false)
+  self.errors = ''
   self.proc = uv.spawn(vim.v.progpath, {
     args = args,
-    stdio = { self.stdin, self.stdout, nil },
-  }, function() end)
+    stdio = { self.stdin, self.stdout, self.stderr },
+  }, function(code, signal)
+    self.exited = { code = code, signal = signal }
+  end)
   assert(self.proc, 'could not start the embedded Neovim')
 
   self.stdout:read_start(function(err, data)
     assert(not err, err)
     if data then
       self:_feed(data)
+    end
+  end)
+  self.stderr:read_start(function(_, data)
+    if data then
+      self.errors = self.errors .. data
     end
   end)
 
@@ -217,6 +225,25 @@ function Session:wait_for(text, ms)
   end, 10)
 end
 
+---What the session looks like right now, for a failure message: the screen,
+---whether the process is still running, and anything it wrote to stderr.
+---@return string
+function Session:describe()
+  local lines = { 'screen:', self:screen() }
+  if self.exited then
+    table.insert(
+      lines,
+      ('process exited: code %s, signal %s'):format(self.exited.code, self.exited.signal)
+    )
+  end
+  if self.errors ~= '' then
+    table.insert(lines, 'stderr:')
+    table.insert(lines, self.errors)
+  end
+  table.insert(lines, ('frames drawn: %d'):format(#self.frames))
+  return table.concat(lines, '\n')
+end
+
 ---@return string
 function Session:screen()
   return self.frames[#self.frames] or ''
@@ -227,13 +254,14 @@ function Session:stop()
   -- that answer is five seconds per session.
   pcall(function()
     self.stdout:read_stop()
+    self.stderr:read_stop()
   end)
   if self.proc and not self.proc:is_closing() then
     pcall(function()
       self.proc:kill('sigkill')
     end)
   end
-  for _, pipe in ipairs({ self.stdin, self.stdout }) do
+  for _, pipe in ipairs({ self.stdin, self.stdout, self.stderr }) do
     if pipe and not pipe:is_closing() then
       pcall(function()
         pipe:close()
