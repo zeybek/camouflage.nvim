@@ -49,13 +49,11 @@ local function setup_cmp_integration()
   })
 end
 
----Setup Telescope.nvim preview integration
+---Setup Telescope.nvim preview integration. Only listens for Telescope's own
+---User event, so it needs nothing from Telescope and works whenever Telescope
+---is loaded, before or after camouflage.
 ---@return nil
 local function setup_telescope_integration()
-  if not pcall(require, 'telescope') then
-    return
-  end
-
   local state = require('camouflage.state')
   local core = require('camouflage.core')
   local parsers = require('camouflage.parsers')
@@ -89,12 +87,9 @@ end
 ---Uses nvim_buf_attach to detect content changes in preview buffer
 ---@return nil
 local function setup_snacks_integration()
-  -- Only setup if snacks.nvim is available
-  local snacks_ok, snacks = pcall(require, 'snacks')
-  if not snacks_ok then
-    return
-  end
-
+  -- No snacks.nvim needed here: the autocmds below only react to snacks picker
+  -- filetypes, and snacks itself is looked up when a preview is decorated, so
+  -- snacks loaded after camouflage is covered too.
   local state = require('camouflage.state')
   local core = require('camouflage.core')
   local parsers = require('camouflage.parsers')
@@ -108,6 +103,7 @@ local function setup_snacks_integration()
   local function get_preview_filename(win)
     -- Method 1: Try to get from snacks picker's current item
     -- snacks.picker.get() returns an array of active pickers
+    local snacks = package.loaded.snacks
     local pickers_ok, pickers = pcall(function()
       return snacks.picker.get()
     end)
@@ -323,6 +319,10 @@ local function setup_integrations()
 
   if config.integrations.picker_results then
     require('camouflage.integrations.picker').setup()
+  else
+    local later = require('camouflage.integrations.later')
+    later.remove('picker_results.snacks')
+    later.remove('picker_results.telescope')
   end
 
   if config.integrations.quickfix then

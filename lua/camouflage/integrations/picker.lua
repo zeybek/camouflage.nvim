@@ -56,10 +56,14 @@ local snacks_wrapped = false
 ---The mask has to happen here rather than in `transform`: at transform time the
 ---grep source hasn't filled `item.line` yet.
 ---@return nil
+---@return boolean installed
 local function setup_snacks()
+  if snacks_wrapped then
+    return true
+  end
   local ok, format = pcall(require, 'snacks.picker.format')
-  if not ok or type(format.file) ~= 'function' or snacks_wrapped then
-    return
+  if not ok or type(format) ~= 'table' or type(format.file) ~= 'function' then
+    return false
   end
   local original = format.file
   format.file = function(item, picker)
@@ -80,6 +84,7 @@ local function setup_snacks()
     return original(item, picker)
   end
   snacks_wrapped = true
+  return true
 end
 
 ---@type boolean
@@ -88,10 +93,14 @@ local telescope_wrapped = false
 ---Wrap telescope's vimgrep entry maker so the matched line is masked in the
 ---results window.
 ---@return nil
+---@return boolean installed
 local function setup_telescope()
+  if telescope_wrapped then
+    return true
+  end
   local ok, make_entry = pcall(require, 'telescope.make_entry')
-  if not ok or type(make_entry.gen_from_vimgrep) ~= 'function' or telescope_wrapped then
-    return
+  if not ok or type(make_entry) ~= 'table' or type(make_entry.gen_from_vimgrep) ~= 'function' then
+    return false
   end
   local original = make_entry.gen_from_vimgrep
   make_entry.gen_from_vimgrep = function(opts)
@@ -109,13 +118,18 @@ local function setup_telescope()
     end
   end
   telescope_wrapped = true
+  return true
 end
 
----Install the hooks of every picker that is installed.
+---Install the hooks of every picker, now or once the picker is loaded.
 ---@return nil
 function M.setup()
-  setup_snacks()
-  setup_telescope()
+  local later = require('camouflage.integrations.later')
+  later.add('picker_results.snacks', { module = 'snacks.picker.format', install = setup_snacks })
+  later.add(
+    'picker_results.telescope',
+    { module = 'telescope.make_entry', install = setup_telescope }
+  )
 end
 
 ---Internal: forget the wrappers (used by tests).
