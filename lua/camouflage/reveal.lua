@@ -114,19 +114,48 @@ local function var_range_on_line(var, line_0, lines, line_offsets)
   return col_start, col_end
 end
 
+-- The buffer's lines and line offsets, read once per change. The
+-- `variable_detected` listener asks about the revealed line once per variable
+-- during a pass, and the text can't change in between.
+local line_view_cache = {}
+
+---The buffer's lines and cumulative line offsets, as var_range_on_line reads
+---them. Reading them again for every variable made a pass with a revealed
+---line scale with values x lines; now they are read once per changedtick.
+---(nvim_buf_get_offset would avoid the read, but returns -1 on Neovim 0.9.)
+---@param bufnr number
+---@return string[]|nil lines
+---@return number[]|nil line_offsets
+local function line_view(bufnr)
+  local tick = vim.api.nvim_buf_get_changedtick(bufnr)
+  local c = line_view_cache
+  if c.bufnr == bufnr and c.tick == tick then
+    return c.lines, c.offsets
+  end
+
+  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
+  if not ok then
+    return nil, nil
+  end
+  line_view_cache = {
+    bufnr = bufnr,
+    tick = tick,
+    lines = lines,
+    offsets = core.compute_line_offsets(lines),
+  }
+  return line_view_cache.lines, line_view_cache.offsets
+end
+
 ---@param bufnr number
 ---@param var table
 ---@param line_0 number 0-indexed line number
 ---@return boolean
 local function var_has_value_on_line(bufnr, var, line_0)
-  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
-  if not ok then
+  local lines, line_offsets = line_view(bufnr)
+  if not lines then
     return false
   end
-
-  local line_offsets = core.compute_line_offsets(lines)
-  local col_start = var_range_on_line(var, line_0, lines, line_offsets)
-  return col_start ~= nil
+  return var_range_on_line(var, line_0, lines, line_offsets) ~= nil
 end
 
 ---Check if a line has any masked variables
@@ -135,13 +164,11 @@ end
 ---@return boolean
 local function line_has_variables(bufnr, line)
   local variables = state.get_variables(bufnr)
-  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
-  if not ok then
+  local line_0 = line - 1
+  local lines, line_offsets = line_view(bufnr)
+  if not lines then
     return false
   end
-
-  local line_0 = line - 1
-  local line_offsets = core.compute_line_offsets(lines)
   for _, var in ipairs(variables) do
     if var_range_on_line(var, line_0, lines, line_offsets) then
       return true
@@ -169,11 +196,10 @@ end
 local function apply_revealed_highlight(bufnr, line)
   local cfg = get_reveal_config()
   local variables = state.get_variables(bufnr)
-  local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
-  if not ok then
+  local lines, line_offsets = line_view(bufnr)
+  if not lines then
     return
   end
-  local line_offsets = core.compute_line_offsets(lines)
 
   for _, var in ipairs(variables) do
     local col_start, col_end = var_range_on_line(var, line, lines, line_offsets)
@@ -368,6 +394,8 @@ function M.hide()
   clear_anchor(was_bufnr)
   revealed_state.bufnr = nil
   revealed_state.line = nil
+  -- Nothing asks about a revealed line any more: let go of the buffer copy.
+  line_view_cache = {}
 
   -- Re-apply decorations
   if was_bufnr and vim.api.nvim_buf_is_valid(was_bufnr) then
