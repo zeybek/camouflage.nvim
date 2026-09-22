@@ -171,6 +171,71 @@ describe('camouflage.config', function()
     end)
   end)
 
+  describe('runtime values', function()
+    local root
+
+    before_each(function()
+      root = vim.fn.tempname()
+    end)
+
+    after_each(function()
+      vim.fn.delete(root, 'rf')
+    end)
+
+    it('survive a project config reload', function()
+      config.setup({ project_config = { enabled = false } })
+      config.set('terminal.enabled', true)
+      config.set('checks.expiry.enabled', false)
+      config.set('style', 'dotted')
+
+      assert.is_true((config.reload_project_config()))
+
+      assert.is_true(config.get().terminal.enabled)
+      assert.is_false(config.get().checks.expiry.enabled)
+      assert.equals('dotted', config.get().style)
+    end)
+
+    it('reach a buffer that has a project config of its own', function()
+      vim.fn.mkdir(root, 'p')
+      vim.fn.writefile({ 'version: 1', 'style: text' }, root .. '/.camouflage.yaml')
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_name(bufnr, root .. '/.env')
+
+      config.setup()
+      assert.equals('text', config.get_for_buffer(bufnr).style)
+      config.set('style', 'dotted')
+      config.set('terminal.enabled', true)
+
+      local cfg = config.get_for_buffer(bufnr)
+      assert.equals('dotted', cfg.style)
+      assert.is_true(cfg.terminal.enabled)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('are forgotten by setup()', function()
+      config.setup()
+      config.set('terminal.enabled', true)
+
+      config.setup()
+
+      assert.is_false(config.get().terminal.enabled)
+      assert.is_true((config.reload_project_config()))
+      assert.is_false(config.get().terminal.enabled)
+    end)
+
+    it('do not share tables with the options', function()
+      config.setup({ project_config = { enabled = false } })
+      config.set('integrations.blink', { disable_in_masked = false })
+      config.reload_project_config()
+
+      config.get().integrations.blink.disable_in_masked = true
+      config.reload_project_config()
+
+      assert.is_false(config.get().integrations.blink.disable_in_masked)
+    end)
+  end)
+
   describe('get_style', function()
     it('should return current style', function()
       config.setup({ style = 'scramble' })

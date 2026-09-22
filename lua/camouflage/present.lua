@@ -47,6 +47,8 @@ function M.start()
     enabled = cfg.enabled,
     runtime_enabled = config.runtime_enabled,
     terminal_enabled = (cfg.terminal or {}).enabled,
+    -- nil when terminal masking wasn't set at runtime before
+    terminal_override = config.runtime_overrides['terminal.enabled'],
     follow_cursor = reveal.is_follow_cursor_enabled(),
     buffers = clear_buffer_overrides(),
   }
@@ -65,10 +67,10 @@ function M.start()
   -- Drop the per-project configs cached before, and make every buffer's last
   -- pass out of date, so a hidden buffer is decorated again when it is shown.
   config.clear_project_cache()
-  if (cfg.terminal or {}).enabled ~= true then
-    config.set('terminal.enabled', true)
-    require('camouflage.integrations.terminal').setup()
-  end
+  -- Set even when it is already on, so it is kept as a runtime value: a
+  -- project file reloaded during the mode can't turn it off.
+  config.set('terminal.enabled', true)
+  require('camouflage.integrations.terminal').setup()
 
   require('camouflage.core').refresh_all()
   return true
@@ -92,6 +94,9 @@ function M.stop()
   if (config.get().terminal or {}).enabled ~= previous.terminal_enabled then
     config.set('terminal.enabled', previous.terminal_enabled)
   end
+  -- Leave terminal masking to setup() and the project file again, unless it
+  -- had been set at runtime before the mode started.
+  config.runtime_overrides['terminal.enabled'] = previous.terminal_override
 
   for _, bufnr in ipairs(previous.buffers) do
     if vim.api.nvim_buf_is_valid(bufnr) then

@@ -69,6 +69,23 @@ describe('camouflage.present', function()
     assert.is_false(config.get().terminal.enabled)
   end)
 
+  it('keeps terminal masking on through a project config reload', function()
+    present.start()
+
+    assert.is_true((config.reload_project_config()))
+
+    assert.is_true(config.get().terminal.enabled)
+  end)
+
+  it('leaves terminal masking to the config again afterwards', function()
+    present.start()
+    present.stop()
+
+    assert.is_nil(config.runtime_overrides['terminal.enabled'])
+    assert.is_true((config.reload_project_config()))
+    assert.is_false(config.get().terminal.enabled)
+  end)
+
   it('hides a revealed line and stops follow cursor', function()
     local bufnr = open('present.env', { 'API_KEY=present-secret', 'OTHER=other-secret' })
     vim.api.nvim_win_set_cursor(0, { 1, 0 })
