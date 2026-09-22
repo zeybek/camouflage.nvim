@@ -62,6 +62,67 @@ function M.find_variable_at_cursor(bufnr)
   return position.find_variable_at_cursor(bufnr, variables, { same_line_fallback = true })
 end
 
+---Clear (or restore) a register whose auto-clear is due, if it still holds
+---the yanked value.
+---@param register string
+---@param entry { timer: userdata, secret: string|nil, previous: table|nil }
+---@param notify boolean
+local function run_clear(register, entry, notify)
+  local secret, previous = entry.secret, entry.previous
+  -- An uppercase register name appends to the lowercase register, so that is
+  -- the one to check and clean up.
+  local target = register:match('^%u$') and register:lower() or register
+  local current = vim.fn.getreg(target)
+  if secret == nil or current == secret then
+    vim.fn.setreg(target, '')
+    if notify then
+      vim.notify('[camouflage] Clipboard cleared', vim.log.levels.INFO)
+    end
+  elseif previous and #secret > 0 and current:sub(-#secret) == secret then
+    vim.fn.setreg(target, previous.value, previous.regtype)
+    if notify then
+      vim.notify('[camouflage] Register restored', vim.log.levels.INFO)
+    end
+  end
+end
+
+---@param entry { timer: userdata }
+local function close_timer(entry)
+  entry.timer:stop()
+  if not entry.timer:is_closing() then
+    entry.timer:close()
+  end
+end
+
+local leave_group
+
+---A timer dies with the editor, so a pending auto-clear would never run once
+---Neovim exits: the value would stay on the system clipboard, and a named
+---register would be written to ShaDa and come back next session. VimLeavePre
+---runs before ShaDa is written, so every pending clear runs there instead.
+local function clear_on_exit()
+  if leave_group then
+    return
+  end
+  leave_group = vim.api.nvim_create_augroup('camouflage_yank', { clear = true })
+  vim.api.nvim_create_autocmd('VimLeavePre', {
+    group = leave_group,
+    callback = function()
+      M.clear_pending()
+    end,
+  })
+end
+
+---Run every pending auto-clear now, without waiting for its timer.
+---@return nil
+function M.clear_pending()
+  for register, entry in pairs(clear_timers) do
+    clear_timers[register] = nil
+    close_timer(entry)
+    pcall(run_clear, register, entry, false)
+  end
+end
+
 ---Schedule auto-clear of a register, scoped to that register so yanking a
 ---second secret to a different register never cancels the first one's timer.
 ---@param register string Register to clear
@@ -75,8 +136,7 @@ function M.schedule_auto_clear(register, seconds, secret, previous)
   -- Cancel only this register's existing timer.
   local existing = clear_timers[register]
   if existing then
-    existing.timer:stop()
-    existing.timer:close()
+    close_timer(existing)
     clear_timers[register] = nil
   end
 
@@ -84,32 +144,23 @@ function M.schedule_auto_clear(register, seconds, secret, previous)
     return
   end
 
+  clear_on_exit()
   local timer = uv.new_timer()
-  clear_timers[register] = { timer = timer, secret = secret }
+  local entry = { timer = timer, secret = secret, previous = previous }
+  clear_timers[register] = entry
   timer:start(
     seconds * 1000,
     0,
     vim.schedule_wrap(function()
-      -- Only act if this timer still owns the register entry (a reschedule may
-      -- have replaced us between firing and running on the main loop).
-      local entry = clear_timers[register]
-      if not entry or entry.timer ~= timer then
+      -- Only act if this timer still owns the register entry (a reschedule, or
+      -- an exit that already ran it, may have replaced us between firing and
+      -- running on the main loop).
+      if clear_timers[register] ~= entry then
         return
       end
       clear_timers[register] = nil
-      timer:close()
-
-      -- An uppercase register name appends to the lowercase register, so that
-      -- is the one to check and clean up.
-      local target = register:match('^%u$') and register:lower() or register
-      local current = vim.fn.getreg(target)
-      if secret == nil or current == secret then
-        vim.fn.setreg(target, '')
-        vim.notify('[camouflage] Clipboard cleared', vim.log.levels.INFO)
-      elseif previous and #secret > 0 and current:sub(-#secret) == secret then
-        vim.fn.setreg(target, previous.value, previous.regtype)
-        vim.notify('[camouflage] Register restored', vim.log.levels.INFO)
-      end
+      close_timer(entry)
+      run_clear(register, entry, true)
     end)
   )
 end
@@ -274,8 +325,7 @@ end
 ---@return nil
 function M.cancel_auto_clear()
   for register, entry in pairs(clear_timers) do
-    entry.timer:stop()
-    entry.timer:close()
+    close_timer(entry)
     clear_timers[register] = nil
   end
 end

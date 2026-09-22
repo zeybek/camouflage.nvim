@@ -446,6 +446,83 @@ describe('camouflage.yank', function()
     end)
   end)
 
+  describe('auto-clear when Neovim exits first', function()
+    local function leave()
+      vim.api.nvim_exec_autocmds('VimLeavePre', {})
+    end
+
+    it('clears a register whose timer has not fired yet', function()
+      vim.fn.setreg('a', 'exit-secret')
+      yank.schedule_auto_clear('a', 30, 'exit-secret')
+
+      leave()
+
+      assert.equals('', vim.fn.getreg('a'))
+    end)
+
+    it('leaves a register the user reused alone', function()
+      vim.fn.setreg('a', 'exit-secret')
+      yank.schedule_auto_clear('a', 30, 'exit-secret')
+      vim.fn.setreg('a', 'typed later')
+
+      leave()
+
+      assert.equals('typed later', vim.fn.getreg('a'))
+    end)
+
+    it('restores what an uppercase register appended to', function()
+      vim.fn.setreg('b', 'previous-')
+      local previous = { value = vim.fn.getreg('b', 1, true), regtype = vim.fn.getregtype('b') }
+      vim.fn.setreg('B', 'exit-secret')
+      yank.schedule_auto_clear('B', 30, 'exit-secret', previous)
+
+      leave()
+
+      assert.equals('previous-', vim.fn.getreg('b'))
+    end)
+
+    it('does not run the timer again afterwards', function()
+      vim.fn.setreg('a', 'exit-secret')
+      yank.schedule_auto_clear('a', 0.05, 'exit-secret')
+      leave()
+      vim.fn.setreg('a', 'exit-secret')
+
+      vim.wait(200)
+
+      assert.equals('exit-secret', vim.fn.getreg('a'))
+      vim.fn.setreg('a', '')
+    end)
+
+    it('keeps the value out of ShaDa, so the next session never sees it', function()
+      local shada = vim.fn.tempname()
+      local function session(lua)
+        return vim.fn.system({
+          vim.v.progpath,
+          '--headless',
+          '-u',
+          'NONE',
+          '-i',
+          shada,
+          '--cmd',
+          'set rtp^=' .. vim.fn.getcwd(),
+          '-c',
+          'lua ' .. lua,
+          '-c',
+          'qa!',
+        })
+      end
+
+      session(
+        "require('camouflage').setup({ project_config = { enabled = false } }) "
+          .. "require('camouflage.yank').do_yank({ key = 'K', value = 'shada-secret' }, { register = 'a' })"
+      )
+      local next_session = session("io.stdout:write('a=' .. vim.fn.getreg('a'))")
+
+      vim.fn.delete(shada)
+      assert.equals('a=', next_session)
+    end)
+  end)
+
   describe('auto-clear with uppercase registers', function()
     local function yank_to(register)
       require('camouflage.config').get().yank.auto_clear_seconds = 0.05

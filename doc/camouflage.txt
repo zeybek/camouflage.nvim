@@ -72,7 +72,9 @@ directly, because the real text is still present underneath the mask:
 - `:registers`, which prints a register's contents, including a value copied
   with `yy`. |:CamouflageRegisters| lists them with masked values redacted
 - the `+` / `*` clipboard registers (use |:CamouflageYank|, which copies the
-  real value deliberately, with a confirm prompt and timed auto-clear)
+  real value deliberately, with a confirm prompt and timed auto-clear; a clear
+  still pending when Neovim exits runs on the way out, before ShaDa is
+  written)
 
 Per-repo `.camouflage.yaml` files are applied as data only (no code execution).
 A project file can't turn on HIBP network checks (`pwned.auto_check`,
