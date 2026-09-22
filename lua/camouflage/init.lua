@@ -39,7 +39,7 @@ local function setup_cmp_integration()
   local parsers = require('camouflage.parsers')
 
   vim.api.nvim_create_autocmd('BufEnter', {
-    group = state.augroup,
+    group = state.integrations_augroup,
     callback = function(args)
       local filename = vim.api.nvim_buf_get_name(args.buf)
       if parsers.is_supported(filename) and state.is_buffer_masked(args.buf) then
@@ -61,7 +61,7 @@ local function setup_telescope_integration()
   local parsers = require('camouflage.parsers')
 
   vim.api.nvim_create_autocmd('User', {
-    group = state.augroup,
+    group = state.integrations_augroup,
     pattern = 'TelescopePreviewerLoaded',
     callback = function(args)
       if not require('camouflage.config').is_enabled() then
@@ -266,12 +266,12 @@ local function setup_snacks_integration()
   local snacks_sessions = 0
 
   vim.api.nvim_create_autocmd('FileType', {
-    group = state.augroup,
+    group = state.integrations_augroup,
     pattern = { 'snacks_picker_input', 'snacks_picker_list' },
     callback = function(args)
       snacks_sessions = snacks_sessions + 1
       vim.api.nvim_create_autocmd('BufWipeout', {
-        group = state.augroup,
+        group = state.integrations_augroup,
         buffer = args.buf,
         once = true,
         callback = function()
@@ -283,7 +283,7 @@ local function setup_snacks_integration()
   })
 
   vim.api.nvim_create_autocmd({ 'BufWinEnter', 'WinEnter', 'CursorMoved' }, {
-    group = state.augroup,
+    group = state.integrations_augroup,
     callback = function()
       if snacks_sessions <= 0 then
         return
@@ -304,6 +304,10 @@ end
 ---@return nil
 local function setup_integrations()
   local config = require('camouflage.config').get()
+
+  -- Runs again on every project config reload: start from an empty group so
+  -- the autocmds below exist exactly once.
+  vim.api.nvim_clear_autocmds({ group = require('camouflage.state').integrations_augroup })
 
   if config.integrations.cmp.disable_in_masked then
     setup_cmp_integration()
