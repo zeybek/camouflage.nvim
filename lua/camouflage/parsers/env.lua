@@ -5,20 +5,41 @@ local M = {}
 local config = require('camouflage.config')
 local util = require('camouflage.parsers.util')
 
+-- Lua patterns for a key, with the capture around it.
+local SHELL_KEY = '([A-Za-z_][A-Za-z0-9_]*)'
+local DOTENV_KEY = '([A-Za-z_][A-Za-z0-9_.%-]*)'
+M.SHELL_KEY = SHELL_KEY
+M.DOTENV_KEY = DOTENV_KEY
+
+---Whether a file is a shell script rather than a dotenv file. Shell names are
+---letters, digits and `_` only; dotenv loaders (python-dotenv, Docker's
+-----env-file, Compose `env_file`) also take `app.secret` or `MY-TOKEN`.
+---@param filename string|nil
+---@return boolean
+function M.is_shell_script(filename)
+  if type(filename) ~= 'string' then
+    return false
+  end
+  local name = vim.fn.fnamemodify(filename, ':t')
+  return name:match('%.sh$') ~= nil or name == '.envrc'
+end
+
 ---@param content string
 ---@param _bufnr number|nil Buffer number (unused, no TreeSitter support for .env)
+---@param filename string|nil Decides whether keys follow shell or dotenv rules
 ---@return ParsedVariable[]
-function M.parse(content, _bufnr)
+function M.parse(content, _bufnr, filename)
   local variables = {}
   local parser_config = config.get().parsers.env or {}
   ---@cast parser_config CamouflageEnvParserConfig
+  local key_pattern = M.is_shell_script(filename) and SHELL_KEY or DOTENV_KEY
   local lines = vim.split(content, '\n', { plain = true })
   local current_index = 0
 
   local line_num = 1
   while line_num <= #lines do
     local line = lines[line_num]
-    local result = M.parse_line(line, line_num, current_index, parser_config)
+    local result = M.parse_line(line, line_num, current_index, parser_config, key_pattern)
     local extra_lines = 0
     if result and not result.is_commented then
       extra_lines = M.extend_multiline(result, lines, line_num, current_index)
@@ -103,8 +124,10 @@ end
 ---@param line_num number
 ---@param current_index number
 ---@param parser_config table
+---@param key_pattern string|nil Key pattern, shell names by default
 ---@return table|nil
-function M.parse_line(line, line_num, current_index, parser_config)
+function M.parse_line(line, line_num, current_index, parser_config, key_pattern)
+  key_pattern = key_pattern or SHELL_KEY
   local is_commented = false
   local parse_line = line
 
@@ -123,7 +146,7 @@ function M.parse_line(line, line_num, current_index, parser_config)
   if not key then
     -- `readonly KEY=value`, `declare -x KEY=value`, `local KEY=value`, ...
     local rest = util.strip_shell_declaration(parse_line)
-    key, value = rest:match('^%s*([A-Za-z_][A-Za-z0-9_]*)%s*=%s*(.*)$')
+    key, value = rest:match('^%s*' .. key_pattern .. '%s*=%s*(.*)$')
   end
 
   if not key or not value then
