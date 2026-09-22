@@ -67,7 +67,10 @@ For per-repo `.camouflage.yaml` files, masking config is applied as data only
 (no code execution). A project file can't turn on HIBP network checks
 (`pwned.auto_check`, `check_on_save`, `check_on_change`) unless it is trusted,
 those options are ignored with a warning. If a project file sets
-`enabled: false`, you get a warning with its path. If you don't trust the
+`enabled: false`, you get a warning with its path, and the same goes for
+anything else in it that can leave values unmasked (`auto_enable: false`, a
+low `max_lines`, `policy.default_action: ignore`, a policy rule that ignores
+every value). If you don't trust the
 repositories you open, set `project_config.secure = true` to gate the file
 behind Neovim's `vim.secure`/`:trust` mechanism.
 

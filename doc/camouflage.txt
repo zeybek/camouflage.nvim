@@ -80,7 +80,10 @@ Per-repo `.camouflage.yaml` files are applied as data only (no code execution).
 A project file can't turn on HIBP network checks (`pwned.auto_check`,
 `check_on_save`, `check_on_change`) unless it is trusted, those options are
 ignored with a warning. If a project file sets `enabled: false`, a warning
-shows its path. If you open untrusted repositories, set
+shows its path. So does one that can leave values unmasked another way:
+`auto_enable: false`, a `max_lines` below the default, `policy.enabled: false`,
+`policy.default_action: ignore`, or a policy rule or terminal path ignore that
+matches every value. If you open untrusted repositories, set
 `project_config.secure = true` to gate the file behind Neovim's `vim.secure` /
 `:trust` mechanism.
 
