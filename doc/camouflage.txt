@@ -1257,8 +1257,10 @@ Highlight groups ~
   `CamouflageShieldText`, `CamouflageShieldInput`, `CamouflageShieldError`
                                 the shield card
 
-The pwned and shield groups are defined with `default`, so a colorscheme or
-your config can set them. Badges use the groups named in their config:
+`CamouflageRevealed` and the pwned and shield groups are defined with
+`default`, so a colorscheme or your config can set them. `CamouflageMask` from
+`colors` is your own config and is set as given. Both are defined again after
+|:colorscheme|, which clears every group. Badges use the groups named in their config:
 `checks.expiry.hl_*`, `checks.weak_secret.virtual_text_hl`,
 `pwned.virtual_text_hl` and `checks.badges.separator_hl`.
 

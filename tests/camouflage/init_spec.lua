@@ -176,6 +176,57 @@ describe('camouflage.init', function()
     end)
   end)
 
+  describe('highlight groups', function()
+    local function hl(name)
+      return vim.api.nvim_get_hl(0, { name = name })
+    end
+
+    after_each(function()
+      vim.api.nvim_set_hl(0, 'CamouflageRevealed', {})
+      vim.api.nvim_set_hl(0, 'CamouflageMask', {})
+    end)
+
+    it('keeps a CamouflageRevealed defined before setup', function()
+      vim.api.nvim_set_hl(0, 'CamouflageRevealed', { fg = '#ffffff', bg = '#ff0000' })
+
+      -- With `colors` set, setup used to overwrite it.
+      camouflage.setup(vim.tbl_extend('force', no_network_opts(), {
+        colors = { foreground = '#808080' },
+      }))
+
+      assert.equals(tonumber('ffffff', 16), hl('CamouflageRevealed').fg)
+      assert.equals(tonumber('ff0000', 16), hl('CamouflageRevealed').bg)
+    end)
+
+    it('defines CamouflageRevealed when nothing else does', function()
+      vim.api.nvim_set_hl(0, 'CamouflageRevealed', {})
+
+      camouflage.setup(no_network_opts())
+
+      assert.equals(tonumber('e0af68', 16), hl('CamouflageRevealed').bg)
+    end)
+
+    it('defines both again after a colorscheme clears them', function()
+      camouflage.setup(vim.tbl_extend('force', no_network_opts(), {
+        colors = { foreground = '#808080' },
+      }))
+      assert.equals(tonumber('808080', 16), hl('CamouflageMask').fg)
+
+      vim.cmd('colorscheme default')
+
+      assert.equals(tonumber('808080', 16), hl('CamouflageMask').fg)
+      assert.equals(tonumber('e0af68', 16), hl('CamouflageRevealed').bg)
+    end)
+
+    it('listens for colorscheme changes once', function()
+      camouflage.setup(no_network_opts())
+      require('camouflage').project_config_refresh()
+
+      local group = vim.api.nvim_create_augroup('camouflage_highlights', { clear = false })
+      assert.equals(1, #vim.api.nvim_get_autocmds({ group = group, event = 'ColorScheme' }))
+    end)
+  end)
+
   describe('integration autocmds', function()
     -- Stand-ins for the plugins, so each integration installs its autocmds.
     local fakes = {

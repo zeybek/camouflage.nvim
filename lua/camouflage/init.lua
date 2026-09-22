@@ -342,9 +342,18 @@ local function setup_integrations()
   require('camouflage.shield').setup()
 end
 
----Setup custom highlight group if colors are configured
+---Define the highlight groups: CamouflageMask from `colors` when it is set, and
+---CamouflageRevealed as a default a colorscheme or the user can override.
 ---@return nil
-local function setup_highlight()
+local function define_highlights()
+  -- A default, so a user's or a colorscheme's own CamouflageRevealed wins.
+  vim.api.nvim_set_hl(0, 'CamouflageRevealed', {
+    default = true,
+    fg = '#1a1b26',
+    bg = '#e0af68',
+    bold = true,
+  })
+
   local config = require('camouflage.config').get()
   if not config.colors then
     return
@@ -368,17 +377,28 @@ local function setup_highlight()
     hl_opts.italic = true
   end
 
-  -- Only create highlight if any option is set
+  -- Only create highlight if any option is set. `colors` is explicit config,
+  -- so it is not a default.
   if next(hl_opts) then
     vim.api.nvim_set_hl(0, 'CamouflageMask', hl_opts)
   end
+end
 
-  -- Setup revealed highlight
-  vim.api.nvim_set_hl(0, 'CamouflageRevealed', {
-    fg = '#1a1b26',
-    bg = '#e0af68',
-    bold = true,
-  })
+---@type number|nil
+local highlight_group
+
+---Define the highlight groups, and again after every :colorscheme, which runs
+---:hi clear and would leave them empty.
+---@return nil
+local function setup_highlight()
+  define_highlights()
+  if not highlight_group then
+    highlight_group = vim.api.nvim_create_augroup('camouflage_highlights', { clear = true })
+    vim.api.nvim_create_autocmd('ColorScheme', {
+      group = highlight_group,
+      callback = define_highlights,
+    })
+  end
 end
 
 ---Re-apply runtime systems that depend on config.
