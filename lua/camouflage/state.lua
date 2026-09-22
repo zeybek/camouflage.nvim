@@ -5,6 +5,9 @@ local M = {}
 M.namespace = vim.api.nvim_create_namespace('camouflage')
 M.augroup = vim.api.nvim_create_augroup('camouflage', { clear = true })
 M.runtime_augroup = vim.api.nvim_create_augroup('camouflage_runtime', { clear = true })
+-- Picker and completion integrations. Kept apart from M.augroup, which
+-- autocmds.setup() clears and rebuilds whenever the parser registry changes.
+M.integrations_augroup = vim.api.nvim_create_augroup('camouflage_integrations', { clear = true })
 
 ---@class BufferState
 ---@field enabled boolean

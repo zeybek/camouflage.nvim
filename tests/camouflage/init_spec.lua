@@ -176,6 +176,90 @@ describe('camouflage.init', function()
     end)
   end)
 
+  describe('integration autocmds', function()
+    -- Stand-ins for the plugins, so each integration installs its autocmds.
+    local fakes = {
+      snacks = {},
+      telescope = {},
+      cmp = { setup = { buffer = function() end } },
+      ['blink.cmp'] = {},
+    }
+    local saved = {}
+
+    before_each(function()
+      for name, fake in pairs(fakes) do
+        saved[name] = package.loaded[name]
+        package.loaded[name] = fake
+      end
+    end)
+
+    after_each(function()
+      for name in pairs(fakes) do
+        package.loaded[name] = saved[name]
+      end
+    end)
+
+    local function counts()
+      local group = require('camouflage.state').integrations_augroup
+      local function count(event, pattern)
+        return #vim.api.nvim_get_autocmds({ group = group, event = event, pattern = pattern })
+      end
+      return {
+        snacks = count('FileType', 'snacks_picker_input'),
+        telescope = count('User', 'TelescopePreviewerLoaded'),
+        blink = count('User', 'CamouflageAfterDecorate'),
+        buf_enter = count('BufEnter'),
+      }
+    end
+
+    local function setup()
+      camouflage.setup(vim.tbl_deep_extend('force', no_network_opts(), {
+        project_config = { enabled = false, watch_enabled = false },
+      }))
+      local installed = counts()
+      assert.equals(1, installed.snacks)
+      assert.equals(1, installed.telescope)
+      assert.equals(1, installed.blink)
+      -- nvim-cmp and blink.cmp
+      assert.equals(2, installed.buf_enter)
+      return installed
+    end
+
+    it('survive registering and unregistering a parser', function()
+      local installed = setup()
+
+      camouflage.register_pattern({
+        name = 'kdl',
+        file_patterns = { '*.kdl' },
+        pattern = '(%w+)%s+"(.-)"',
+        key_capture = 1,
+        value_capture = 2,
+      })
+      assert.same(installed, counts())
+
+      camouflage.unregister_parser('kdl')
+      assert.same(installed, counts())
+    end)
+
+    it('are rebuilt once on a project config reload', function()
+      local installed = setup()
+
+      assert.is_true((camouflage.project_config_refresh()))
+      assert.same(installed, counts())
+      assert.is_true((camouflage.project_config_refresh()))
+      assert.same(installed, counts())
+    end)
+
+    it('drop the blink autocmds when blink handling is turned off', function()
+      setup()
+
+      require('camouflage.config').set('integrations.blink', { disable_in_masked = false })
+      require('camouflage.integrations.preview').setup()
+
+      assert.equals(0, counts().blink)
+    end)
+  end)
+
   describe('enable/disable', function()
     before_each(function()
       clear_camouflage_modules()

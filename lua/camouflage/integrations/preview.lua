@@ -120,26 +120,42 @@ end
 
 M.sync_blink = sync_blink
 
+---@type number[]
+local blink_autocmds = {}
+
+---blink has nothing to wrap, only autocmds, so this recreates them on every
+---call instead of stopping at a "done once" flag: whatever cleared them (a
+---config reload) is followed by this setup again.
+---@param enabled boolean
 ---@return nil
-local function setup_blink()
-  if wrapped.blink or not pcall(require, 'blink.cmp') then
+local function setup_blink(enabled)
+  for _, id in ipairs(blink_autocmds) do
+    pcall(vim.api.nvim_del_autocmd, id)
+  end
+  blink_autocmds = {}
+  if not enabled or not pcall(require, 'blink.cmp') then
     return
   end
-  local group = require('camouflage.state').augroup
-  vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWinEnter' }, {
-    group = group,
-    callback = function(args)
-      sync_blink(args.buf)
-    end,
-  })
-  vim.api.nvim_create_autocmd('User', {
-    group = group,
-    pattern = { 'CamouflageAfterDecorate', 'CamouflageConfigChanged' },
-    callback = function()
-      sync_blink(vim.api.nvim_get_current_buf())
-    end,
-  })
-  wrapped.blink = true
+  local group = require('camouflage.state').integrations_augroup
+  table.insert(
+    blink_autocmds,
+    vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWinEnter' }, {
+      group = group,
+      callback = function(args)
+        sync_blink(args.buf)
+      end,
+    })
+  )
+  table.insert(
+    blink_autocmds,
+    vim.api.nvim_create_autocmd('User', {
+      group = group,
+      pattern = { 'CamouflageAfterDecorate', 'CamouflageConfigChanged' },
+      callback = function()
+        sync_blink(vim.api.nvim_get_current_buf())
+      end,
+    })
+  )
 end
 
 ---@return nil
@@ -151,9 +167,7 @@ function M.setup()
   if integrations.mini_pick ~= false then
     setup_mini_pick()
   end
-  if (integrations.blink or {}).disable_in_masked ~= false then
-    setup_blink()
-  end
+  setup_blink((integrations.blink or {}).disable_in_masked ~= false)
 end
 
 ---Internal: forget the wrappers (used by tests).
