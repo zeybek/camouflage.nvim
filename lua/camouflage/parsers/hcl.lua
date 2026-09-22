@@ -94,7 +94,12 @@ function M.parse_regex(content, lines)
       end
     else
       -- Process regular lines (not in heredoc mode)
-      local result = M.process_line(line, line_num, line_start, block_depth, include_commented)
+      local object_items = M.parse_inline_object(line, line_num, line_start)
+      local result = not object_items
+        and M.process_line(line, line_num, line_start, block_depth, include_commented)
+      if object_items then
+        vim.list_extend(variables, object_items)
+      end
 
       if result then
         if result.type == 'variable' then
@@ -282,6 +287,123 @@ function M.process_line(line, line_num, line_start, block_depth, include_comment
   end
 
   return nil
+end
+
+---Position of the `}` that closes the `{` at `open`, skipping quoted strings.
+---@param line string
+---@param open number 1-based position of the `{`
+---@return number|nil
+local function closing_brace(line, open)
+  local depth = 0
+  local pos = open
+  while pos <= #line do
+    local char = line:sub(pos, pos)
+    if char == '"' then
+      local close = util.find_unescaped(line, '"', pos + 1)
+      if not close then
+        return nil
+      end
+      pos = close
+    elseif char == '{' then
+      depth = depth + 1
+    elseif char == '}' then
+      depth = depth - 1
+      if depth == 0 then
+        return pos
+      end
+    end
+    pos = pos + 1
+  end
+  return nil
+end
+
+---Read the `key = value` / `key: value` pairs of an object between `open` and
+---`close` (the braces), nested objects included.
+---@param line string
+---@param open number
+---@param close number
+---@param prefix string Key path of the object
+---@param line_num number 1-based
+---@param line_start number 0-based offset of the line
+---@param out ParsedVariable[]
+local function read_object(line, open, close, prefix, line_num, line_start, out)
+  local pos = open + 1
+  while pos < close do
+    local key_start, key, after = line:match('^[%s,]*()"?([%a_][%w_%-]*)"?%s*[=:]%s*()', pos)
+    if not key_start or after >= close then
+      return
+    end
+    local path = prefix .. '.' .. key
+    local first = line:sub(after, after)
+    local value, value_start, value_end, next_pos
+
+    if first == '"' then
+      local quote_close = util.find_unescaped(line, '"', after + 1)
+      if not quote_close or quote_close > close then
+        return
+      end
+      value, value_start, value_end = line:sub(after + 1, quote_close - 1), after, quote_close - 1
+      next_pos = quote_close + 1
+    elseif first == '{' then
+      local inner_close = closing_brace(line, after)
+      if not inner_close or inner_close > close then
+        return
+      end
+      read_object(line, after, inner_close, path, line_num, line_start, out)
+      next_pos = inner_close + 1
+    elseif first == '[' then
+      -- Lists inside a one-line object are left to the tree-sitter path.
+      local list_close = line:find(']', after, true)
+      if not list_close or list_close > close then
+        return
+      end
+      next_pos = list_close + 1
+    else
+      local raw_end = (line:find('[,%s}]', after) or close) - 1
+      value, value_start, value_end = line:sub(after, raw_end), after - 1, raw_end
+      next_pos = raw_end + 1
+    end
+
+    if
+      value
+      and value ~= ''
+      and not M.is_variable_reference(value)
+      and not M.is_function_call(value)
+      and not value:match('%$%{')
+    then
+      table.insert(out, {
+        key = path,
+        value = value,
+        start_index = line_start + value_start,
+        end_index = line_start + value_end,
+        line_number = line_num - 1,
+        is_nested = true,
+        is_commented = false,
+      })
+    end
+    pos = next_pos
+  end
+end
+
+---Parse `key = { k = "v", n = 1 }` written on one line into one variable per
+---value. Returns nil when the line is not such an object, so it goes through
+---the regular line handling instead.
+---@param line string
+---@param line_num number 1-based
+---@param line_start number 0-based offset of the line
+---@return ParsedVariable[]|nil
+function M.parse_inline_object(line, line_num, line_start)
+  local key, open = line:match('^%s*([a-zA-Z_][a-zA-Z0-9_%-]*)%s*=%s*(){')
+  if not key then
+    return nil
+  end
+  local close = closing_brace(line, open)
+  if not close or not line:sub(close + 1):match('^%s*$') then
+    return nil
+  end
+  local out = {}
+  read_object(line, open, close, key, line_num, line_start, out)
+  return out
 end
 
 ---Check if a line is a block definition (resource, variable, module, etc.)

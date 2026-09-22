@@ -249,4 +249,64 @@ api_key = "secret"
       }, values)
     end)
   end)
+
+  describe('one-line objects', function()
+    local function parsed(content)
+      local out = {}
+      for _, v in ipairs(hcl_parser.parse(content)) do
+        -- The range points at the value itself.
+        assert.equals(v.value, content:sub(v.start_index + 1, v.end_index))
+        table.insert(out, v.key .. '=' .. v.value)
+      end
+      return out
+    end
+
+    it('reports each value of an object written on one line', function()
+      assert.same(
+        { 'tags.token=hcl-inline', 'tags.port=5432', 'tags.on=true' },
+        parsed('tags = { token = "hcl-inline", port = 5432, on = true }')
+      )
+    end)
+
+    it('reads quoted keys, colons and nested objects', function()
+      assert.same(
+        {
+          'labels.api-key=quoted-key',
+          'labels.secret=colon-value',
+          'labels.inner.password=nested-value',
+        },
+        parsed(
+          'labels = { "api-key" = "quoted-key", secret: "colon-value", inner = { password = "nested-value" } }'
+        )
+      )
+    end)
+
+    it('skips references, function calls and templates, like single values', function()
+      assert.same(
+        { 'x.keep=kept' },
+        parsed('x = { ref = var.foo, fn = lookup(y), tpl = "${var.a}-b", keep = "kept" }')
+      )
+    end)
+
+    it('marks the values as nested and keeps the lines around it', function()
+      local content = table.concat({
+        'resource "x" "y" {',
+        '  tags = { token = "hcl-inline" }',
+        '  name = "after"',
+        '}',
+      }, '\n')
+      local result = hcl_parser.parse(content)
+
+      assert.equals(2, #result)
+      assert.equals('tags.token', result[1].key)
+      assert.is_true(result[1].is_nested)
+      assert.equals(1, result[1].line_number)
+      assert.equals('name', result[2].key)
+    end)
+
+    it('leaves an empty object and a multi-line object to the line rules', function()
+      assert.same({}, parsed('empty = {}'))
+      assert.same({ 'password=multi-line' }, parsed('block = {\n  password = "multi-line"\n}'))
+    end)
+  end)
 end)
