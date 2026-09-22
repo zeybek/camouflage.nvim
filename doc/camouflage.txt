@@ -1356,8 +1356,11 @@ While it is on:
 - masking is on, including in buffers where it had been turned off with
   `vim.b.camouflage_enabled = false`, and in files of another repository whose
   project config says `enabled: false`
-- any revealed line is hidden, follow-cursor is stopped, and |:CamouflageReveal|
-  and |:CamouflageFollowCursor| refuse with a message
+- any revealed line is hidden, follow-cursor is stopped, and |:CamouflageReveal|,
+  |:CamouflageFollowCursor| and |:CamouflageToggle| refuse with a message. So
+  do the Lua functions behind them (`disable()`, `toggle()`,
+  `reveal.reveal_line()`, `start_follow_cursor()`), so a keymap written
+  against the API can't get past it either
 - terminal masking is on, see |camouflage-terminal|
 
 Leaving it puts all of that back, including the buffer-local overrides and

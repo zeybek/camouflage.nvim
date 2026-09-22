@@ -277,6 +277,11 @@ end
 ---Reveal the current line
 ---@return nil
 function M.reveal_line()
+  -- Checked here rather than in the commands, so keymaps calling the Lua API
+  -- are refused as well.
+  if require('camouflage.present').block_reveal() then
+    return
+  end
   local bufnr = vim.api.nvim_get_current_buf()
   local cursor = vim.api.nvim_win_get_cursor(0)
   local line = cursor[1] -- 1-indexed
@@ -550,6 +555,9 @@ end
 ---@return nil
 function M.start_follow_cursor()
   if follow_state.enabled then
+    return
+  end
+  if require('camouflage.present').block_reveal() then
     return
   end
 

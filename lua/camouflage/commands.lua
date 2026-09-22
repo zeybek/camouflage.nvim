@@ -7,9 +7,13 @@ local M = {}
 function M.setup()
   vim.api.nvim_create_user_command('CamouflageToggle', function()
     local camouflage = require('camouflage')
+    local was_enabled = camouflage.is_enabled()
     camouflage.toggle()
-    local status = camouflage.is_enabled() and 'enabled' or 'disabled'
-    vim.notify('[camouflage] ' .. status, vim.log.levels.INFO)
+    -- Presentation mode refuses to turn masking off, and says so itself.
+    if camouflage.is_enabled() ~= was_enabled then
+      local status = camouflage.is_enabled() and 'enabled' or 'disabled'
+      vim.notify('[camouflage] ' .. status, vim.log.levels.INFO)
+    end
   end, { desc = 'Toggle Camouflage' })
 
   vim.api.nvim_create_user_command('CamouflageParsers', function()
@@ -249,9 +253,6 @@ function M.setup()
 
   vim.api.nvim_create_user_command('CamouflageReveal', function(opts)
     local reveal = require('camouflage.reveal')
-    if require('camouflage.present').block_reveal() then
-      return
-    end
     if opts.bang then
       reveal.hide()
     else
@@ -264,9 +265,6 @@ function M.setup()
 
   vim.api.nvim_create_user_command('CamouflageFollowCursor', function(opts)
     local reveal = require('camouflage.reveal')
-    if not opts.bang and require('camouflage.present').block_reveal() then
-      return
-    end
     reveal.toggle_follow_cursor({
       force_disable = opts.bang,
     })
