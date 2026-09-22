@@ -111,8 +111,10 @@ describe('camouflage.shield', function()
 
     local function plain_session()
       if not plain then
-        plain = screen.start({ height = 18, args = { 'tests/fixtures/test.env' } })
-        assert.is_true(plain:wait_for('DATABASE_URL'), 'the file never appeared')
+        plain = screen.start_showing(
+          'DATABASE_URL',
+          { height = 18, args = { 'tests/fixtures/test.env' } }
+        )
       end
       return plain
     end
@@ -123,8 +125,10 @@ describe('camouflage.shield', function()
       if not locked then
         require('camouflage').setup({ project_config = { enabled = false, watch_enabled = false } })
         assert.is_true(shield.save_password(shield.hash_password('letmein')))
-        locked = screen.start({ height = 18, args = { 'tests/fixtures/test.env' } })
-        assert.is_true(locked:wait_for('DATABASE_URL'), 'the file never appeared')
+        locked = screen.start_showing(
+          'DATABASE_URL',
+          { height = 18, args = { 'tests/fixtures/test.env' } }
+        )
       end
       return locked
     end
