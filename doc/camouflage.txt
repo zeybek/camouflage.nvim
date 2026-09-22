@@ -1354,7 +1354,8 @@ One command for "I am about to share my screen":
 While it is on:
 
 - masking is on, including in buffers where it had been turned off with
-  `vim.b.camouflage_enabled = false`
+  `vim.b.camouflage_enabled = false`, and in files of another repository whose
+  project config says `enabled: false`
 - any revealed line is hidden, follow-cursor is stopped, and |:CamouflageReveal|
   and |:CamouflageFollowCursor| refuse with a message
 - terminal masking is on, see |camouflage-terminal|

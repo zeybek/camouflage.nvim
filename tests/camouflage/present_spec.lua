@@ -163,4 +163,90 @@ describe('camouflage.present', function()
 
     assert.is_not_nil(present.status():find('^on,'))
   end)
+
+  describe('with a buffer from another repository', function()
+    local root
+    local opened = {}
+
+    -- Repo B turns masking off in its own project file, repo A has one that
+    -- changes nothing. Neither is the project of the working directory.
+    before_each(function()
+      root = vim.fn.tempname()
+      for _, repo in ipairs({ 'a', 'b' }) do
+        vim.fn.mkdir(root .. '/' .. repo, 'p')
+        vim.fn.writefile({ 'API_KEY=' .. repo .. '-secret' }, root .. '/' .. repo .. '/.env')
+      end
+      vim.fn.writefile({ 'version: 1' }, root .. '/a/.camouflage.yaml')
+      vim.fn.writefile({ 'version: 1', 'enabled: false' }, root .. '/b/.camouflage.yaml')
+
+      clear_modules()
+      local notify = vim.notify_once
+      vim.notify_once = function() end
+      require('camouflage').setup({
+        project_config = { watch_enabled = false },
+        reveal = { notify = false },
+      })
+      vim.notify_once = notify
+      config = require('camouflage.config')
+      present = require('camouflage.present')
+      reveal = require('camouflage.reveal')
+      present._reset()
+    end)
+
+    after_each(function()
+      if present.is_active() then
+        present.stop()
+      end
+      for _, bufnr in ipairs(opened) do
+        if vim.api.nvim_buf_is_valid(bufnr) then
+          vim.api.nvim_buf_delete(bufnr, { force = true })
+        end
+      end
+      opened = {}
+      vim.fn.delete(root, 'rf')
+    end)
+
+    local function edit(repo)
+      vim.cmd('edit! ' .. vim.fn.fnameescape(root .. '/' .. repo .. '/.env'))
+      local bufnr = vim.api.nvim_get_current_buf()
+      table.insert(opened, bufnr)
+      return bufnr
+    end
+
+    local function marks(bufnr)
+      local ns = require('camouflage.state').namespace
+      return #vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {})
+    end
+
+    it('masks it while shown', function()
+      local b = edit('b')
+      assert.equals(0, marks(b))
+
+      present.start()
+
+      assert.equals(1, marks(b))
+    end)
+
+    it('masks it when it is shown again', function()
+      local b = edit('b')
+      local a = edit('a')
+      assert.equals(1, marks(a))
+
+      present.start()
+      vim.cmd('buffer ' .. b)
+
+      assert.equals(1, marks(b))
+    end)
+
+    it('gives it its own setting back afterwards', function()
+      local b = edit('b')
+      present.start()
+      assert.equals(1, marks(b))
+
+      present.stop()
+
+      assert.equals(0, marks(b))
+      assert.is_nil(config.runtime_enabled)
+    end)
+  end)
 end)

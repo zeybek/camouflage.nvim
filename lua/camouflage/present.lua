@@ -45,6 +45,7 @@ function M.start()
 
   saved = {
     enabled = cfg.enabled,
+    runtime_enabled = config.runtime_enabled,
     terminal_enabled = (cfg.terminal or {}).enabled,
     follow_cursor = reveal.is_follow_cursor_enabled(),
     buffers = clear_buffer_overrides(),
@@ -57,9 +58,13 @@ function M.start()
     reveal.hide()
   end
 
-  if not cfg.enabled then
-    config.set('enabled', true)
-  end
+  -- Always, not only when the global value is off: a buffer from another
+  -- repository has a config of its own, and only the runtime value reaches
+  -- it. Its project file may say `enabled: false`.
+  config.set('enabled', true)
+  -- Drop the per-project configs cached before, and make every buffer's last
+  -- pass out of date, so a hidden buffer is decorated again when it is shown.
+  config.clear_project_cache()
   if (cfg.terminal or {}).enabled ~= true then
     config.set('terminal.enabled', true)
     require('camouflage.integrations.terminal').setup()
@@ -81,6 +86,9 @@ function M.stop()
   if config.get().enabled ~= previous.enabled then
     config.set('enabled', previous.enabled)
   end
+  -- Give other repositories their own `enabled` back.
+  config.runtime_enabled = previous.runtime_enabled
+  config.clear_project_cache()
   if (config.get().terminal or {}).enabled ~= previous.terminal_enabled then
     config.set('terminal.enabled', previous.terminal_enabled)
   end
