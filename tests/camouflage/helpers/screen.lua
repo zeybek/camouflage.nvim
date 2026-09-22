@@ -225,6 +225,26 @@ function Session:wait_for(text, ms)
   end, 10)
 end
 
+---Start a session and wait until `text` is drawn. A start that never draws it
+---is stopped and tried once more: on the Linux CI runners an embedded editor
+---now and then never draws its file (#169), which no local run reproduces.
+---When the second start fails as well, the error describes both.
+---@param text string
+---@param opts table|nil Same as M.start
+---@return table session
+function M.start_showing(text, opts)
+  local failures = {}
+  for attempt = 1, 2 do
+    local session = M.start(opts)
+    if session:wait_for(text) then
+      return session
+    end
+    table.insert(failures, ('start %d never drew %q\n%s'):format(attempt, text, session:describe()))
+    session:stop()
+  end
+  error(table.concat(failures, '\n\n'), 2)
+end
+
 ---What the session looks like right now, for a failure message: the screen,
 ---whether the process is still running, and anything it wrote to stderr.
 ---@return string
