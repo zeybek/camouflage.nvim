@@ -60,6 +60,35 @@ describe('camouflage.parsers.env', function()
       end
     end)
 
+    it('parses dotted and dashed keys in a dotenv file', function()
+      local content =
+        'app.secret=dotted_value\nMY-TOKEN=dash_value\nspring.datasource.password=hunter2'
+      local result = env_parser.parse(content, nil, '/repo/.env')
+
+      assert.equals(3, #result)
+      assert.equals('app.secret', result[1].key)
+      assert.equals('MY-TOKEN', result[2].key)
+      assert.equals('spring.datasource.password', result[3].key)
+      assert.equals('hunter2', content:sub(result[3].start_index + 1, result[3].end_index))
+    end)
+
+    it('parses them when no filename is given, as for a dotenv file', function()
+      local result = env_parser.parse('app.secret=dotted_value')
+
+      assert.equals(1, #result)
+      assert.equals('app.secret', result[1].key)
+    end)
+
+    it('keeps shell names in shell scripts and .envrc', function()
+      local content = 'app.secret=dotted_value\nMY-TOKEN=dash_value\nREAL=value'
+      for _, filename in ipairs({ '/repo/deploy.sh', '/repo/.envrc' }) do
+        local result = env_parser.parse(content, nil, filename)
+
+        assert.equals(1, #result, filename)
+        assert.equals('REAL', result[1].key)
+      end
+    end)
+
     it('does not take a name that starts like a declaration for one', function()
       local result = env_parser.parse(
         'local_var=plain_value\nreadonly_mode=true\nlocal\ndeclare -a arr\nlocal value = 42'

@@ -982,6 +982,9 @@ Environment files ~
   Extensions: .env, .env.*, .envrc, .sh
   Besides `export`, the shell declarations `readonly`, `declare`, `typeset`
   and `local` (with flags such as `-x`) are read the same way.
+  Keys in dotenv files may contain `.` and `-` (`app.secret=`, `MY-TOKEN=`),
+  as dotenv loaders and Docker's `--env-file` accept them. `*.sh` and `.envrc`
+  are shell scripts and keep shell names.
   Example: >
     API_KEY=secret123
     export DATABASE_URL=postgres://user:pass@localhost/db
