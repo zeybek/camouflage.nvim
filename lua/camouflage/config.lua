@@ -411,6 +411,41 @@ M.generation = 0
 ---@type boolean|nil
 M.runtime_enabled = nil
 
+-- Every other key set at runtime (commands, presentation mode, config.set),
+-- dotted key -> value. Rebuilding the options from defaults, setup() and a
+-- project file would lose them, so they are applied again after every
+-- rebuild, the way `runtime_enabled` is.
+---@type table<string, any>
+M.runtime_overrides = {}
+
+---Write one dotted key into an options table. Missing or non-table segments
+---are left alone: the key does not exist there.
+---@param options table
+---@param key string
+---@param value any
+local function assign(options, key, value)
+  local keys = vim.split(key, '.', { plain = true })
+  local tbl = options
+  for i = 1, #keys - 1 do
+    if type(tbl[keys[i]]) ~= 'table' then
+      return
+    end
+    tbl = tbl[keys[i]]
+  end
+  tbl[keys[#keys]] = vim.deepcopy(value)
+end
+
+---Apply the values set at runtime to freshly rebuilt options.
+---@param options table
+local function apply_runtime_overrides(options)
+  for key, value in pairs(M.runtime_overrides) do
+    assign(options, key, value)
+  end
+  if M.runtime_enabled ~= nil then
+    options.enabled = M.runtime_enabled
+  end
+end
+
 -- Path of the project config applied to M.options (found from cwd), or nil.
 ---@type string|nil
 local global_project_path = nil
@@ -508,6 +543,7 @@ function M.setup(opts)
   global_project_path = project_config.status().path
   global_project_path = global_project_path and vim.fn.resolve(global_project_path)
   M.runtime_enabled = nil
+  M.runtime_overrides = {}
   M.clear_project_cache()
   M.options = vim.tbl_deep_extend(
     'force',
@@ -545,9 +581,7 @@ function M.reload_project_config()
   )
   apply_legacy_aliases(M.options)
   warn_cosmetic_styles(M.options)
-  if M.runtime_enabled ~= nil then
-    M.options.enabled = M.runtime_enabled
-  end
+  apply_runtime_overrides(M.options)
   return true, status
 end
 
@@ -610,6 +644,7 @@ local function base_config_for_buffer(bufnr)
       vim.deepcopy(project_opts)
     )
     apply_legacy_aliases(merged)
+    apply_runtime_overrides(merged)
     options_by_project[cache_key] = merged
   end
   if M.runtime_enabled ~= nil and merged.enabled ~= M.runtime_enabled then
@@ -663,6 +698,8 @@ function M.set(key, value)
 
   if key == 'enabled' then
     M.runtime_enabled = value
+  else
+    M.runtime_overrides[key] = vim.deepcopy(value)
   end
 
   -- Only update and refresh if value actually changed

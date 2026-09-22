@@ -1554,7 +1554,9 @@ its own settings when files from several repositories are open. A file with no
 project config of its own gets plugin defaults plus your `setup()` options, it
 doesn't inherit the config of the cwd project. Enabling or disabling camouflage
 at runtime (for example |:CamouflageToggle|) applies to every buffer and is
-kept when project configs are reloaded.
+kept when project configs are reloaded. The same goes for anything else set at
+runtime: |:CamouflagePresent|, |:CamouflageExpiryToggle|,
+|:CamouflageWeakSecretToggle| and `require('camouflage.config').set()`.
 
 File patterns (`patterns`, `custom_patterns`) and other editor-wide settings
 come from the global options.
