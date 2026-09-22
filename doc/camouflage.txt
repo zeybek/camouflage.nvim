@@ -1132,6 +1132,10 @@ You can add custom file patterns in your configuration:
     },
   })
 <
+`patterns` is a list, so it replaces the default list instead of being merged
+into it. The builtin formats stay masked either way: every registered parser
+brings its own file patterns. Use this list to map more files to a parser, and
+|camouflage.unregister_parser()| to stop masking a builtin format.
 
                                                    *camouflage-custom-patterns*
 Custom Patterns API ~

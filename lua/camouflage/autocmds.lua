@@ -32,50 +32,51 @@ local function cleanup_pwned_timer(bufnr)
   end
 end
 
+---Autocmd patterns for every file a parser handles: the `patterns` option,
+---`custom_patterns`, and the file patterns of every registered parser,
+---builtin ones included. `setup({ patterns = ... })` replaces the default
+---`patterns` list, while `parsers.is_supported` still falls back to the builtin
+---parsers, so leaving them out here left files that count as supported without
+---a trigger to mask them.
+---@return string[]
+function M.file_patterns()
+  local all_patterns = {}
+  local seen = {}
+
+  local function add(patterns)
+    if type(patterns) == 'string' then
+      patterns = { patterns }
+    end
+    for _, p in ipairs(patterns or {}) do
+      for _, pattern in ipairs({ '*/' .. p, p }) do
+        if not seen[pattern] then
+          seen[pattern] = true
+          table.insert(all_patterns, pattern)
+        end
+      end
+    end
+  end
+
+  for _, pattern_config in ipairs(config.get().patterns or {}) do
+    add(pattern_config.file_pattern)
+  end
+  for _, pattern_config in ipairs(config.get().custom_patterns or {}) do
+    add(pattern_config.file_pattern)
+  end
+  for _, entry in ipairs(parsers.list()) do
+    add(entry.file_patterns)
+  end
+
+  return all_patterns
+end
+
 ---Setup autocommands for automatic masking
 ---@return nil
 function M.setup()
   local group = state.augroup
   vim.api.nvim_clear_autocmds({ group = group })
 
-  local all_patterns = {}
-  for _, pattern_config in ipairs(config.get().patterns) do
-    local patterns = pattern_config.file_pattern
-    if type(patterns) == 'string' then
-      patterns = { patterns }
-    end
-    for _, p in ipairs(patterns) do
-      table.insert(all_patterns, '*/' .. p)
-      table.insert(all_patterns, p)
-    end
-  end
-
-  -- Also include custom patterns in autocmds
-  for _, pattern_config in ipairs(config.get().custom_patterns or {}) do
-    local patterns = pattern_config.file_pattern
-    if type(patterns) == 'string' then
-      patterns = { patterns }
-    end
-    for _, p in ipairs(patterns) do
-      table.insert(all_patterns, '*/' .. p)
-      table.insert(all_patterns, p)
-    end
-  end
-
-  -- Include file patterns from parsers registered at runtime via
-  -- register_parser; without this their files never trigger auto-masking.
-  for _, entry in ipairs(parsers.list()) do
-    if entry.source == 'user' and entry.file_patterns then
-      local patterns = entry.file_patterns
-      if type(patterns) == 'string' then
-        patterns = { patterns }
-      end
-      for _, p in ipairs(patterns) do
-        table.insert(all_patterns, '*/' .. p)
-        table.insert(all_patterns, p)
-      end
-    end
-  end
+  local all_patterns = M.file_patterns()
 
   vim.api.nvim_create_autocmd({ 'BufEnter' }, {
     group = group,

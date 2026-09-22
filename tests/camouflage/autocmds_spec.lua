@@ -257,6 +257,94 @@ describe('camouflage.autocmds', function()
     end)
   end)
 
+  describe('patterns option', function()
+    local buffers = {}
+
+    local function setup_masking(opts)
+      require('camouflage.config').setup(vim.tbl_deep_extend('force', {
+        project_config = { enabled = false },
+      }, opts or {}))
+      require('camouflage.parsers').setup()
+      autocmds.setup()
+    end
+
+    -- Entering the buffer runs the BufEnter autocmd, like opening a file.
+    local function enter_buffer(name, lines)
+      local bufnr = vim.api.nvim_create_buf(true, false)
+      table.insert(buffers, bufnr)
+      vim.api.nvim_buf_set_name(bufnr, vim.fn.tempname() .. '/' .. name)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.api.nvim_set_current_buf(bufnr)
+      return bufnr
+    end
+
+    local function mark_count(bufnr)
+      return #vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})
+    end
+
+    after_each(function()
+      for _, bufnr in ipairs(buffers) do
+        if vim.api.nvim_buf_is_valid(bufnr) then
+          vim.api.nvim_buf_delete(bufnr, { force = true })
+        end
+      end
+      buffers = {}
+    end)
+
+    -- The help file's example for adding a file pattern: the list replaces the
+    -- default `patterns`, it is not merged into it.
+    local custom = {
+      patterns = {
+        { file_pattern = { '.env*', '*.env' }, parser = 'env' },
+        { file_pattern = { '*.secrets' }, parser = 'env' },
+      },
+    }
+
+    it('keeps masking builtin formats the list does not repeat', function()
+      setup_masking(custom)
+      local cases = {
+        { 'config.json', { '{ "password": "jsonsecretvalue" }' } },
+        { 'config.yaml', { 'password: yamlsecretvalue' } },
+        { 'config.toml', { 'password = "tomlsecretvalue"' } },
+        { 'main.tf', { 'password = "hclsecretvalue"' } },
+        { 'Dockerfile', { 'ENV API_KEY=dockersecretvalue' } },
+      }
+      for _, case in ipairs(cases) do
+        local bufnr = enter_buffer(case[1], case[2])
+        assert.equals(1, mark_count(bufnr), case[1] .. ' was not masked on open')
+      end
+    end)
+
+    it('masks the formats the list adds', function()
+      setup_masking(custom)
+      local bufnr = enter_buffer('app.secrets', { 'API_KEY=addedpatternvalue' })
+      assert.equals(1, mark_count(bufnr))
+    end)
+
+    it('covers every file is_supported accepts', function()
+      setup_masking(custom)
+      local patterns = autocmds.file_patterns()
+      local parsers = require('camouflage.parsers')
+      for _, entry in ipairs(parsers.list()) do
+        for _, p in ipairs(entry.file_patterns or {}) do
+          assert.is_true(
+            vim.tbl_contains(patterns, p),
+            entry.name .. ' pattern ' .. p .. ' missing'
+          )
+        end
+      end
+    end)
+
+    it('lists each pattern once', function()
+      setup_masking()
+      local seen = {}
+      for _, p in ipairs(autocmds.file_patterns()) do
+        assert.is_nil(seen[p], 'duplicate pattern ' .. p)
+        seen[p] = true
+      end
+    end)
+  end)
+
   describe('apply_to_loaded_buffers', function()
     it('should not error when called', function()
       autocmds.setup()
