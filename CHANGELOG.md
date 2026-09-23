@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/zeybek/camouflage.nvim/compare/v0.17.0...v0.17.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* **init-command:** find the template in a LuaRocks install ([#180](https://github.com/zeybek/camouflage.nvim/issues/180)) ([9dc3a0d](https://github.com/zeybek/camouflage.nvim/commit/9dc3a0d92c0bc1c12f0beb161b928793eaa68a96))
+
 ## [0.17.0](https://github.com/zeybek/camouflage.nvim/compare/v0.16.1...v0.17.0) (2026-09-22)
 
 
