@@ -1,0 +1,58 @@
+name: LuaRocks
+
+# Publishes a release to luarocks.org, for rocks.nvim and anything else that
+# installs from LuaRocks. The Release workflow calls this when release-please
+# creates a release. It can also be run by hand for a tag that already exists.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag to publish, e.g. v0.17.1
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish, e.g. v0.17.1
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    name: Upload
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - name: Publish to luarocks.org
+        uses: nvim-neorocks/luarocks-tag-release@v7
+        env:
+          LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
+        with:
+          # A leading `v` is dropped from the LuaRocks version.
+          version: ${{ inputs.tag }}
+          summary: Hide sensitive values in configuration files during screen sharing
+          license: MIT
+          labels: |
+            neovim
+            plugin
+            security
+            privacy
+          # Everything under lua/ (the :CamouflageInit template included) is
+          # installed with the modules. Never list lua/ here.
+          copy_directories: |
+            {{ neovim.plugin.dirs }}
+            schemas
+          detailed_description: |
+            A Neovim plugin that visually masks sensitive values during screen
+            sharing, using extmarks: .env, JSON, YAML, TOML, properties, netrc,
+            XML, .http, Terraform/HCL and Dockerfiles, plus picker previews and
+            result rows, the quickfix list, diffs and terminal output. It has a
+            presentation mode and a screen shield. The actual file content is
+            never modified.
