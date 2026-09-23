@@ -150,6 +150,11 @@ Using mini.deps: >lua
   require('camouflage').setup()
 <
 
+Using rocks.nvim (camouflage.nvim is on LuaRocks): >vim
+  :Rocks install camouflage.nvim
+<
+Then call `require('camouflage').setup()` from your config.
+
 Manual installation:
 Clone the repository to your Neovim packages directory: >bash
   git clone https://github.com/zeybek/camouflage.nvim.git \

@@ -5,6 +5,7 @@ Hide sensitive values in configuration files during screen sharing.
 A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml`, `.toml`, `.properties`, `.netrc`, `.xml`, `.http`, **Terraform/HCL** (`.tf`, `.tfvars`, `.hcl`), and **Dockerfile** files using extmarks - **without modifying the actual file content**.
 
 [![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
+[![LuaRocks](https://img.shields.io/luarocks/v/zeybek/camouflage.nvim?style=flat&logo=lua&color=purple)](https://luarocks.org/modules/zeybek/camouflage.nvim)
 [![CI](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/zeybek/camouflage.nvim/actions/workflows/ci.yml)
 [![Neovim](https://img.shields.io/badge/Neovim-0.9%2B-green?logo=neovim)](https://neovim.io)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -139,6 +140,16 @@ add({
 })
 require('camouflage').setup()
 ```
+
+#### [rocks.nvim](https://github.com/lumen-oss/rocks.nvim)
+
+camouflage.nvim is [on LuaRocks](https://luarocks.org/modules/zeybek/camouflage.nvim):
+
+```vim
+:Rocks install camouflage.nvim
+```
+
+Then call `require('camouflage').setup()` from your config.
 
 #### Manual Installation
 
