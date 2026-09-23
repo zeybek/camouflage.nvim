@@ -9,9 +9,11 @@ source = {
 description = {
   summary = "Hide sensitive values in configuration files during screen sharing",
   detailed = [[
-    A Neovim plugin that visually masks sensitive values in configuration files
-    (.env, .json, .yaml, .toml, .properties) during screen sharing using extmarks.
-    The actual file content is never modified.
+    A Neovim plugin that visually masks sensitive values during screen sharing,
+    using extmarks: .env, JSON, YAML, TOML, properties, netrc, XML, .http,
+    Terraform/HCL and Dockerfiles, plus picker previews and result rows, the
+    quickfix list, diffs and terminal output. It has a presentation mode and a
+    screen shield. The actual file content is never modified.
   ]],
   labels = { "neovim", "plugin", "security", "privacy" },
   homepage = "https://github.com/zeybek/camouflage.nvim",
@@ -24,15 +26,15 @@ dependencies = {
 
 build = {
   type = "builtin",
-  -- The builtin build installs only lua/**/*.lua, so runtime data dirs must be
-  -- listed here or a LuaRocks install silently loses them: queries/ (the shipped
-  -- TreeSitter .scm files loaded via runtimepath), schemas/, and the YAML
-  -- template read by :CamouflageInit (a non-.lua file under lua/camouflage).
+  -- The builtin build installs everything under lua/ (the YAML template of
+  -- :CamouflageInit included) next to the modules. The runtime directories
+  -- outside lua/ must be listed here, or a LuaRocks install silently loses
+  -- them: doc/, plugin/, queries/ (the TreeSitter .scm files) and schemas/.
+  -- Never list lua/ or a directory under it: the .rock format uses that name.
   copy_directories = {
     "doc",
     "plugin",
     "queries",
     "schemas",
-    "lua/camouflage/templates",
   },
 }
