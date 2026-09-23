@@ -42,6 +42,28 @@ describe('camouflage.init_command', function()
     end)
   end)
 
+  describe('template lookup', function()
+    it('reads the template next to this module, as in a LuaRocks install', function()
+      -- LuaRocks puts the modules and the template under share/lua/5.1, which
+      -- is neither on the runtimepath nor under a plugin root.
+      local dir = vim.fn.tempname() .. '/share/lua/5.1/camouflage'
+      vim.fn.mkdir(dir .. '/templates', 'p')
+      vim.fn.writefile(
+        vim.fn.readfile(vim.fn.getcwd() .. '/lua/camouflage/init_command.lua'),
+        dir .. '/init_command.lua'
+      )
+      vim.fn.writefile({ '# luarocks copy', 'version: 1' }, dir .. '/templates/project_config.yaml')
+
+      local rocks_module = dofile(dir .. '/init_command.lua')
+      local content, err = rocks_module._read_template()
+
+      assert.is_nil(err)
+      assert.equals('# luarocks copy\nversion: 1', content)
+      assert.equals(dir .. '/templates/project_config.yaml', rocks_module._template_candidates()[1])
+      vim.fn.delete(vim.fn.fnamemodify(dir, ':h:h:h:h'), 'rf')
+    end)
+  end)
+
   describe('_read_template', function()
     it('should return content', function()
       local content, err = init_command._read_template()
