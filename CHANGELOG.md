@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/zeybek/camouflage.nvim/compare/v0.17.3...v0.18.0) (2026-09-27)
+
+
+### Features
+
+* **policy:** add ignore_case to match rule keys in any case ([#223](https://github.com/zeybek/camouflage.nvim/issues/223)) ([72645a1](https://github.com/zeybek/camouflage.nvim/commit/72645a1f511098c4bb75869abe44c77a57e8a88a))
+
 ## [0.17.3](https://github.com/zeybek/camouflage.nvim/compare/v0.17.2...v0.17.3) (2026-09-27)
 
 
