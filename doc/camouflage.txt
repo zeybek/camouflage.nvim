@@ -1511,7 +1511,8 @@ the way it was when masking stops.
 fzf-lua and mini.pick ~
 
 Their previews are masked as well, through the one function each of them draws
-file previews with.
+file previews with. For mini.pick that also covers a picker with a preview
+function of its own (`source.preview`): it is wrapped when the picker starts.
 >lua
   require('camouflage').setup({
     integrations = {

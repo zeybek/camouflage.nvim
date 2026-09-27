@@ -84,6 +84,26 @@ function M.mini_pick_item_path(item)
   return path ~= '' and path or nil
 end
 
+-- Preview functions that already mask, so nothing gets wrapped twice.
+---@type table<function, boolean>
+local mini_pick_wrappers = setmetatable({}, { __mode = 'k' })
+
+---A mini.pick preview function that masks what `preview` draws.
+---@param preview function
+---@return function
+local function wrap_mini_pick_preview(preview)
+  if mini_pick_wrappers[preview] then
+    return preview
+  end
+  local wrapper = function(buf_id, item, opts)
+    local result = preview(buf_id, item, opts)
+    M.mask_buffer(buf_id, M.mini_pick_item_path(item))
+    return result
+  end
+  mini_pick_wrappers[wrapper] = true
+  return wrapper
+end
+
 ---mini.pick renders every preview through one function.
 ---@return nil
 ---@return boolean installed
@@ -96,15 +116,34 @@ local function setup_mini_pick()
     return false
   end
 
-  local original = pick.default_preview
-  pick.default_preview = function(buf_id, item, opts)
-    local result = original(buf_id, item, opts)
-    M.mask_buffer(buf_id, M.mini_pick_item_path(item))
-    return result
-  end
+  pick.default_preview = wrap_mini_pick_preview(pick.default_preview)
   wrapped.mini_pick = true
   return true
 end
+
+---A picker copies `MiniPick.default_preview` into its source when it starts,
+---so one started before the hook above was installed (mini.pick loaded after
+---camouflage) keeps the plain function, and so does a picker with a preview of
+---its own. MiniPickStart comes right after the start: wrap whatever preview the
+---active picker ended up with.
+---@return nil
+function M.on_mini_pick_start()
+  local pick = package.loaded['mini.pick']
+  if type(pick) ~= 'table' or type(pick.get_picker_opts) ~= 'function' then
+    return
+  end
+  if (config.get().integrations or {}).mini_pick == false then
+    return
+  end
+  local opts = pick.get_picker_opts() or {}
+  local preview = (opts.source or {}).preview
+  if type(preview) == 'function' and not mini_pick_wrappers[preview] then
+    pick.set_picker_opts({ source = { preview = wrap_mini_pick_preview(preview) } })
+  end
+end
+
+---@type number|nil
+local mini_pick_start_autocmd
 
 ---blink.cmp reads `vim.b.completion` before it runs, so a masked buffer can
 ---turn it off the same way nvim-cmp is turned off.
@@ -193,8 +232,19 @@ function M.setup()
   else
     later.remove('preview.fzf')
   end
+  if mini_pick_start_autocmd then
+    pcall(vim.api.nvim_del_autocmd, mini_pick_start_autocmd)
+    mini_pick_start_autocmd = nil
+  end
   if integrations.mini_pick ~= false then
     later.add('preview.mini_pick', { module = 'mini.pick', install = setup_mini_pick })
+    mini_pick_start_autocmd = vim.api.nvim_create_autocmd('User', {
+      group = require('camouflage.state').integrations_augroup,
+      pattern = 'MiniPickStart',
+      callback = function()
+        M.on_mini_pick_start()
+      end,
+    })
   else
     later.remove('preview.mini_pick')
   end
