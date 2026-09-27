@@ -54,6 +54,57 @@ describe('camouflage.project_config', function()
     assert.is_true(config.get().debug)
   end)
 
+  it('ignores a comment at the end of a line', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1 # schema',
+      'style: dotted # for demos',
+      'max_lines: 20000 # big files',
+      'debug: true # for now',
+      'patterns:',
+      '  - file_pattern: ["*.secret"] # local files',
+      '    parser: env # KEY=value',
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local status = project_config.status()
+
+    assert.is_true(status.loaded)
+    assert.same({}, status.errors)
+    assert.equals('dotted', config.get().style)
+    assert.equals(20000, config.get().max_lines)
+    assert.is_true(config.get().debug)
+    local found = false
+    for _, entry in ipairs(config.get().patterns) do
+      if entry.parser == 'env' and vim.deep_equal(entry.file_pattern, { '*.secret' }) then
+        found = true
+      end
+    end
+    assert.is_true(found, 'the pattern with comments was not loaded')
+  end)
+
+  it('keeps a # inside quotes or without a space before it', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      "mask_char: '#' # hash",
+      'highlight_group: Camo#Mask',
+      'colors:',
+      '  foreground: "#ff0000" # red',
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+
+    assert.same({}, project_config.status().errors)
+    assert.equals('#', config.get().mask_char)
+    assert.equals('Camo#Mask', config.get().highlight_group)
+    assert.equals('#ff0000', config.get().colors.foreground)
+  end)
+
   it('should load generated template with current built-in parser coverage', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')
@@ -81,6 +132,7 @@ describe('camouflage.project_config', function()
     assert.equals(10, config.get().parsers.xml.max_depth)
     assert.equals(10, config.get().parsers.hcl.max_depth)
     assert.same({}, config.get().parsers.dockerfile)
+    assert.equals('mask', config.get().policy.default_action)
   end)
 
   it('should not replace default lists with copies from the generated template', function()
