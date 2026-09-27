@@ -121,9 +121,80 @@ local function setup_telescope()
   return true
 end
 
+M.fzf_namespace = vim.api.nvim_create_namespace('camouflage_fzf')
+
+---Where the value sits in a row of an fzf list, if the row reads
+---`<path>:<line>[:<col>]:<text>` (with an optional icon or pointer in front)
+---and the path is a file a parser handles.
+---@param line string
+---@return number|nil col 0-indexed byte column
+---@return number|nil len
+function M.fzf_row_value(line)
+  local cfg = config.get()
+  local integrations = cfg.integrations or {}
+  if not cfg.enabled or integrations.picker_results == false or integrations.fzf == false then
+    return nil, nil
+  end
+  local path, text_start = line:match('([^%s:]+):%d+:%d+:()')
+  if not path then
+    path, text_start = line:match('([^%s:]+):%d+:()')
+  end
+  if not path or not parsers.is_supported(path) then
+    return nil, nil
+  end
+  local col, value = linemask.find_value(line:sub(text_start))
+  if not col then
+    return nil, nil
+  end
+  return text_start - 1 + col, #value
+end
+
+---fzf-lua draws its list in a terminal buffer (filetype `fzf`) that fzf itself
+---renders, so there is no Lua function per row to wrap. The rows are masked
+---while they are drawn instead, like terminal output, and only the rows on
+---screen are looked at.
+---@return nil
+local function setup_fzf_rows()
+  vim.api.nvim_set_decoration_provider(M.fzf_namespace, {
+    on_win = function(_, _, bufnr)
+      return vim.bo[bufnr].filetype == 'fzf'
+    end,
+    on_line = function(_, _, bufnr, row)
+      local line = vim.api.nvim_buf_get_lines(bufnr, row, row + 1, false)[1]
+      if not line then
+        return
+      end
+      local col, len = M.fzf_row_value(line)
+      if not col then
+        return
+      end
+      local cfg = config.get()
+      local value = line:sub(col + 1, col + len)
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, M.fzf_namespace, row, col, {
+        end_col = col + len,
+        virt_text = {
+          {
+            require('camouflage.styles').generate_hidden_text(
+              cfg.style,
+              vim.fn.strdisplaywidth(value),
+              value,
+              cfg
+            ),
+            cfg.colors and 'CamouflageMask' or cfg.highlight_group,
+          },
+        },
+        virt_text_pos = 'overlay',
+        hl_mode = 'combine',
+        ephemeral = true,
+      })
+    end,
+  })
+end
+
 ---Install the hooks of every picker, now or once the picker is loaded.
 ---@return nil
 function M.setup()
+  setup_fzf_rows()
   local later = require('camouflage.integrations.later')
   later.add('picker_results.snacks', { module = 'snacks.picker.format', install = setup_snacks })
   later.add(

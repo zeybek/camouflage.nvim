@@ -162,4 +162,59 @@ describe('camouflage.integrations.picker', function()
       assert.equals('local api_key = "secret-value"', entry.text)
     end)
   end)
+
+  describe('fzf-lua rows', function()
+    it('finds the value of a grep row pointing into a supported file', function()
+      local line = 'prod.env:1:1:API_KEY=row-secret'
+      local col, len = picker.fzf_row_value(line)
+      assert.equals('row-secret', line:sub(col + 1, col + len))
+    end)
+
+    it('reads past a pointer or an icon, and rows without a column', function()
+      for _, line in ipairs({
+        '▌ prod.env:1:1:API_KEY=row-secret',
+        '  󰈔 config/prod.env:12:API_KEY=row-secret',
+      }) do
+        local col, len = picker.fzf_row_value(line)
+        assert.equals('row-secret', line:sub(col + 1, col + len), line)
+      end
+    end)
+
+    it('leaves other rows alone', function()
+      assert.is_nil(picker.fzf_row_value('notes.txt:1:1:API_KEY=not-a-config'))
+      assert.is_nil(picker.fzf_row_value('API_KEY >'))
+      assert.is_nil(picker.fzf_row_value('  :: <ctrl-g> to Regex Search'))
+      assert.is_nil(picker.fzf_row_value('prod.env'))
+    end)
+
+    it('does nothing when picker_results or fzf is off', function()
+      config.set('integrations.picker_results', false)
+      assert.is_nil(picker.fzf_row_value('prod.env:1:1:API_KEY=row-secret'))
+      config.set('integrations.picker_results', true)
+      config.set('integrations.fzf', false)
+      assert.is_nil(picker.fzf_row_value('prod.env:1:1:API_KEY=row-secret'))
+      config.set('integrations.fzf', true)
+    end)
+
+    it('covers the value on screen in an fzf buffer', function()
+      local screen = dofile(vim.fn.getcwd() .. '/tests/camouflage/helpers/screen.lua')
+      local s = screen.start({ width = 60, height = 6 })
+      s:request(
+        'nvim_exec_lua',
+        [[
+        vim.api.nvim_buf_set_lines(0, 0, -1, false, { '▌ prod.env:1:1:API_KEY=row-secret', 'notes.txt:1:1:API_KEY=kept' })
+        vim.bo.filetype = 'fzf'
+      ]],
+        {}
+      )
+      local drawn = s:wait_for('prod.env:1:1:API_KEY=', 5000)
+      s:settle(200)
+      local text = s:screen()
+      s:stop()
+
+      assert.is_true(drawn, 'the row was never drawn')
+      assert.is_nil(text:find('row-secret', 1, true), text)
+      assert.truthy(text:find('API_KEY=kept', 1, true), 'a row of an unsupported file was masked')
+    end)
+  end)
 end)
