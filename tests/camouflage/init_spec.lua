@@ -218,6 +218,73 @@ describe('camouflage.init', function()
       assert.equals(tonumber('e0af68', 16), hl('CamouflageRevealed').bg)
     end)
 
+    it('leaves out a color Neovim cannot read, with a warning', function()
+      local messages = {}
+      local original = vim.notify_once
+      vim.notify_once = function(msg)
+        table.insert(messages, msg)
+      end
+      local ok, err = pcall(
+        camouflage.setup,
+        vim.tbl_extend('force', no_network_opts(), {
+          colors = { foreground = '#fff', background = '#202020', bold = true },
+        })
+      )
+      vim.notify_once = original
+
+      assert.is_true(ok, tostring(err))
+      assert.is_nil(hl('CamouflageMask').fg)
+      assert.equals(tonumber('202020', 16), hl('CamouflageMask').bg)
+      assert.is_true(hl('CamouflageMask').bold)
+      local warned = false
+      for _, msg in ipairs(messages) do
+        if msg:find('colors.foreground', 1, true) and msg:find('#fff', 1, true) then
+          warned = true
+        end
+      end
+      assert.is_true(warned, vim.inspect(messages))
+    end)
+
+    it('keeps masking when a project file sets a color Neovim cannot read', function()
+      local original_cwd = vim.fn.getcwd()
+      local original_path = package.path
+      -- The plugin is on the runtimepath as a relative path, so modules loaded
+      -- after the cd below have to be found through an absolute one.
+      package.path = original_cwd
+        .. '/lua/?.lua;'
+        .. original_cwd
+        .. '/lua/?/init.lua;'
+        .. package.path
+      local dir = vim.fn.tempname()
+      vim.fn.mkdir(dir, 'p')
+      vim.fn.writefile(
+        { 'version: 1', 'colors:', '  foreground: "#fff"' },
+        dir .. '/.camouflage.yaml'
+      )
+      vim.fn.writefile({ 'API_KEY=project-color-secret' }, dir .. '/.env')
+      vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+      local original = vim.notify_once
+      vim.notify_once = function() end
+      local setup_ok, setup_err = pcall(camouflage.setup, no_network_opts())
+      vim.notify_once = original
+      local ok, masked = pcall(function()
+        vim.cmd('edit ' .. vim.fn.fnameescape(dir .. '/.env'))
+        local bufnr = vim.api.nvim_get_current_buf()
+        require('camouflage.core').apply_decorations(bufnr)
+        local result = require('camouflage.state').is_buffer_masked(bufnr)
+        vim.api.nvim_buf_delete(bufnr, { force = true })
+        return result
+      end)
+
+      vim.cmd('cd ' .. vim.fn.fnameescape(original_cwd))
+      package.path = original_path
+
+      assert.is_true(setup_ok, tostring(setup_err))
+      assert.is_true(ok, tostring(masked))
+      assert.is_true(masked)
+    end)
+
     it('listens for colorscheme changes once', function()
       camouflage.setup(no_network_opts())
       require('camouflage').project_config_refresh()
