@@ -54,7 +54,7 @@ screen sharing, pair programming, screenshots, and demos.
 directly, because the real text is still there underneath the mask:
 
 - grep tools outside the editor, and any picker camouflage has no integration
-  for (Telescope and Snacks result rows are masked, previews are masked
+  for (Telescope, Snacks and mini.pick result rows are masked, previews are masked
   everywhere, but the match itself is still real text the picker reads)
 - LSP servers, completion sources, and AI assistants
 - `:%print`, `:substitute` previews, `:w`/`:saveas`, and yanking with `yy`/`"+y`

@@ -248,6 +248,133 @@ describe('camouflage.integrations.preview', function()
       end)
     end)
 
+    describe('result rows', function()
+      local function to_line(item)
+        return (type(item) == 'table' and item.text or item):gsub('%z', '│')
+      end
+
+      local function install_show_stub()
+        install_stub()
+        package.loaded['mini.pick'].default_show = function(buf_id, items)
+          vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.tbl_map(to_line, items))
+        end
+      end
+
+      local function row_marks(bufnr)
+        local out = {}
+        for _, m in
+          ipairs(
+            vim.api.nvim_buf_get_extmarks(
+              bufnr,
+              preview.mini_pick_namespace,
+              0,
+              -1,
+              { details = true }
+            )
+          )
+        do
+          out[m[2] + 1] = { col = m[3], end_col = m[4].end_col, text = m[4].virt_text[1][1] }
+        end
+        return out
+      end
+
+      local function grep_item(path, text)
+        return path .. '\0' .. '1\0' .. '1\0' .. text
+      end
+
+      it('covers the value of a grep row pointing into a supported file', function()
+        install_show_stub()
+        preview.setup()
+        require('camouflage.integrations.later').try_all()
+
+        local bufnr = scratch({})
+        local items = {
+          grep_item(envfile, 'API_KEY=row-secret'),
+          grep_item(dir .. '/notes.txt', 'API_KEY=not-a-config'),
+          envfile,
+        }
+        require('mini.pick').default_show(bufnr, items, {}, {})
+
+        local marks = row_marks(bufnr)
+        local line = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1]
+        assert.is_table(marks[1], 'grep row was not masked')
+        assert.equals('row-secret', line:sub(marks[1].col + 1, marks[1].end_col))
+        assert.is_nil(marks[1].text:find('row-secret', 1, true))
+        assert.is_nil(marks[2], 'row of an unsupported file was masked')
+        assert.is_nil(marks[3], 'a plain path row was masked')
+      end)
+
+      it('masks the rows of a picker with a show function of its own', function()
+        install_show_stub()
+        preview.setup()
+        local custom = function(buf_id, items)
+          vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.tbl_map(to_line, items))
+        end
+        local picker_opts = { source = { show = custom } }
+        package.loaded['mini.pick'].get_picker_opts = function()
+          return vim.deepcopy(picker_opts)
+        end
+        package.loaded['mini.pick'].set_picker_opts = function(opts)
+          picker_opts = vim.tbl_deep_extend('force', picker_opts, opts)
+        end
+        vim.api.nvim_exec_autocmds('User', { pattern = 'MiniPickStart' })
+
+        local bufnr = scratch({})
+        picker_opts.source.show(bufnr, { grep_item(envfile, 'API_KEY=row-secret') }, {}, {})
+
+        assert.is_table(row_marks(bufnr)[1])
+      end)
+
+      it('leaves rows alone when picker_results is off', function()
+        install_show_stub()
+        config.set('integrations.picker_results', false)
+        preview.setup()
+        require('camouflage.integrations.later').try_all()
+
+        local bufnr = scratch({})
+        require('mini.pick').default_show(
+          bufnr,
+          { grep_item(envfile, 'API_KEY=row-secret') },
+          {},
+          {}
+        )
+
+        assert.is_nil(row_marks(bufnr)[1])
+        config.set('integrations.picker_results', true)
+      end)
+
+      it('covers the value in the preview window title', function()
+        install_show_stub()
+        local item = grep_item(envfile, 'API_KEY=title-secret')
+        local win = vim.api.nvim_open_win(scratch({}), false, {
+          relative = 'editor',
+          row = 1,
+          col = 1,
+          width = 80,
+          height = 3,
+          border = 'single',
+          title = { { ' ' .. to_line(item) .. ' ', 'Title' } },
+        })
+        package.loaded['mini.pick'].get_picker_state = function()
+          return { windows = { main = win } }
+        end
+        preview.setup()
+        require('camouflage.integrations.later').try_all()
+
+        require('mini.pick').default_preview(scratch({}), item)
+
+        assert.is_true(
+          vim.wait(500, function()
+            local title = vim.api.nvim_win_get_config(win).title[1][1]
+            return not title:find('title-secret', 1, true)
+              and title:find('API_KEY=', 1, true) ~= nil
+          end, 10),
+          'value still in the title'
+        )
+        vim.api.nvim_win_close(win, true)
+      end)
+    end)
+
     it('takes the path off an item table too', function()
       install_stub()
       preview.setup()
