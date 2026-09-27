@@ -55,12 +55,19 @@
       "description": "Fixed mask length (null = use actual value length)"
     },
     "max_lines": {
-      "type": [
-        "integer",
-        "null"
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "const": false
+        },
+        {
+          "type": "null"
+        }
       ],
-      "minimum": 1,
-      "description": "Skip masking for files with more lines than this value"
+      "description": "Skip masking for files with more lines than this value (false = no limit, null = the default)"
     },
     "hidden_text": {
       "type": "string",
@@ -471,7 +478,8 @@
             "integer",
             "null"
           ],
-          "description": "Auto-clear clipboard after N seconds"
+          "description": "Auto-clear clipboard after N seconds (0 = never, null = the default)",
+          "minimum": 0
         },
         "confirm": {
           "type": "boolean",

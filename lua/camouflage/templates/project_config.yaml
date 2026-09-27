@@ -28,7 +28,7 @@ debug: false
 # Automatically apply masking when entering supported buffers
 auto_enable: true
 
-# Skip masking for files with more lines than this value (null = no limit)
+# Skip masking for files with more lines than this value (false = no limit)
 max_lines: 5000
 
 # =============================================================================
@@ -272,7 +272,7 @@ yank:
   # Show notification after copying
   notify: true
 
-  # Auto-clear clipboard after N seconds (null = disabled)
+  # Auto-clear clipboard after N seconds (0 = never)
   auto_clear_seconds: 30
 
   # Require confirmation before copying

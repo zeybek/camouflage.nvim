@@ -194,7 +194,7 @@ local M = {}
 ---@field style? string
 ---@field mask_char? string
 ---@field mask_length? number|nil
----@field max_lines? number|nil
+---@field max_lines? number|false Skip files with more lines than this, false turns the check off
 ---@field hidden_text? string
 ---@field highlight_group? string
 ---@field colors? CamouflageColorsConfig|nil

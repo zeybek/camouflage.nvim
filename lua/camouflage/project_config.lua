@@ -31,10 +31,17 @@ local function trim(s)
   return (s:gsub('^%s+', ''):gsub('%s+$', ''))
 end
 
+-- YAML's null: the option is left unset, so its default applies.
+local NULL_VALUES = { ['null'] = true, ['Null'] = true, ['NULL'] = true, ['~'] = true }
+
 ---@param raw string
 ---@return any
 local function parse_scalar(raw)
   local value = trim(raw)
+
+  if NULL_VALUES[value] then
+    return nil
+  end
 
   if value == 'true' then
     return true
@@ -345,6 +352,31 @@ local function has_compatible_type(value, default_value, key)
   return true
 end
 
+---Keys that also take `false`, besides their default's type.
+local FALSE_ALLOWED = { max_lines = true }
+
+---Drop values below the top level whose type differs from their default's, so
+---a string where a number belongs can't reach code that compares it.
+---@param value table
+---@param default_value table
+---@param path string
+local function drop_mismatched(value, default_value, path)
+  for k, v in pairs(value) do
+    local default_child = nil
+    if type(k) == 'string' then
+      default_child = default_value[k]
+    end
+    if default_child ~= nil then
+      local child_path = path .. '.' .. k
+      if not has_compatible_type(v, default_child, child_path) then
+        value[k] = nil
+      elseif type(v) == 'table' then
+        drop_mismatched(v, default_child, child_path)
+      end
+    end
+  end
+end
+
 ---Load and validate a repo-level project config file.
 ---Returns a table suitable for deep-merging into user config.
 ---@param opts? { enabled?: boolean, filename?: string, notify?: boolean, secure?: boolean }
@@ -424,8 +456,14 @@ function M.load(opts, start_dir)
         -- A repository must not be able to set a password or a focus trigger
         -- on your editor and lock you out of it.
         add_error('key "shield" can only be set in setup(), not in a project config file')
+      elseif FALSE_ALLOWED[key] and value == false then
+        sanitized[key] = false
       elseif defaults[key] ~= nil then
         if has_compatible_type(value, defaults[key], key) then
+          if type(value) == 'table' then
+            -- List items have number keys and are left to the code reading them.
+            drop_mismatched(value, defaults[key], key)
+          end
           sanitized[key] = value
         end
       elseif M.NULLABLE_KEYS[key] then

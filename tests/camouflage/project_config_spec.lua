@@ -105,6 +105,99 @@ describe('camouflage.project_config', function()
     assert.equals('#ff0000', config.get().colors.foreground)
   end)
 
+  it('treats null as an option that is not set', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'mask_length: null',
+      'max_lines: ~',
+      'yank:',
+      '  auto_clear_seconds: null',
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+
+    assert.same({}, project_config.status().errors)
+    assert.is_nil(config.get().mask_length)
+    assert.equals(5000, config.get().max_lines)
+    assert.equals(30, config.get().yank.auto_clear_seconds)
+  end)
+
+  it('drops a value of the wrong type below the top level', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({
+      'version: 1',
+      'yank:',
+      '  auto_clear_seconds: soon',
+      '  confirm: false',
+      'integrations:',
+      '  cmp: false',
+      '  telescope: false',
+    }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+    local errors = table.concat(project_config.status().errors, '\n')
+
+    assert.truthy(errors:find('type mismatch for key "yank.auto_clear_seconds"', 1, true), errors)
+    assert.truthy(errors:find('type mismatch for key "integrations.cmp"', 1, true), errors)
+    assert.equals(30, config.get().yank.auto_clear_seconds)
+    assert.is_false(config.get().yank.confirm)
+    assert.is_table(config.get().integrations.cmp)
+    assert.is_false(config.get().integrations.telescope)
+  end)
+
+  it('lets max_lines be false to turn the limit off', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    vim.fn.writefile({ 'version: 1', 'max_lines: false' }, dir .. '/.camouflage.yaml')
+    vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+    config.setup()
+
+    assert.same({}, project_config.status().errors)
+    assert.is_false(config.get().max_lines)
+  end)
+
+  it(
+    'keeps :CamouflageYank working when the project file sets auto_clear_seconds to null',
+    function()
+      local dir = vim.fn.tempname()
+      vim.fn.mkdir(dir, 'p')
+      vim.fn.writefile({
+        'version: 1',
+        'yank:',
+        '  auto_clear_seconds: null',
+        '  confirm: false',
+        "  default_register: 'y'",
+      }, dir .. '/.camouflage.yaml')
+      vim.fn.writefile({ 'API_KEY=null-yank-secret' }, dir .. '/.env')
+      vim.cmd('cd ' .. vim.fn.fnameescape(dir))
+
+      require('camouflage').setup({ pwned = { enabled = false } })
+      vim.cmd('edit ' .. vim.fn.fnameescape(dir .. '/.env'))
+      local bufnr = vim.api.nvim_get_current_buf()
+      require('camouflage.core').apply_decorations(bufnr)
+      vim.api.nvim_win_set_cursor(0, { 1, 10 })
+      local yank = require('camouflage.yank')
+      local scheduled = {}
+      local original = yank.schedule_auto_clear
+      yank.schedule_auto_clear = function(register, seconds)
+        table.insert(scheduled, { register, seconds })
+      end
+      local ok, err = pcall(vim.cmd, 'CamouflageYank')
+      yank.schedule_auto_clear = original
+      vim.fn.setreg('y', '')
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+
+      assert.is_true(ok, tostring(err))
+      assert.same({ { 'y', 30 } }, scheduled)
+    end
+  )
+
   it('should load generated template with current built-in parser coverage', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')

@@ -315,9 +315,9 @@ auto_enable ~
     Automatically apply masking when entering a supported buffer.
 
 max_lines ~
-    Type: `number`, Default: `5000`
+    Type: `number|false`, Default: `5000`
     Skip masking for files with more lines than this value.
-    Set to `nil` to disable this check.
+    Set to `false` to disable this check.
 
 debounce_ms ~
     Type: `number`, Default: `150`
