@@ -153,7 +153,8 @@ local M = {}
 ---@field path? string|string[] Root-relative glob(s)
 ---@field basename? string|string[] Basename glob(s)
 ---@field parser? string|string[] Parser name(s)
----@field key? string|string[] Lua pattern(s) matched against parsed keys
+---@field key? string|string[] Lua pattern(s) matched against parsed keys, case-sensitive
+---@field ignore_case? boolean Also match `key` against the lower-cased key (default: false)
 ---@field nested? boolean Match nested parser output
 ---@field commented? boolean Match commented parser output
 ---@field value_length? CamouflagePolicyValueLengthConfig

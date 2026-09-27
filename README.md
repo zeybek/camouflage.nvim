@@ -156,7 +156,7 @@ policy:
       show_end: 4
 ```
 
-`AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE` then shows as `****************MPLE`. Key patterns are case-sensitive Lua patterns. See [Project Config](https://github.com/zeybek/camouflage.nvim/wiki/Project-Config) and [Rule Based Policy](https://github.com/zeybek/camouflage.nvim/wiki/Rule-Based-Policy).
+`AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE` then shows as `****************MPLE`. Key patterns are case-sensitive Lua patterns, and `ignore_case: true` on a rule makes a lower-case pattern match any case. See [Project Config](https://github.com/zeybek/camouflage.nvim/wiki/Project-Config) and [Rule Based Policy](https://github.com/zeybek/camouflage.nvim/wiki/Rule-Based-Policy).
 
 ## Audit in CI
 

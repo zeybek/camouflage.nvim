@@ -1003,6 +1003,7 @@ describe('camouflage.project_config', function()
         'basename',
         'parser',
         'key',
+        'ignore_case',
         'nested',
         'commented',
         'value_length',

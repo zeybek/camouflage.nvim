@@ -418,7 +418,7 @@
                 ]
               },
               "key": {
-                "description": "Lua pattern(s) matched against variable keys",
+                "description": "Lua pattern(s) matched against variable keys, case-sensitive unless ignore_case is set",
                 "oneOf": [
                   {
                     "type": "string"
@@ -430,6 +430,10 @@
                     }
                   }
                 ]
+              },
+              "ignore_case": {
+                "type": "boolean",
+                "description": "Also match key patterns against the lower-cased key, so a lower-case pattern covers every case (default false)"
               },
               "nested": {
                 "type": "boolean",

@@ -202,7 +202,8 @@ policy:
 
   # Rules are evaluated in order and the first non-forced match wins. Matching
   # supports path, basename, parser, key, nested, commented, value_length,
-  # value_shape, value_prefix, and value_suffix predicates.
+  # value_shape, value_prefix, and value_suffix predicates. Key patterns are
+  # case-sensitive, ignore_case: true matches a lower-case pattern in any case.
   rules:
     - id: ignore-debug-flags
       action: ignore
@@ -212,6 +213,7 @@ policy:
     - id: force-client-secrets
       action: mask
       allow_force: true
+      ignore_case: true
       key:
         - client[_%.%-]?secret
         - private[_%.%-]?key

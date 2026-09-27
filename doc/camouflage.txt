@@ -259,10 +259,8 @@ Call the setup function with your options: >lua
           id = 'force-client-secrets',
           action = 'mask',
           allow_force = true,
-          key = {
-            'client[_%.%-]?secret', 'CLIENT[_%.%-]?SECRET',
-            'private[_%.%-]?key', 'PRIVATE[_%.%-]?KEY',
-          },
+          ignore_case = true,
+          key = { 'client[_%.%-]?secret', 'private[_%.%-]?key' },
         },
       },
     },
@@ -1792,8 +1790,12 @@ Rules can match on:
 - `basename`: basename glob
 - `parser`: parser names such as `env`, `json`, `yaml`, or `toml`
 - `key`: Lua patterns matched against the variable key. They are
-  case-sensitive: `password` matches `db_password` but not `DB_PASSWORD`, so
-  list both forms when a rule should cover both
+  case-sensitive: `password` matches `db_password` but not `DB_PASSWORD`
+- `ignore_case`: `true` also matches `key` against the lower-cased key, so a
+  pattern written in lower case covers every case (`password` then matches
+  `DB_PASSWORD` and `DbPassword` too). An exact key such as `'^DB_PASSWORD$'`
+  is compared in any case. The pattern itself is not changed, so a class like
+  `%u` still means upper case. Default `false`
 - `nested`: boolean nested-key metadata
 - `commented`: boolean commented-line metadata
 - `value_length`: `{ min = N, max = N }`
@@ -1825,10 +1827,8 @@ Example ~
           id = 'force-client-secrets',
           action = 'mask',
           allow_force = true,
-          key = {
-            'client[_%.%-]?secret', 'CLIENT[_%.%-]?SECRET',
-            'private[_%.%-]?key', 'PRIVATE[_%.%-]?KEY',
-          },
+          ignore_case = true,
+          key = { 'client[_%.%-]?secret', 'private[_%.%-]?key' },
         },
       },
     },
@@ -1851,11 +1851,10 @@ The same policy can be set in `.camouflage.yaml`:
       - id: force-client-secrets
         action: mask
         allow_force: true
+        ignore_case: true
         key:
           - client[_%.%-]?secret
-          - CLIENT[_%.%-]?SECRET
           - private[_%.%-]?key
-          - PRIVATE[_%.%-]?KEY
 <
 
 ==============================================================================
