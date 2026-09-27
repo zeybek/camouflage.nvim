@@ -84,6 +84,9 @@ function M.mini_pick_item_path(item)
   return path ~= '' and path or nil
 end
 
+-- Defined below, next to the row masking it shares its logic with.
+local mask_mini_pick_title
+
 -- Preview functions that already mask, so nothing gets wrapped twice.
 ---@type table<function, boolean>
 local mini_pick_wrappers = setmetatable({}, { __mode = 'k' })
@@ -98,6 +101,140 @@ local function wrap_mini_pick_preview(preview)
   local wrapper = function(buf_id, item, opts)
     local result = preview(buf_id, item, opts)
     M.mask_buffer(buf_id, M.mini_pick_item_path(item))
+    mask_mini_pick_title(item)
+    return result
+  end
+  mini_pick_wrappers[wrapper] = true
+  return wrapper
+end
+
+M.mini_pick_namespace = vim.api.nvim_create_namespace('camouflage_mini_pick')
+
+-- mini.pick shows the NUL separators of an item ("path\0lnum\0col\0text")
+-- as this character.
+local MINI_PICK_SEP = '│'
+
+---Where the value sits in a row mini.pick drew for `item`, if the item points
+---into a file a parser handles and its text carries a value. The text is what
+---follows the last separator, so a grep row "prod.env│1│1│API_KEY=secret"
+---yields the range of `secret`.
+---@param line string
+---@param item any
+---@return number|nil col 0-indexed byte column
+---@return number|nil len
+function M.mini_pick_row_value(line, item)
+  local cfg = config.get()
+  local integrations = cfg.integrations or {}
+  if not cfg.enabled or integrations.picker_results == false or integrations.mini_pick == false then
+    return nil, nil
+  end
+  local path = M.mini_pick_item_path(item)
+  if not path or not parsers.is_supported(path) then
+    return nil, nil
+  end
+  local last
+  local init = 1
+  while true do
+    local at = line:find(MINI_PICK_SEP, init, true)
+    if not at then
+      break
+    end
+    last = at
+    init = at + #MINI_PICK_SEP
+  end
+  if not last then
+    return nil, nil
+  end
+  local text_start = last + #MINI_PICK_SEP
+  local col, value = require('camouflage.linemask').find_value(line:sub(text_start))
+  if not col then
+    return nil, nil
+  end
+  return text_start - 1 + col, #value
+end
+
+---Cover the values in the rows mini.pick just drew. The items keep their real
+---text, so choosing a row still jumps to the real line.
+---@param buf_id number
+---@param items any[]
+function M.mask_mini_pick_rows(buf_id, items)
+  if not vim.api.nvim_buf_is_valid(buf_id) then
+    return
+  end
+  vim.api.nvim_buf_clear_namespace(buf_id, M.mini_pick_namespace, 0, -1)
+  local cfg = config.get()
+  local styles = require('camouflage.styles')
+  local hl = cfg.colors and 'CamouflageMask' or cfg.highlight_group
+  local lines = vim.api.nvim_buf_get_lines(buf_id, 0, #items, false)
+  for i, line in ipairs(lines) do
+    local col, len = M.mini_pick_row_value(line, items[i])
+    if col then
+      local value = line:sub(col + 1, col + len)
+      pcall(vim.api.nvim_buf_set_extmark, buf_id, M.mini_pick_namespace, i - 1, col, {
+        end_col = col + len,
+        virt_text = {
+          { styles.generate_hidden_text(cfg.style, vim.fn.strdisplaywidth(value), value, cfg), hl },
+        },
+        virt_text_pos = 'overlay',
+        hl_mode = 'combine',
+        priority = 200,
+      })
+    end
+  end
+end
+
+---mini.pick titles the preview window with the current row's text. Once the
+---preview is drawn, cover the value there too.
+---@param item any
+mask_mini_pick_title = function(item)
+  vim.schedule(function()
+    local pick = package.loaded['mini.pick']
+    local ok, picker = pcall(function()
+      return pick.get_picker_state()
+    end)
+    local win = ok and picker and picker.windows and picker.windows.main
+    if not win or not vim.api.nvim_win_is_valid(win) then
+      return
+    end
+    local win_cfg = vim.api.nvim_win_get_config(win)
+    if type(win_cfg.title) ~= 'table' then
+      return
+    end
+    local changed = false
+    local title = {}
+    for _, chunk in ipairs(win_cfg.title) do
+      local text, hl = chunk[1], chunk[2]
+      local col, len = M.mini_pick_row_value(text, item)
+      if col then
+        local cfg = config.get()
+        local value = text:sub(col + 1, col + len)
+        local mask = require('camouflage.styles').generate_hidden_text(
+          cfg.style,
+          vim.fn.strdisplaywidth(value),
+          value,
+          cfg
+        )
+        text = text:sub(1, col) .. mask .. text:sub(col + len + 1)
+        changed = true
+      end
+      table.insert(title, { text, hl })
+    end
+    if changed then
+      pcall(vim.api.nvim_win_set_config, win, { title = title, title_pos = win_cfg.title_pos })
+    end
+  end)
+end
+
+---A mini.pick show function that masks the rows `show` draws.
+---@param show function
+---@return function
+local function wrap_mini_pick_show(show)
+  if mini_pick_wrappers[show] then
+    return show
+  end
+  local wrapper = function(buf_id, items, query, opts)
+    local result = show(buf_id, items, query, opts)
+    M.mask_mini_pick_rows(buf_id, items or {})
     return result
   end
   mini_pick_wrappers[wrapper] = true
@@ -117,6 +254,9 @@ local function setup_mini_pick()
   end
 
   pick.default_preview = wrap_mini_pick_preview(pick.default_preview)
+  if type(pick.default_show) == 'function' then
+    pick.default_show = wrap_mini_pick_show(pick.default_show)
+  end
   wrapped.mini_pick = true
   return true
 end
@@ -135,10 +275,16 @@ function M.on_mini_pick_start()
   if (config.get().integrations or {}).mini_pick == false then
     return
   end
-  local opts = pick.get_picker_opts() or {}
-  local preview = (opts.source or {}).preview
-  if type(preview) == 'function' and not mini_pick_wrappers[preview] then
-    pick.set_picker_opts({ source = { preview = wrap_mini_pick_preview(preview) } })
+  local source = (pick.get_picker_opts() or {}).source or {}
+  local update = {}
+  if type(source.preview) == 'function' and not mini_pick_wrappers[source.preview] then
+    update.preview = wrap_mini_pick_preview(source.preview)
+  end
+  if type(source.show) == 'function' and not mini_pick_wrappers[source.show] then
+    update.show = wrap_mini_pick_show(source.show)
+  end
+  if next(update) then
+    pick.set_picker_opts({ source = update })
   end
 end
 
