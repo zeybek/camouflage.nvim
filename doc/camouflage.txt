@@ -2006,9 +2006,17 @@ the central badges renderer.
 
 Example: ~
 >
-    JWT_TOKEN=*********  [Google expires in 2h]
+    JWT_TOKEN=*********  [Google valid 2h]
+    ID_TOKEN=**********  [expires in 30m]
     SESSION=***********  [expired 3d ago]
 <
+Which text a badge shows depends on the time left:
+- `valid <time>` under `show_threshold_seconds` (24 hours by default), in
+  `hl_valid`
+- `expires in <time>` under `warn_threshold_seconds` (1 hour by default), in
+  `hl_warning`
+- `expired <time> ago` once `exp` has passed, in `hl_expired`
+A token with more time left than `show_threshold_seconds` gets no badge.
 
 Config: ~
 >lua

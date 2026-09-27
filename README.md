@@ -29,7 +29,7 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml
 - **Weak Secret Check**: Offline badges for obvious defaults, placeholders, short values, repeated values, and low-entropy tokens
 - **Custom Check API**: Register trusted Lua checks that render through the shared badge pipeline
 - **Have I Been Pwned**: Manually check passwords against the breach database (network checks are opt-in; Neovim 0.10+ with `vim.system`, plus `curl`)
-- **JWT Expiry Hints**: Decode `exp` claim and show "expires in 2h" badges
+- **JWT Expiry Hints**: Decode `exp` claim and show badges like "valid 5h", "expires in 30m" or "expired 3d ago"
 - **Hot Reload**: Config changes apply immediately
 - **Event System**: Hooks for extending functionality
 - **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL/Dockerfile

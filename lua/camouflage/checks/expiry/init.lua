@@ -174,7 +174,7 @@ function M.check_buffer(bufnr)
 end
 
 ---Start a background timer that periodically refreshes expiry text so
----'expires in 2h' becomes 'expires in 1h59m' without user action.
+---'valid 2h' becomes 'valid 1h', then 'expires in 59m', without user action.
 ---@param bufnr integer
 local function start_auto_refresh(bufnr)
   local cfg = get_config()
