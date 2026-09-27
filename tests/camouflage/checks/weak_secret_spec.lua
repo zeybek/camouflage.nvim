@@ -91,6 +91,34 @@ describe('camouflage.checks.weak_secret', function()
       end
     end)
 
+    it('flags any run of digits or letters as a sequence', function()
+      local runs = {
+        '1234567890123456',
+        'abcdefghijkl',
+        'ABCDEFGH',
+        '987654321',
+        'zyxwvuts',
+        '7890123456',
+        '3210987654',
+        '1234-5678-90',
+      }
+      for _, value in ipairs(runs) do
+        local result = weak_secret.classify(parsed_var('CLIENT_SECRET', value))
+        assert.is_table(result, value)
+        assert.equals('sequence', result.reason, value)
+      end
+    end)
+
+    it('does not take a value that breaks the run for a sequence', function()
+      local values =
+        { '1234567890124', 'abcdefghijlm', '12343210', 'abcd1234efgh', 'yzabcdefgh', '1357' }
+      for _, value in ipairs(values) do
+        local result = weak_secret.classify(parsed_var('CLIENT_SECRET', value))
+        assert.is_true(result == nil or result.reason ~= 'sequence', value)
+      end
+      assert.is_nil(weak_secret.classify(parsed_var('PORT', '4567')))
+    end)
+
     it('uses key context to skip benign config values and strong tokens', function()
       assert.is_nil(weak_secret.classify(parsed_var('PORT', '5432')))
       assert.is_nil(weak_secret.classify(parsed_var('DEBUG', 'true')))

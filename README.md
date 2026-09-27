@@ -366,7 +366,7 @@ policy:
 
 ## Weak Secret Check
 
-The weak-secret check runs locally during masking and flags high-confidence weak values such as `password`, placeholders, repeated characters, short sensitive values, simple sequences, and low-entropy token-like strings. It uses key context, so benign values like `PORT=5432` are not treated like passwords.
+The weak-secret check runs locally during masking and flags high-confidence weak values such as `password`, placeholders, repeated characters, short sensitive values, simple sequences (runs like `12345678`, `987654321` or `abcdefgh`), and low-entropy token-like strings. It uses key context, so benign values like `PORT=5432` are not treated like passwords.
 
 Badges render through the same central badge pipeline as HIBP and JWT expiry. The result text and metadata include the reason, key, and value length, but never the plaintext value. Use `checks.weak_secret.ignored_key_patterns` or `checks.weak_secret.ignored_value_patterns` to suppress noisy project-specific cases.
 
