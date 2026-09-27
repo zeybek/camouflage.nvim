@@ -1841,6 +1841,10 @@ values. It flags high-confidence weak values such as common defaults,
 placeholders, repeated characters, simple sequences, short values under
 sensitive keys, and low-entropy token-like strings.
 
+A simple sequence is a value of four or more characters that is one ascending
+or descending run of digits or letters (`12345678`, `7890123`, `987654321`,
+`abcdefgh`), separators aside, or a keyboard row such as `qwertyuiop`.
+
 It uses key context to reduce noise. For example, `PASSWORD=password` is
 flagged by default, while `PORT=5432` is ignored.
 

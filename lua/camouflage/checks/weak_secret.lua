@@ -65,16 +65,9 @@ local PLACEHOLDER_VALUES = {
   'tbd',
 }
 
+-- Keyboard rows. Runs of digits or letters (`12345678`, `abcdefgh`) are found
+-- by is_run instead of a list.
 local SEQUENCE_VALUES = {
-  '1234',
-  '12345',
-  '123456',
-  '1234567',
-  '12345678',
-  '123456789',
-  '1234567890',
-  '0123456789',
-  'abcdef',
   'qwerty',
   'qwertyuiop',
   'asdfgh',
@@ -211,12 +204,41 @@ local function is_repeated(value)
   return normalized == first:rep(#normalized)
 end
 
+--- One ascending or descending run of digits (wrapping 9 to 0) or letters.
+---@param normalized string lowercased value
+---@return boolean
+local function is_run(normalized)
+  local digits = normalized:match('^%d+$') ~= nil
+  if not digits and not normalized:match('^%l+$') then
+    return false
+  end
+  local step
+  for i = 2, #normalized do
+    local diff = normalized:byte(i) - normalized:byte(i - 1)
+    if digits then
+      diff = (diff + 10) % 10
+      diff = diff == 9 and -1 or diff
+    end
+    if diff ~= 1 and diff ~= -1 then
+      return false
+    end
+    if step and diff ~= step then
+      return false
+    end
+    step = diff
+  end
+  return true
+end
+
 ---@param value string
 ---@return boolean
 local function is_simple_sequence(value)
   local normalized = normalize_value(value):gsub('[%s_%-.]', '')
   if #normalized < 4 then
     return false
+  end
+  if is_run(normalized) then
+    return true
   end
   for _, seq in ipairs(SEQUENCE_VALUES) do
     if normalized == seq then
