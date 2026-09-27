@@ -64,7 +64,7 @@ screen sharing, pair programming, screenshots, and demos.
 It does NOT protect against anything that reads the buffer or file contents
 directly, because the real text is still present underneath the mask:
 - grep tools outside the editor, and any picker camouflage has no integration
-  for (Telescope, Snacks and mini.pick result rows are masked, see
+  for (Telescope, Snacks, fzf-lua and mini.pick result rows are masked, see
   |camouflage-picker-results|)
 - LSP servers, completion sources, and AI assistants
 - `:print`, `:substitute` previews, writing the file, and yanking with
@@ -1308,6 +1308,9 @@ are drawn by the picker itself from the matched line, so they are masked
 separately, before the row reaches the list. Works with Snacks.nvim and
 Telescope. mini.pick rows are covered right after the picker draws them, and
 the preview window title, which mini.pick builds from the same row, as well.
+fzf-lua draws its list in a terminal, so its rows are covered on screen while
+that terminal is drawn (`integrations.fzf` turns this off together with the
+previews).
 
 The item keeps the real line, so opening the hit, yanking it or sending it to
 the quickfix list still use the real text.
