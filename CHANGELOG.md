@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.17.2](https://github.com/zeybek/camouflage.nvim/compare/v0.17.1...v0.17.2) (2026-09-27)
+
+
+### Bug Fixes
+
+* **audit:** show value length and policy decision in list rows ([#201](https://github.com/zeybek/camouflage.nvim/issues/201)) ([6b5856e](https://github.com/zeybek/camouflage.nvim/commit/6b5856e4af8d7ba27a1eeb91d57d740bacd63f2b))
+* **checks:** flag any run of digits or letters as a weak sequence ([#202](https://github.com/zeybek/camouflage.nvim/issues/202)) ([5d1a07d](https://github.com/zeybek/camouflage.nvim/commit/5d1a07dd5b229ae5c452aca78557707d09e319b5))
+* **init:** mask Telescope previews ([#194](https://github.com/zeybek/camouflage.nvim/issues/194)) ([e017b4e](https://github.com/zeybek/camouflage.nvim/commit/e017b4e9f57293349bc8e59669c565bbd8c57fa4))
+* **picker:** mask fzf-lua result rows ([#199](https://github.com/zeybek/camouflage.nvim/issues/199)) ([6866beb](https://github.com/zeybek/camouflage.nvim/commit/6866beb5454eb26035f9d424789598adba1da168))
+* **preview:** mask mini.pick previews whatever the load order ([#197](https://github.com/zeybek/camouflage.nvim/issues/197)) ([3e80091](https://github.com/zeybek/camouflage.nvim/commit/3e800919f49a7b268557ea934d5c1e03303fca7b))
+* **preview:** mask mini.pick result rows and preview title ([#198](https://github.com/zeybek/camouflage.nvim/issues/198)) ([616c09a](https://github.com/zeybek/camouflage.nvim/commit/616c09ab046b9ca1496a124e17696c891b761d1c))
+* **preview:** read the path of a mini.pick grep item ([#196](https://github.com/zeybek/camouflage.nvim/issues/196)) ([8aa9bb2](https://github.com/zeybek/camouflage.nvim/commit/8aa9bb27ee9b6a6df4827715aca7cf173cf70592))
+* **project-config:** ignore comments at the end of a line ([#200](https://github.com/zeybek/camouflage.nvim/issues/200)) ([c9c4e3c](https://github.com/zeybek/camouflage.nvim/commit/c9c4e3cfdf6aa090aca0de5d66a0546171307b3c))
+
 ## [0.17.1](https://github.com/zeybek/camouflage.nvim/compare/v0.17.0...v0.17.1) (2026-09-23)
 
 
