@@ -1689,6 +1689,13 @@ commented metadata, value length, and redacted policy decision metadata.
 Plaintext values are stripped before results are returned or written to
 quickfix/location-list. HIBP and other network checks are not run during audit.
 
+A list row reads `[env] API_KEY · 16 chars · mask`, with the rule id when a
+policy rule decided it (`mask (rule aws)`). Each item carries the same record
+as the JSON report in its `user_data` (Neovim 0.10+), for scripts: >lua
+  local item = vim.fn.getqflist({ items = 0 }).items[1]
+  print(item.user_data.key, item.user_data.value_length)
+<
+
 Configuration ~
                                                    *camouflage-audit-config*
 >lua
