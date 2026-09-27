@@ -286,22 +286,28 @@ local function exact_key_from_pattern(pattern)
   return body
 end
 
+---With `ignore_case`, exact keys were stored lower-cased and are compared that
+---way, and patterns are tried against the key as written and in lower case,
+---the way the weak-secret patterns are. Patterns themselves are left alone:
+---lower-casing one would turn a class like `%U` into `%u`.
 ---@param text string
 ---@param patterns string[]|nil
 ---@param exact table<string, boolean>|nil
+---@param ignore_case boolean|nil
 ---@return boolean
-local function any_lua_pattern_matches(text, patterns, exact)
+local function any_lua_pattern_matches(text, patterns, exact, ignore_case)
   if not patterns and not exact then
     return true
   end
-  if exact and exact[text] then
+  local lower = ignore_case and text:lower() or nil
+  if exact and exact[lower or text] then
     return true
   end
   if not patterns then
     return false
   end
   for _, pattern in ipairs(patterns) do
-    if text:find(pattern) then
+    if text:find(pattern) or (lower and lower:find(pattern)) then
       return true
     end
   end
@@ -539,6 +545,10 @@ local function normalize_rule(rule, index)
   }
 
   local ok
+  normalized.ignore_case, ok = boolean_field(rule.ignore_case, 'ignore_case', rule_id)
+  if not ok then
+    return nil
+  end
   normalized.path, ok = glob_list(rule.path, 'path', rule_id)
   if not ok then
     return nil
@@ -561,7 +571,7 @@ local function normalize_rule(rule, index)
     for _, pattern in ipairs(normalized.key) do
       local exact = exact_key_from_pattern(pattern)
       if exact then
-        exact_keys[exact] = true
+        exact_keys[normalized.ignore_case and exact:lower() or exact] = true
       else
         table.insert(pattern_keys, pattern)
       end
@@ -697,7 +707,9 @@ local function rule_matches(rule, ctx)
   if not any_string_equals(rule.parser, ctx.parser_name or '') then
     return false
   end
-  if not any_lua_pattern_matches(tostring(var.key or ''), rule.key, rule.key_exact) then
+  if
+    not any_lua_pattern_matches(tostring(var.key or ''), rule.key, rule.key_exact, rule.ignore_case)
+  then
     return false
   end
   if rule.nested ~= nil and (var.is_nested == true) ~= rule.nested then
