@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.17.3](https://github.com/zeybek/camouflage.nvim/compare/v0.17.2...v0.17.3) (2026-09-27)
+
+
+### Bug Fixes
+
+* **core:** mask the first line of a multi-line value from its text ([#217](https://github.com/zeybek/camouflage.nvim/issues/217)) ([9c7f89e](https://github.com/zeybek/camouflage.nvim/commit/9c7f89eeae98bb27d8a350d60839039c25909602))
+* **init:** skip a color Neovim can't use instead of failing setup ([#206](https://github.com/zeybek/camouflage.nvim/issues/206)) ([c0eaae0](https://github.com/zeybek/camouflage.nvim/commit/c0eaae0b43b4fbf090a6e6355c5db207af9af581))
+* **project-config:** read null as unset and check nested value types ([#209](https://github.com/zeybek/camouflage.nvim/issues/209)) ([378a863](https://github.com/zeybek/camouflage.nvim/commit/378a8631d638112dc499b8d926b07a9f12a067f3))
+* **schema:** accept the display fields of a policy rule ([#215](https://github.com/zeybek/camouflage.nvim/issues/215)) ([6f79b25](https://github.com/zeybek/camouflage.nvim/commit/6f79b2599fefd85072e7e38b04c1e75192102750))
+* **schema:** describe every project config option and accept the template ([#211](https://github.com/zeybek/camouflage.nvim/issues/211)) ([7756eaa](https://github.com/zeybek/camouflage.nvim/commit/7756eaaf4a843281970ea2be8dac11561b000a30))
+
 ## [0.17.2](https://github.com/zeybek/camouflage.nvim/compare/v0.17.1...v0.17.2) (2026-09-27)
 
 
