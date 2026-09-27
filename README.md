@@ -63,6 +63,12 @@ directly, because the real text is still there underneath the mask:
 - `:registers`, which prints what a register holds, including a value you
   copied with `yy` (`:CamouflageRegisters` lists them with masked values
   redacted)
+- the message Neovim prints when it jumps to a quickfix or location list entry,
+  `(1 of 3): API_KEY=...` after `:vimgrep`, `:cfirst`, `:cnext` and the like.
+  The list window is masked, but the message isn't a buffer, so there is
+  nothing to draw over. `:vimgrep /pattern/j` fills the list without jumping,
+  and `:silent cnext` / `:silent cfirst` jump without the message. `:grep` also
+  prints the external command's output while it runs
 
 For per-repo `.camouflage.yaml` files, masking config is applied as data only
 (no code execution). A project file can't turn on HIBP network checks

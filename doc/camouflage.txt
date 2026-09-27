@@ -71,6 +71,8 @@ directly, because the real text is still present underneath the mask:
   `yy` / `"+y`
 - `:registers`, which prints a register's contents, including a value copied
   with `yy`. |:CamouflageRegisters| lists them with masked values redacted
+- the message printed on a jump to a quickfix or location list entry, see
+  |camouflage-quickfix|
 - the `+` / `*` clipboard registers (use |:CamouflageYank|, which copies the
   real value deliberately, with a confirm prompt and timed auto-clear; a clear
   still pending when Neovim exits runs on the way out, before ShaDa is
@@ -1347,6 +1349,17 @@ the real text, which `:cnext`, `:cdo` and copying a row need.
 <
 `:CamouflageAudit` never puts a value in the list in the first place, see
 |camouflage-audit|.
+
+The message Neovim prints when it jumps to an entry is not covered. After
+`:vimgrep`, `:cfirst`, `:cnext`, `:lexpr` and the like, the command line shows
+`(1 of 3): API_KEY=...` with the real line. It isn't a buffer, so there is
+nothing to draw a mask over. To keep it off the screen:
+>vim
+  :vimgrep /API_KEY/j **/*.env   " fill the list without jumping
+  :silent cfirst                  " jump without the message
+  :silent cnext
+<
+`:grep` runs an external command, and its output is printed while it runs.
 
                                                            *camouflage-diff*
 Diffs and commit buffers ~
