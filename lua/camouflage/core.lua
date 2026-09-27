@@ -362,8 +362,10 @@ function M.apply_multiline_decoration(bufnr, var, cfg, lines, start_pos, end_pos
 
     local col_start, col_end
     if row == start_pos.row then
-      -- First line: from start_pos.col to end of line
-      col_start = start_pos.col
+      -- First line: from start_pos.col to end of line. A value that starts on
+      -- a line of its own (a YAML block scalar) starts with that line's
+      -- indentation, which is skipped like on the lines below.
+      col_start = start_pos.col + line:sub(start_pos.col + 1):match('^%s*'):len()
       col_end = #line
     elseif row == end_pos.row then
       -- Last line: from start of content to end_pos.col
