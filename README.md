@@ -315,7 +315,7 @@ machine.
 
 `:CamouflageAudit [path]` scans supported files under the current project root or optional path using the same parser registry as live masking. Results are written to quickfix by default; `:CamouflageAudit! [path]` writes to the current window's location list.
 
-Audit results include file, line, column, parser, key, value length, and policy decision metadata, but never the plaintext value. The audit engine does not run HIBP or any other network check.
+Audit results include file, line, column, parser, key, value length, and policy decision metadata, but never the plaintext value. A row reads `[env] API_KEY · 16 chars · mask`, and each item keeps the full record in its `user_data` (Neovim 0.10+). The audit engine does not run HIBP or any other network check.
 
 For CI, the same records can be written as JSON, with an exit code that says whether anything was found:
 

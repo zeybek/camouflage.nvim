@@ -599,10 +599,60 @@ function M.run(opts)
   return M.run_sync(opts)
 end
 
+---A finding as a plain record, with nothing that could carry the value. The
+---JSON report and the quickfix items' user_data are built from it.
+---@param finding CamouflageAuditFinding
+---@return table
+local function finding_record(finding)
+  return {
+    filename = finding.filename,
+    lnum = finding.lnum,
+    col = finding.col,
+    end_col = finding.end_col,
+    key = finding.key,
+    parser = finding.parser,
+    is_nested = finding.is_nested and true or false,
+    is_commented = finding.is_commented and true or false,
+    is_multiline = finding.is_multiline and true or false,
+    value_length = finding.value_length,
+    policy = finding.policy and {
+      action = finding.policy.action,
+      reason = finding.policy.reason,
+      rule_id = finding.policy.rule_id,
+    } or nil,
+  }
+end
+
+---@param policy_decision table|nil
+---@return string|nil
+local function policy_text(policy_decision)
+  if not policy_decision or not policy_decision.action then
+    return nil
+  end
+  local reason = policy_decision.reason
+  if reason == nil or reason == 'default' then
+    return policy_decision.action
+  end
+  if reason == 'rule' then
+    return policy_decision.rule_id
+        and string.format('%s (rule %s)', policy_decision.action, policy_decision.rule_id)
+      or string.format('%s (rule)', policy_decision.action)
+  end
+  return string.format('%s (%s)', policy_decision.action, reason)
+end
+
 ---@param finding CamouflageAuditFinding
 ---@return string
 local function finding_text(finding)
-  return string.format('[%s] %s', finding.parser or 'unknown', finding.key or 'unknown')
+  local parts = { string.format('[%s] %s', finding.parser or 'unknown', finding.key or 'unknown') }
+  if finding.value_length then
+    table.insert(
+      parts,
+      string.format('%d %s', finding.value_length, finding.value_length == 1 and 'char' or 'chars')
+    )
+  end
+  table.insert(parts, policy_text(finding.policy))
+  return table.concat(parts, ' · ')
 end
 
 ---@param result CamouflageAuditResult
@@ -617,6 +667,7 @@ function M.to_quickfix_items(result)
       end_col = finding.end_col,
       text = finding_text(finding),
       type = 'I',
+      user_data = finding_record(finding),
     })
   end
   return items
@@ -630,23 +681,7 @@ end
 function M.to_report(result)
   local findings = {}
   for _, finding in ipairs(result.findings or {}) do
-    table.insert(findings, {
-      filename = finding.filename,
-      lnum = finding.lnum,
-      col = finding.col,
-      end_col = finding.end_col,
-      key = finding.key,
-      parser = finding.parser,
-      is_nested = finding.is_nested and true or false,
-      is_commented = finding.is_commented and true or false,
-      is_multiline = finding.is_multiline and true or false,
-      value_length = finding.value_length,
-      policy = finding.policy and {
-        action = finding.policy.action,
-        reason = finding.policy.reason,
-        rule_id = finding.policy.rule_id,
-      } or nil,
-    })
+    table.insert(findings, finding_record(finding))
   end
 
   local errors = {}

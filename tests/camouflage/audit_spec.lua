@@ -348,6 +348,61 @@ describe('camouflage.audit', function()
     assert.equals(0, #vim.fn.getqflist())
   end)
 
+  it('shows the value length and policy decision in quickfix rows', function()
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    writefile(dir .. '/.env', {
+      'API_KEY=qf-length-secret',
+      'AWS_KEY=AKIAqf-rule-secret',
+      'PIN=7',
+    })
+
+    local audit = setup_in_dir(dir, {
+      policy = {
+        rules = {
+          { id = 'aws', action = 'mask', key = { '^AWS_' } },
+        },
+      },
+    })
+    local result = audit.run({ root = dir })
+    audit.set_list(result, { destination = 'quickfix', open = false })
+
+    local texts = {}
+    for _, item in ipairs(vim.fn.getqflist()) do
+      texts[item.lnum] = item.text
+    end
+    assert.equals('[env] API_KEY · 16 chars · mask', texts[1])
+    assert.equals('[env] AWS_KEY · 18 chars · mask (rule aws)', texts[2])
+    assert.equals('[env] PIN · 1 char · mask', texts[3])
+  end)
+
+  it('keeps the finding, without the value, as quickfix user_data', function()
+    -- quickfix items have no user_data before Neovim 0.10
+    if vim.fn.has('nvim-0.10') == 0 then
+      return
+    end
+    local dir = vim.fn.tempname()
+    vim.fn.mkdir(dir, 'p')
+    writefile(dir .. '/.env', { 'API_KEY=qf-user-data-secret' })
+
+    local audit = setup_in_dir(dir)
+    local result = audit.run({ root = dir })
+    audit.set_list(result, { destination = 'quickfix', open = false })
+
+    local items = vim.fn.getqflist({ items = 0 }).items
+    assert.equals(1, #items)
+    local data = items[1].user_data
+    assert.is_table(data)
+    assert.equals('API_KEY', data.key)
+    assert.equals('env', data.parser)
+    assert.equals(1, data.lnum)
+    assert.equals(19, data.value_length)
+    assert.equals('mask', data.policy.action)
+    assert.equals('default', data.policy.reason)
+    assert.same(audit.to_report(result).findings[1], data)
+    assert.is_false(inspect_has(items, 'qf-user-data-secret'))
+  end)
+
   it('CamouflageAudit populates quickfix by default and bang populates location list', function()
     local dir = vim.fn.tempname()
     vim.fn.mkdir(dir, 'p')
