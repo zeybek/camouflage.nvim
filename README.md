@@ -101,13 +101,16 @@ the real characters, so it leaks the value's length and character set.
   event = { 'BufReadPre', 'BufNewFile' },
   opts = {},
   keys = {
-    { '<leader>ct', '<cmd>CamouflageToggle<cr>', desc = 'Toggle Camouflage' },
-    { '<leader>cr', '<cmd>CamouflageReveal<cr>', desc = 'Reveal Line' },
-    { '<leader>cy', '<cmd>CamouflageYank<cr>', desc = 'Yank Value' },
-    { '<leader>cf', '<cmd>CamouflageFollowCursor<cr>', desc = 'Follow Cursor' },
+    { '<leader>mt', '<cmd>CamouflageToggle<cr>', desc = 'Toggle Camouflage' },
+    { '<leader>mr', '<cmd>CamouflageReveal<cr>', desc = 'Reveal Line' },
+    { '<leader>my', '<cmd>CamouflageYank<cr>', desc = 'Yank Value' },
+    { '<leader>mf', '<cmd>CamouflageFollowCursor<cr>', desc = 'Follow Cursor' },
   },
 }
 ```
+
+The keys sit under `<leader>m` because LazyVim and AstroNvim already use
+`<leader>c` (code actions, close buffer).
 
 Use `BufReadPre`/`BufNewFile` when you want masking available as files are
 opened. `VeryLazy` is also usable if you prefer deferred startup loading, but it
@@ -250,8 +253,8 @@ require('camouflage').setup({
     picker_results = true,
     quickfix = true,
     diff = true,
-    fzf = true,
-    mini_pick = true,
+    fzf = true,              -- fzf-lua previews and result rows
+    mini_pick = true,        -- mini.pick previews, result rows and title
     cmp = { disable_in_masked = true },
     blink = { disable_in_masked = true },
   },
