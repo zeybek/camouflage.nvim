@@ -201,6 +201,28 @@ describe('camouflage.core', function()
   end)
 
   describe('apply_decorations', function()
+    it('masks every line of a block scalar from where its text starts', function()
+      local bufnr = setup_masked_buffer({
+        'certificates:',
+        '  private_key: |',
+        '    -----BEGIN RSA PRIVATE KEY-----',
+        '    MIIEpAIBAAKCAQEA0Z3VS5JJcds3xfn',
+        '    -----END RSA PRIVATE KEY-----',
+        'name: app',
+      }, vim.fn.tempname() .. '.yaml')
+
+      local cols = {}
+      for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(bufnr, state.namespace, 0, -1, {})) do
+        if mark[2] >= 2 and mark[2] <= 4 then
+          cols[mark[2]] = mark[3]
+        end
+      end
+
+      assert.same({ [2] = 4, [3] = 4, [4] = 4 }, cols)
+
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
     it('should clear stale mask state when disabled', function()
       local bufnr = setup_masked_buffer({ 'API_KEY=secret' })
 
