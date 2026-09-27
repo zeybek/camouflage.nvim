@@ -71,6 +71,8 @@ directly, because the real text is still present underneath the mask:
   `yy` / `"+y`
 - `:registers`, which prints a register's contents, including a value copied
   with `yy`. |:CamouflageRegisters| lists them with masked values redacted
+- the message printed on a jump to a quickfix or location list entry, see
+  |camouflage-quickfix|
 - the `+` / `*` clipboard registers (use |:CamouflageYank|, which copies the
   real value deliberately, with a confirm prompt and timed auto-clear; a clear
   still pending when Neovim exits runs on the way out, before ShaDa is
@@ -1348,6 +1350,17 @@ the real text, which `:cnext`, `:cdo` and copying a row need.
 `:CamouflageAudit` never puts a value in the list in the first place, see
 |camouflage-audit|.
 
+The message Neovim prints when it jumps to an entry is not covered. After
+`:vimgrep`, `:cfirst`, `:cnext`, `:lexpr` and the like, the command line shows
+`(1 of 3): API_KEY=...` with the real line. It isn't a buffer, so there is
+nothing to draw a mask over. To keep it off the screen:
+>vim
+  :vimgrep /API_KEY/j **/*.env   " fill the list without jumping
+  :silent cfirst                  " jump without the message
+  :silent cnext
+<
+`:grep` runs an external command, and its output is printed while it runs.
+
                                                            *camouflage-diff*
 Diffs and commit buffers ~
 
@@ -1993,9 +2006,17 @@ the central badges renderer.
 
 Example: ~
 >
-    JWT_TOKEN=*********  [Google expires in 2h]
+    JWT_TOKEN=*********  [Google valid 2h]
+    ID_TOKEN=**********  [expires in 30m]
     SESSION=***********  [expired 3d ago]
 <
+Which text a badge shows depends on the time left:
+- `valid <time>` under `show_threshold_seconds` (24 hours by default), in
+  `hl_valid`
+- `expires in <time>` under `warn_threshold_seconds` (1 hour by default), in
+  `hl_warning`
+- `expired <time> ago` once `exp` has passed, in `hl_expired`
+A token with more time left than `show_threshold_seconds` gets no badge.
 
 Config: ~
 >lua
