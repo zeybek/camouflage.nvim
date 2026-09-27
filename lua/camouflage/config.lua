@@ -44,8 +44,8 @@ local M = {}
 ---@field picker_results? boolean Mask the matched line in picker result rows (default: true)
 ---@field quickfix? boolean Mask the matched line in quickfix and location list rows (default: true)
 ---@field diff? boolean Mask values in diff and commit buffers (default: true)
----@field fzf? boolean Mask fzf-lua previews (default: true)
----@field mini_pick? boolean Mask mini.pick previews (default: true)
+---@field fzf? boolean Mask fzf-lua previews and result rows (default: true)
+---@field mini_pick? boolean Mask mini.pick previews, result rows and preview title (default: true)
 ---@field blink? CamouflageCmpConfig blink.cmp handling (default: disable in masked buffers)
 ---@field cmp? CamouflageCmpConfig
 
