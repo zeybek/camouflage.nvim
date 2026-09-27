@@ -259,7 +259,10 @@ Call the setup function with your options: >lua
           id = 'force-client-secrets',
           action = 'mask',
           allow_force = true,
-          key = { 'client[_%.%-]?secret', 'private[_%.%-]?key' },
+          key = {
+            'client[_%.%-]?secret', 'CLIENT[_%.%-]?SECRET',
+            'private[_%.%-]?key', 'PRIVATE[_%.%-]?KEY',
+          },
         },
       },
     },
@@ -336,7 +339,7 @@ style ~
 
 mask_char ~
     Type: `string`, Default: `'*'`
-    Character used for 'stars' and 'dotted' styles.
+    Character used by the 'stars' style. 'dotted' always draws `•`.
 
 mask_length ~
     Type: `number|nil`, Default: `nil`
@@ -1788,7 +1791,9 @@ Rules can match on:
 - `path`: project-root-relative or basename glob
 - `basename`: basename glob
 - `parser`: parser names such as `env`, `json`, `yaml`, or `toml`
-- `key`: Lua patterns matched against the variable key
+- `key`: Lua patterns matched against the variable key. They are
+  case-sensitive: `password` matches `db_password` but not `DB_PASSWORD`, so
+  list both forms when a rule should cover both
 - `nested`: boolean nested-key metadata
 - `commented`: boolean commented-line metadata
 - `value_length`: `{ min = N, max = N }`
@@ -1820,7 +1825,10 @@ Example ~
           id = 'force-client-secrets',
           action = 'mask',
           allow_force = true,
-          key = { 'client[_%.%-]?secret', 'private[_%.%-]?key' },
+          key = {
+            'client[_%.%-]?secret', 'CLIENT[_%.%-]?SECRET',
+            'private[_%.%-]?key', 'PRIVATE[_%.%-]?KEY',
+          },
         },
       },
     },
@@ -1845,7 +1853,9 @@ The same policy can be set in `.camouflage.yaml`:
         allow_force: true
         key:
           - client[_%.%-]?secret
+          - CLIENT[_%.%-]?SECRET
           - private[_%.%-]?key
+          - PRIVATE[_%.%-]?KEY
 <
 
 ==============================================================================
@@ -2191,12 +2201,12 @@ Debug mode ~
                                                          *camouflage-debug*
 To see parsed variables for debugging:
 >lua
-   :lua print(vim.inspect(require('camouflage.state').get_variables(0)))
+   :lua print(vim.inspect(require('camouflage.state').get_variables(vim.api.nvim_get_current_buf())))
 <
 
 To check buffer state:
 >lua
-   :lua print(vim.inspect(require('camouflage.state').get_buffer(0)))
+   :lua print(vim.inspect(require('camouflage.state').get_buffer(vim.api.nvim_get_current_buf())))
 <
 
 To see current configuration:
