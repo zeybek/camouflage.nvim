@@ -2,7 +2,7 @@
 
 Hide sensitive values in configuration files during screen sharing.
 
-A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml`, `.toml`, `.properties`, `.netrc`, `.xml`, `.http`, **Terraform/HCL** (`.tf`, `.tfvars`, `.hcl`), and **Dockerfile** files using extmarks - **without modifying the actual file content**.
+camouflage.nvim draws a mask over API keys, passwords and tokens in `.env`, JSON, YAML, TOML, Terraform, Dockerfiles and more, as the file opens. The file itself is never changed.
 
 [![Version](https://img.shields.io/github/v/release/zeybek/camouflage.nvim?style=flat&color=yellow)](https://github.com/zeybek/camouflage.nvim/releases)
 [![LuaRocks](https://img.shields.io/luarocks/v/zeybek/camouflage.nvim?style=flat&logo=lua&color=purple)](https://luarocks.org/modules/zeybek/camouflage.nvim)
@@ -11,89 +11,24 @@ A Neovim plugin that visually masks secrets in `.env`, `.json`, `.jsonc`, `.yaml
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/zeybek/camouflage.nvim)
 
-## Demo
-
 ![camouflage.nvim demo](assets/demo.gif)
 
-## Features
+A longer tour, with the audit, terminal masking and presentation mode, is on the [wiki](https://github.com/zeybek/camouflage.nvim/wiki).
 
-- **Multi-format support**: `.env`, `.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`, `.properties`, `.ini`, `.conf`, `.sh`, `.netrc`, `.xml`, `.http`, `.tf`, `.tfvars`, `.hcl`, `Dockerfile`, `Containerfile`
-- **Nested key support**: Handles `database.connection.password` in JSON/YAML/XML
-- **All value types**: Masks strings, numbers, and booleans
-- **Multiple styles**: `stars`, `dotted`, `text`, `scramble`, and `partial` per key through policy rules
-- **Reveal & Yank**: Temporarily reveal or copy masked values
-- **Follow Cursor Mode**: Auto-reveal current line as you navigate
-- **Workspace Audit**: Scan supported files into quickfix/location list without exposing values
-- **Masked result rows**: Values stay hidden in picker results, quickfix/location lists, and diffs
-- **Rule-Based Policy**: Data-only ignore/force-mask rules for paths, parsers, keys, metadata, and safe value shapes
-- **Weak Secret Check**: Offline badges for obvious defaults, placeholders, short values, repeated values, and low-entropy tokens
-- **Custom Check API**: Register trusted Lua checks that render through the shared badge pipeline
-- **Have I Been Pwned**: Manually check passwords against the breach database (network checks are opt-in; Neovim 0.10+ with `vim.system`, plus `curl`)
-- **JWT Expiry Hints**: Decode `exp` claim and show badges like "valid 5h", "expires in 30m" or "expired 3d ago"
-- **Hot Reload**: Config changes apply immediately
-- **Event System**: Hooks for extending functionality
-- **TreeSitter Support**: Enhanced parsing for JSON/YAML/TOML/XML/HTTP/HCL/Dockerfile
-- **Presentation mode**: One command that masks everything and blocks reveals while you share your screen
-- **Terminal masking**: Opt-in masking for values printed by commands in `:terminal`
-- **Screen shield**: Cover the whole editor with a camouflage pattern until a key is pressed, by hand or when Neovim loses focus
-- **Picker integrations**: Mask previews and grep result rows in Telescope, Snacks, fzf-lua and mini.pick
-- **Zero file modification**: All masking is purely visual
-- **Extensible**: Register custom parsers for unsupported formats via a public API
-- **Programmable Checks**: Add local or async value checks with `register_check`
+## What it does
 
-## Security Model
-
-camouflage hides sensitive values **visually**, by drawing over them with
-virtual text. It does **not** change the file, and it does **not** encrypt or
-remove anything.
-
-**It protects against** casual exposure of secrets on screen: shoulder-surfing,
-screen sharing, pair programming, screenshots, and demos.
-
-**It does not protect against** anything that reads the buffer or file contents
-directly, because the real text is still there underneath the mask:
-
-- grep tools outside the editor, and any picker camouflage has no integration
-  for (Telescope, Snacks, fzf-lua and mini.pick result rows are masked, previews
-  are masked everywhere, but the match itself is still real text the picker reads)
-- LSP servers, completion sources, and AI assistants
-- `:%print`, `:substitute` previews, `:w`/`:saveas`, and yanking with `yy`/`"+y`
-- the `+`/`*` clipboard registers (use `:CamouflageYank`, which copies the real
-  value deliberately with a confirm prompt and timed auto-clear)
-- `:registers`, which prints what a register holds, including a value you
-  copied with `yy` (`:CamouflageRegisters` lists them with masked values
-  redacted)
-- the message Neovim prints when it jumps to a quickfix or location list entry,
-  `(1 of 3): API_KEY=...` after `:vimgrep`, `:cfirst`, `:cnext` and the like.
-  The list window is masked, but the message isn't a buffer, so there is
-  nothing to draw over. `:vimgrep /pattern/j` fills the list without jumping,
-  and `:silent cnext` / `:silent cfirst` jump without the message. `:grep` also
-  prints the external command's output while it runs
-
-For per-repo `.camouflage.yaml` files, masking config is applied as data only
-(no code execution). A project file can't turn on HIBP network checks
-(`pwned.auto_check`, `check_on_save`, `check_on_change`) unless it is trusted,
-those options are ignored with a warning. If a project file sets
-`enabled: false`, you get a warning with its path, and the same goes for
-anything else in it that can leave values unmasked (`auto_enable: false`, a
-low `max_lines`, `policy.default_action: ignore`, a policy rule that ignores
-every value). If you don't trust the
-repositories you open, set `project_config.secure = true` to gate the file
-behind Neovim's `vim.secure`/`:trust` mechanism.
-
-Have I Been Pwned checks use the network. They are manual/opt-in by default:
-the `:CamouflagePwnedCheck*` commands remain available, but automatic checks on
-buffer enter, save, or text change are disabled unless you set the corresponding
-`pwned` option to `true`. The HIBP integration uses k-anonymity and sends only
-the first 5 characters of a SHA-1 hash, but this is still a deliberate network
-request.
-
-The `scramble` style is **cosmetic, not protective**: the mask is a shuffle of
-the real characters, so it leaks the value's length and character set.
+- Masks values as a file opens, in [10 formats](#supported-formats), with full key paths for nested values (`database.connection.password`)
+- Covers a value you type, put or paste before Neovim draws it
+- Lets you reveal a line on purpose, follow the cursor, or copy a value with a prompt and a timed clear
+- Keeps values hidden where the file's text shows up elsewhere: Telescope, Snacks, fzf-lua and mini.pick previews and grep rows, quickfix lists, diffs and `git commit -v`, and `:terminal` output if you turn it on
+- `:CamouflagePresent` masks everything and refuses reveals for the length of a demo, and `:CamouflageShield` covers the whole editor until you press a key
+- Flags weak values offline (`[weak: default]`), shows when a JWT expires, and checks passwords against Have I Been Pwned when you ask it to
+- `:CamouflageAudit` lists every masked key in a project, never the value, with JSON output and an exit code for CI
+- Reads a per-project `.camouflage.yaml`, including data-only rules for what to mask and how
 
 ## Installation
 
-### [lazy.nvim](https://github.com/folke/lazy.nvim)
+With [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 ```lua
 {
@@ -109,18 +44,18 @@ the real characters, so it leaks the value's length and character set.
 }
 ```
 
-The keys sit under `<leader>m` because LazyVim and AstroNvim already use
-`<leader>c` (code actions, close buffer).
-
-Use `BufReadPre`/`BufNewFile` when you want masking available as files are
-opened. `VeryLazy` is also usable if you prefer deferred startup loading, but it
-can let a buffer appear before the first masking pass runs. camouflage only masks
-visually; it does not encrypt, remove, or otherwise secure the real buffer text.
+`BufReadPre`/`BufNewFile` loads it as the first file opens, so no buffer is drawn before it's masked. The keys sit under `<leader>m` because LazyVim and AstroNvim already use `<leader>c`.
 
 <details>
 <summary>Other package managers</summary>
 
-#### [packer.nvim](https://github.com/wbthomason/packer.nvim)
+[rocks.nvim](https://github.com/lumen-oss/rocks.nvim), from [LuaRocks](https://luarocks.org/modules/zeybek/camouflage.nvim):
+
+```vim
+:Rocks install camouflage.nvim
+```
+
+[packer.nvim](https://github.com/wbthomason/packer.nvim):
 
 ```lua
 use {
@@ -131,228 +66,80 @@ use {
 }
 ```
 
-#### [vim-plug](https://github.com/junegunn/vim-plug)
+[vim-plug](https://github.com/junegunn/vim-plug):
 
 ```vim
 Plug 'zeybek/camouflage.nvim'
-
-" In your init.lua or after/plugin/camouflage.lua:
-lua require('camouflage').setup()
 ```
 
-#### [mini.deps](https://github.com/echasnovski/mini.deps)
+[mini.deps](https://github.com/echasnovski/mini.deps):
 
 ```lua
-local add = MiniDeps.add
-add({
-  source = 'zeybek/camouflage.nvim',
-})
-require('camouflage').setup()
+MiniDeps.add({ source = 'zeybek/camouflage.nvim' })
 ```
 
-#### [rocks.nvim](https://github.com/lumen-oss/rocks.nvim)
-
-camouflage.nvim is [on LuaRocks](https://luarocks.org/modules/zeybek/camouflage.nvim):
-
-```vim
-:Rocks install camouflage.nvim
-```
-
-Then call `require('camouflage').setup()` from your config.
-
-#### Manual Installation
+By hand:
 
 ```bash
 git clone https://github.com/zeybek/camouflage.nvim.git \
   ~/.local/share/nvim/site/pack/plugins/start/camouflage.nvim
 ```
 
-Then add to your `init.lua`:
-
-```lua
-require('camouflage').setup()
-```
+Everything except lazy.nvim's `opts` and packer's `config` also needs `require('camouflage').setup()` in your config.
 
 </details>
 
+## Usage
+
+Open a supported file and its values are masked. These are the commands you'll use most:
+
+| Command | What it does |
+|---------|--------------|
+| `:CamouflageToggle` | Turn masking on or off |
+| `:CamouflageReveal` | Show the values on the current line until the cursor leaves it |
+| `:CamouflageFollowCursor` | Keep the line under the cursor revealed as you move |
+| `:CamouflageYank` | Copy the value under the cursor, after a prompt, and clear it after 30s |
+| `:CamouflagePresent` | Presentation mode: everything masked, reveals refused (`!` to leave) |
+| `:CamouflageShield` | Cover the whole editor until a key is pressed |
+| `:CamouflageAudit` | List every masked key in the project in the quickfix list |
+| `:CamouflageStatus` | Show whether this buffer is masked, by which parser, and how many values |
+
+There are 22 in all, see [Commands and Keymaps](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps). If a file isn't masked the way you expect, `:checkhealth camouflage` says why, without printing any value.
+
 ## Configuration
 
-The plugin works with zero configuration. Here's a quick overview of common options:
+It works without any configuration. These are the options people change most, shown with their defaults:
 
 ```lua
 require('camouflage').setup({
-  enabled = true,
-  auto_enable = true,
-  style = 'stars',           -- 'text' | 'dotted' | 'stars' | 'scramble'
-  mask_char = '*',
-  debounce_ms = 150,
-  max_lines = 5000,
-
-  terminal = {
-    enabled = false,  -- opt in: mask KEY=value output in :terminal buffers
-    keys = 'sensitive',
-  },
-
-  shield = {
-    on_focus_lost = false,  -- cover the editor when it loses focus (tmux: focus-events on)
-  },
-
-  audit = {
-    ignore_patterns = { '.git/**', 'node_modules/**' },
-    destination = 'quickfix', -- 'quickfix' | 'loclist'
-  },
-
-  policy = {
-    enabled = true,
-    default_action = 'mask',
-    terminal_path_ignores = { 'node_modules/**', '.git/**' },
-    rules = {
-      {
-        id = 'ignore-debug-flags',
-        action = 'ignore',
-        key = { '^DEBUG$', '^PORT$' },
-        parser = { 'env', 'json', 'yaml' },
-      },
-      {
-        id = 'force-client-secrets',
-        action = 'mask',
-        allow_force = true,
-        key = { 'client[_%.%-]?secret', 'private[_%.%-]?key' },
-      },
-    },
-  },
-
-  checks = {
-    weak_secret = {
-      enabled = true,
-      min_sensitive_length = 12,
-      entropy_threshold = 3.0,
-      ignored_key_patterns = {},
-      ignored_value_patterns = {},
-    },
-  },
-
-  pwned = {
-    enabled = true,          -- Manual HIBP commands are available
-    auto_check = false,      -- Network check on BufEnter (opt in)
-    check_on_save = false,   -- Network check on BufWritePost (opt in)
-    check_on_change = false, -- Network check on TextChanged (opt in)
-  },
-
-  reveal = {
-    follow_cursor = false,   -- Auto-reveal current line
-  },
-
-  yank = {
-    confirm = true,          -- Require confirmation before copying
-    auto_clear_seconds = 30, -- Auto-clear clipboard
-  },
-
-  integrations = {
-    telescope = true,
-    picker_results = true,
-    quickfix = true,
-    diff = true,
-    fzf = true,              -- fzf-lua previews and result rows
-    mini_pick = true,        -- mini.pick previews, result rows and title
-    cmp = { disable_in_masked = true },
-    blink = { disable_in_masked = true },
-  },
+  style = 'stars',               -- 'stars' | 'dotted' | 'text' | 'scramble'
+  reveal = { follow_cursor = false },
+  yank = { confirm = true, auto_clear_seconds = 30 },
+  terminal = { enabled = false },         -- mask KEY=value output in :terminal
+  shield = { on_focus_lost = false },     -- cover the editor when it loses focus
+  pwned = { auto_check = false },         -- Have I Been Pwned on BufEnter, sends a request
 })
 ```
 
-> **[Full configuration reference](https://github.com/zeybek/camouflage.nvim/wiki/Configuration)** on the wiki.
+Every option is in the [Configuration](https://github.com/zeybek/camouflage.nvim/wiki/Configuration) reference and in `:help camouflage-configuration`.
 
-## Commands
+## Security model
 
-| Command | Description |
-|---------|-------------|
-| `:CamouflageToggle` | Toggle camouflage on/off |
-| `:CamouflageReveal` | Reveal masked values on current line |
-| `:CamouflageYank` | Copy unmasked value at cursor to clipboard |
-| `:CamouflageFollowCursor` | Toggle follow cursor mode |
-| `:CamouflageStatus` | Show status and masked count |
-| `:CamouflageRefresh` | Refresh decorations |
-| `:CamouflageAudit [path]` | Scan workspace/path and populate quickfix |
-| `:CamouflageAudit! [path]` | Scan workspace/path and populate location list |
-| `:CamouflageWeakSecretToggle` | Toggle offline weak-secret badges |
-| `:CamouflagePwnedCheck` | Check if value under cursor is pwned |
-| `:CamouflagePwnedCheckLine` | Check all values on current line |
-| `:CamouflagePwnedCheckBuffer` | Check all values in buffer |
-| `:CamouflagePwnedClear` | Clear pwned indicators from buffer |
-| `:CamouflagePwnedClearCache` | Clear local pwned check cache |
-| `:CamouflageExpiryToggle` | Toggle JWT expiry check on/off |
-| `:CamouflageRegisters` | List registers with masked values redacted |
-| `:CamouflagePresent` | Presentation mode: mask everything, refuse reveals (`!` to leave) |
-| `:CamouflageShield` | Cover the whole editor until a key is pressed |
-| `:CamouflageShieldPassword` | Set the shield password (`!` removes it) |
-| `:CamouflageInit` | Create `.camouflage.yaml` in project root |
-| `:CamouflageProjectConfigStatus` | Show the project config status |
-| `:CamouflageProjectConfigWatchStatus` | Show the project config watcher status |
-| `:CamouflageParsers` | List registered parsers (debug) |
+camouflage hides values visually, by drawing over them. It doesn't encrypt, remove or change anything, and the real text is still in the buffer. That covers the screen: screen sharing, pair programming, recordings and someone looking over your shoulder.
 
-> **[Full commands list](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)** on the wiki.
+It doesn't cover anything that reads the buffer or the file:
 
-## Screen Shield
+- LSP servers, formatters, linters and AI assistants. nvim-cmp and blink.cmp are turned off in masked buffers, other completion sources aren't
+- yanking with `yy` or `"+y`, the clipboard, and `:registers` (`:CamouflageYank` and `:CamouflageRegisters` are the careful versions)
+- `:%print`, `:substitute` previews, saved files, backups, swap and undo files
+- grep tools outside Neovim, and pickers camouflage has no integration for
+- the message Neovim prints when it jumps to a quickfix entry, `(1 of 3): API_KEY=...`
 
-`:CamouflageShield` covers everything Neovim draws, file, statusline, command
-line and other plugins' windows, with a camouflage pattern and a small card in
-the middle. The first key you press uncovers it, and that key never reaches the
-buffer underneath.
+`scramble` only shuffles the real characters, so it shows the value's length and character set. A `.camouflage.yaml` is data only. It can't run code or set the shield, and it can't turn on network checks unless you trust it. The [Security Model](https://github.com/zeybek/camouflage.nvim/wiki/Security-Model) page has the full list and the workarounds.
 
-With `shield = { on_focus_lost = true }` it comes down on its own when you
-switch to another window or app. That relies on the terminal telling Neovim
-about focus changes. Most terminals do, but **inside tmux you need
-`set -g focus-events on`** in `~/.tmux.conf`, otherwise the event never arrives
-and nothing happens.
+## Project config and policy
 
-To require a password instead of any key, run `:CamouflageShieldPassword`. It
-asks for the password twice and applies right away, in every project and every
-session, with nothing to add to your config. Only a salted, stretched hash is
-kept, in Neovim's data directory, never the password itself.
-`:CamouflageShieldPassword!` removes it.
-
-Shield settings can only come from `setup()`. A `.camouflage.yaml` that tries
-to set them is refused, so a cloned repository can't lock your editor.
-
-It covers Neovim only: the terminal's title bar, its scrollback and the tmux
-status line are outside its reach. A password makes it a deterrent, not a lock:
-whoever is at the keyboard can still close the terminal. For that, lock the
-machine.
-
-## Workspace Audit
-
-`:CamouflageAudit [path]` scans supported files under the current project root or optional path using the same parser registry as live masking. Results are written to quickfix by default; `:CamouflageAudit! [path]` writes to the current window's location list.
-
-Audit results include file, line, column, parser, key, value length, and policy decision metadata, but never the plaintext value. A row reads `[env] API_KEY · 16 chars · mask`, and each item keeps the full record in its `user_data` (Neovim 0.10+). The audit engine does not run HIBP or any other network check.
-
-For CI, the same records can be written as JSON, with an exit code that says whether anything was found:
-
-```sh
-nvim --headless -c 'CamouflageAudit --json=audit.json --quit .'
-```
-
-`--json` on its own writes to stdout. `--quit` exits with 1 when there are findings, 0 when there are none.
-
-## Rule-Based Policy
-
-`policy` lets you declare data-only rules in `setup()` or `.camouflage.yaml`.
-Rules only filter values already found by supported parsers; a `mask` rule does
-not make unsupported files parseable.
-
-Policy precedence is deterministic:
-
-1. `terminal_path_ignores` ignore a root-relative path first.
-2. An `action = 'mask'` rule with `allow_force = true` can override that path
-   ignore or a broader ordered ignore rule.
-3. Otherwise, ordered rules are evaluated in order and the first match wins.
-4. Unmatched variables use `default_action`, which defaults to `mask`.
-
-Supported predicates are `path`, `basename`, `parser`, `key`, `nested`,
-`commented`, `value_length`, `value_shape`, `value_prefix`, and `value_suffix`.
-Value predicates never log or display the plaintext value.
-
-Example `.camouflage.yaml`:
+`:CamouflageInit` writes a `.camouflage.yaml` for the project. Rules in it, or in `setup()`, decide which found values are masked and how:
 
 ```yaml
 version: 1
@@ -367,140 +154,67 @@ policy:
       key: ['^AWS_ACCESS_KEY_ID$']
       style: partial
       show_end: 4
-    - id: force-client-secrets
-      action: mask
-      allow_force: true
-      key: ['client[_%.%-]?secret', 'private[_%.%-]?key']
 ```
 
-## Weak Secret Check
+`AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE` then shows as `****************MPLE`. Key patterns are case-sensitive Lua patterns. See [Project Config](https://github.com/zeybek/camouflage.nvim/wiki/Project-Config) and [Rule Based Policy](https://github.com/zeybek/camouflage.nvim/wiki/Rule-Based-Policy).
 
-The weak-secret check runs locally during masking and flags high-confidence weak values such as `password`, placeholders, repeated characters, short sensitive values, simple sequences (runs like `12345678`, `987654321` or `abcdefgh`), and low-entropy token-like strings. It uses key context, so benign values like `PORT=5432` are not treated like passwords.
+## Audit in CI
 
-Badges render through the same central badge pipeline as HIBP and JWT expiry. The result text and metadata include the reason, key, and value length, but never the plaintext value. Use `checks.weak_secret.ignored_key_patterns` or `checks.weak_secret.ignored_value_patterns` to suppress noisy project-specific cases.
-
-## Custom Check API
-
-Register trusted Lua checks to inspect parsed variables and render redacted badges through the same pipeline used by weak-secret, HIBP, and JWT expiry checks.
-
-```lua
-require('camouflage').register_check({
-  name = 'local_policy',
-  priority = 60,
-  run = function(ctx)
-    if ctx.var.key:match('TOKEN') and ctx.var.value == 'changeme' then
-      return {
-        severity = 'warning',
-        text = '[policy]',
-        hl_group = 'DiagnosticWarn',
-        data = { reason = 'placeholder', key = ctx.var.key },
-      }
-    end
-  end,
-})
+```sh
+nvim --headless -c 'CamouflageAudit --json=audit.json --quit .'
 ```
 
-Checks receive plaintext values in `ctx.var.value`, so only register code you trust. Badge `text` and `data` should stay redacted; camouflage drops results that directly include the exact plaintext value.
+writes every finding (file, line, key, value length, policy decision) to `audit.json` and exits with 1 when there is one. No value is written anywhere. See [Workspace Audit](https://github.com/zeybek/camouflage.nvim/wiki/Workspace-Audit).
 
-Async checks must opt in with `async = true` and call `done(result)`. Old async completions are ignored after buffer edits, unregister, buffer deletion, or a newer decoration run.
+## Supported formats
 
-```lua
-require('camouflage').register_check({
-  name = 'remote_policy',
-  async = true,
-  run = function(ctx, done)
-    vim.defer_fn(function()
-      done({ severity = 'info', text = '[checked]' })
-    end, 10)
-  end,
-})
-```
-
-Configure registered checks with data under `checks.<name>`:
-
-```lua
-require('camouflage').setup({
-  checks = {
-    local_policy = {
-      enabled = false,
-      label = 'team',
-    },
-  },
-})
-```
-
-Project config can set those data options but cannot register executable check code.
-
-With `debug = true`, custom check logs include check names, run counts, failures, and elapsed time without logging plaintext values.
-
-## Supported File Formats
-
-| Format | Extensions | Nested Keys |
-|--------|-----------|-------------|
-| Environment | `.env`, `.env.*`, `.envrc`, `.sh` | No |
-| JSON | `.json`, `.jsonc` | Yes |
-| YAML | `.yaml`, `.yml` | Yes |
-| TOML | `.toml` | Yes (sections) |
-| Properties | `.properties`, `.ini`, `.conf`, `credentials` | Yes (sections) |
+| Format | Files | Nested keys |
+|--------|-------|-------------|
+| Environment | `.env`, `.env.*`, `*.env`, `.envrc`, `*.sh` | No |
+| JSON | `*.json`, `*.jsonc` | Yes |
+| YAML | `*.yaml`, `*.yml` | Yes |
+| TOML | `*.toml` | Yes (sections) |
+| Properties | `*.properties`, `*.ini`, `*.conf`, `credentials` | Yes (sections) |
 | Netrc | `.netrc`, `_netrc` | No |
-| XML | `.xml` | Yes |
-| HTTP | `.http` | Yes (headers, query, JSON body) |
-| HCL / Terraform | `.tf`, `.tfvars`, `.hcl` | Yes |
-| Dockerfile | `Dockerfile`, `Containerfile`, `*.dockerfile` | No |
+| XML | `*.xml` | Yes |
+| HTTP | `*.http` | Yes (headers, query, JSON body) |
+| HCL / Terraform | `*.tf`, `*.tfvars`, `*.hcl` | Yes |
+| Dockerfile | `Dockerfile`, `Dockerfile.*`, `*.dockerfile`, `Containerfile`, `Containerfile.*` | No |
 
-For unsupported formats, you can define [custom patterns](https://github.com/zeybek/camouflage.nvim/wiki/Custom-Patterns).
-These are opt-in; a fixture such as `test.myconfig` will not be masked until you map that filename pattern:
+Formats with a TreeSitter grammar use it when it's installed, and every format works without it. For another format, add a Lua pattern with [`custom_patterns`](https://github.com/zeybek/camouflage.nvim/wiki/Custom-Patterns) or [register a parser](https://github.com/zeybek/camouflage.nvim/wiki/Custom-Parsers).
 
-```lua
-require('camouflage').setup({
-  custom_patterns = {
-    {
-      file_pattern = { '*.myconfig' },
-      pattern = '^%s*@([%w_]+)%s*=%s*(.+)',
-      key_capture = 1,
-      value_capture = 2,
-    },
-  },
-})
-```
+## Coming from cloak.nvim
 
-Runtime parser registrations with `file_patterns` are picked up by automatic masking immediately after registration.
+The formats above need no patterns. Each one has a parser that finds values by their key, so there's nothing to write for them. The rest maps like this:
 
-When TreeSitter is available, JSON/YAML/XML nested keys are reported with their full path. XML attributes use `parent.path@attribute` so attributes and child elements with the same name stay distinct.
+| cloak.nvim | camouflage.nvim |
+|------------|-----------------|
+| `cloak_character = '*'` | `mask_char = '*'` |
+| `highlight_group = 'Comment'` | `highlight_group = 'Comment'` |
+| `cloak_length = 8` | `mask_length = 8` |
+| `cloak_telescope = true` | `integrations.telescope = true` (the default) |
+| `patterns` for another file type | `custom_patterns` |
+| `:CloakToggle` | `:CamouflageToggle` |
+| `:CloakPreviewLine` | `:CamouflageReveal` |
 
-## Health Check
-
-```vim
-:checkhealth camouflage
-```
-
-Reports whether `setup()` ran, which parser handles the current buffer and how
-many values it masks, which TreeSitter grammars are installed, the project
-config file that was found and whether it is trusted, which checks run, and the
-integrations that were detected. No value is printed.
+Like cloak, it turns nvim-cmp off in masked buffers, and blink.cmp too.
 
 ## Documentation
 
-For detailed documentation, visit the **[Wiki](https://github.com/zeybek/camouflage.nvim/wiki)**:
+The [wiki](https://github.com/zeybek/camouflage.nvim/wiki) has a page for every feature, and `:help camouflage` covers the same ground inside Neovim. Good places to start:
 
-- **[Getting Started](https://github.com/zeybek/camouflage.nvim/wiki/Getting-Started)** — Installation and first steps
-- **[Configuration](https://github.com/zeybek/camouflage.nvim/wiki/Configuration)** — Full configuration reference
-- **[Commands & Keymaps](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)** — All commands and suggested keybindings
-- **[API Reference](https://github.com/zeybek/camouflage.nvim/wiki/API)** — Lua API for programmatic control
-- **[Events & Hooks](https://github.com/zeybek/camouflage.nvim/wiki/Events-and-Hooks)** — Extend functionality with event listeners
-- **[Have I Been Pwned](https://github.com/zeybek/camouflage.nvim/wiki/Have-I-Been-Pwned)** — Password breach checking
-- **[Integrations](https://github.com/zeybek/camouflage.nvim/wiki/Integrations)** — Telescope, Snacks.nvim, nvim-cmp, Lualine
-- **[Project Config](https://github.com/zeybek/camouflage.nvim/wiki/Project-Config)** — Repo-level `.camouflage.yaml`
-- **[TreeSitter](https://github.com/zeybek/camouflage.nvim/wiki/TreeSitter)** — Custom TreeSitter queries
-- **[Architecture](https://github.com/zeybek/camouflage.nvim/wiki/Architecture)** — Internal design and code flow
-- **[Troubleshooting](https://github.com/zeybek/camouflage.nvim/wiki/Troubleshooting)** — Common issues and solutions
+- [Getting Started](https://github.com/zeybek/camouflage.nvim/wiki/Getting-Started)
+- [Commands and Keymaps](https://github.com/zeybek/camouflage.nvim/wiki/Commands-and-Keymaps)
+- [Configuration](https://github.com/zeybek/camouflage.nvim/wiki/Configuration)
+- [Integrations](https://github.com/zeybek/camouflage.nvim/wiki/Integrations)
+- [Screen Shield](https://github.com/zeybek/camouflage.nvim/wiki/Screen-Shield)
+- [API](https://github.com/zeybek/camouflage.nvim/wiki/API) and [Events and Hooks](https://github.com/zeybek/camouflage.nvim/wiki/Events-and-Hooks)
+- [Troubleshooting](https://github.com/zeybek/camouflage.nvim/wiki/Troubleshooting)
 
-You can also use `:help camouflage` within Neovim.
+## Also available
 
-## Also Available
-
-- [Camouflage for VS Code](https://github.com/zeybek/camouflage) - The original VS Code extension
+- [Camouflage for VS Code](https://github.com/zeybek/camouflage), the original extension
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT, see [LICENSE](LICENSE).
