@@ -52,11 +52,34 @@ end
 ---Setup Telescope.nvim preview integration. Only listens for Telescope's own
 ---User event, so it needs nothing from Telescope and works whenever Telescope
 ---is loaded, before or after camouflage.
+---
+---Telescope loads the file into a scratch buffer with no name, reads it
+---asynchronously, and fires TelescopePreviewerLoaded from a vim.schedule that
+---can run before the lines arrive. So the file name is taken from the event and
+---kept for the buffer, and the buffer is decorated again whenever its lines
+---change, until Telescope wipes it.
 ---@return nil
 local function setup_telescope_integration()
   local state = require('camouflage.state')
   local core = require('camouflage.core')
   local parsers = require('camouflage.parsers')
+
+  ---@type table<number, string> preview buffer -> file it shows
+  local previewed = {}
+
+  local function decorate(bufnr)
+    local filename = previewed[bufnr]
+    if not filename or not vim.api.nvim_buf_is_valid(bufnr) then
+      return
+    end
+    if not require('camouflage.config').is_enabled() then
+      return
+    end
+    state.init_buffer(bufnr)
+    -- The preview buffer has no name of its own: pass the file it shows, or
+    -- the pass finds nothing to parse and leaves it unmasked.
+    core.apply_decorations(bufnr, filename)
+  end
 
   vim.api.nvim_create_autocmd('User', {
     group = state.integrations_augroup,
@@ -70,15 +93,31 @@ local function setup_telescope_integration()
       -- so nvim_get_current_buf() returns the preview buffer
       local bufnr = vim.api.nvim_get_current_buf()
       local filename = (args.data or {}).bufname or vim.api.nvim_buf_get_name(bufnr)
-
-      if parsers.is_supported(filename) then
-        vim.schedule(function()
-          if vim.api.nvim_buf_is_valid(bufnr) then
-            state.init_buffer(bufnr)
-            core.apply_decorations(bufnr)
-          end
-        end)
+      if not filename or filename == '' or not parsers.is_supported(filename) then
+        previewed[bufnr] = nil
+        return
       end
+
+      local attached = previewed[bufnr] ~= nil
+      previewed[bufnr] = filename
+      if not attached then
+        vim.api.nvim_buf_attach(bufnr, false, {
+          on_lines = function(_, buf)
+            if not previewed[buf] then
+              return true
+            end
+            vim.schedule(function()
+              decorate(buf)
+            end)
+          end,
+          on_detach = function(_, buf)
+            previewed[buf] = nil
+          end,
+        })
+      end
+      vim.schedule(function()
+        decorate(bufnr)
+      end)
     end,
   })
 end

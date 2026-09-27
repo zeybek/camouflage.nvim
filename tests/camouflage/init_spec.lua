@@ -227,6 +227,69 @@ describe('camouflage.init', function()
     end)
   end)
 
+  describe('Telescope previews', function()
+    -- Telescope's buffer previewer loads the file into a scratch buffer with
+    -- no name and fires TelescopePreviewerLoaded inside that buffer, with the
+    -- path in `data.bufname`.
+    local function preview(path, lines)
+      local bufnr = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+      vim.api.nvim_buf_call(bufnr, function()
+        vim.api.nvim_exec_autocmds('User', {
+          pattern = 'TelescopePreviewerLoaded',
+          data = { title = path, bufname = path, filetype = '' },
+        })
+      end)
+      return bufnr
+    end
+
+    local function marks(bufnr)
+      local ns = require('camouflage.state').namespace
+      return #vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, {})
+    end
+
+    before_each(function()
+      camouflage.setup(vim.tbl_deep_extend('force', no_network_opts(), {
+        project_config = { enabled = false, watch_enabled = false },
+      }))
+    end)
+
+    it('masks the preview of a supported file', function()
+      local bufnr = preview('/repo/prod.env', { 'API_KEY=preview_secret', 'DEBUG=true' })
+      assert.equals('', vim.api.nvim_buf_get_name(bufnr))
+
+      assert.is_true(
+        vim.wait(1000, function()
+          return marks(bufnr) == 2
+        end, 10),
+        'preview was not masked'
+      )
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('masks lines that arrive after the event, as Telescope reads files async', function()
+      local bufnr = preview('/repo/late.env', {})
+      vim.wait(50)
+      vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { 'API_KEY=late_secret' })
+
+      assert.is_true(
+        vim.wait(1000, function()
+          return marks(bufnr) == 1
+        end, 10),
+        'lines written after the event were not masked'
+      )
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+
+    it('leaves the preview of an unsupported file alone', function()
+      local bufnr = preview('/repo/notes.txt', { 'API_KEY=not_a_config' })
+      vim.wait(100)
+
+      assert.equals(0, marks(bufnr))
+      vim.api.nvim_buf_delete(bufnr, { force = true })
+    end)
+  end)
+
   describe('integration autocmds', function()
     -- Stand-ins for the plugins, so each integration installs its autocmds.
     local fakes = {
