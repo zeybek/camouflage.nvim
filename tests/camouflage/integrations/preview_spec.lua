@@ -141,8 +141,9 @@ describe('camouflage.integrations.preview', function()
     local function install_stub()
       package.loaded['mini.pick'] = {
         default_preview = function(buf_id, item)
-          -- The real one takes a path or an item table, same as here.
-          local path = type(item) == 'table' and item.path or item
+          -- The real one takes a path or an item table, same as here, and cuts
+          -- a string item at the first NUL ("path\0lnum\0col\0text" for grep).
+          local path = type(item) == 'table' and item.path or item:match('^[^%z]*')
           vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.fn.readfile(path))
         end,
       }
@@ -157,6 +158,27 @@ describe('camouflage.integrations.preview', function()
 
       assert.equals(2, masked_marks(bufnr))
       assert.equals('API_KEY=preview-secret', vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1])
+    end)
+
+    it('masks the preview of a grep item without erroring on its NUL separators', function()
+      install_stub()
+      preview.setup()
+
+      local bufnr = scratch({})
+      local item = envfile .. '\0' .. '1\0' .. '1\0' .. 'API_KEY=preview-secret'
+      assert.has_no.errors(function()
+        require('mini.pick').default_preview(bufnr, item)
+      end)
+
+      assert.equals(2, masked_marks(bufnr))
+    end)
+
+    it('reads the path of an item the way mini.pick does', function()
+      assert.equals('a.env', preview.mini_pick_item_path('a.env\0' .. '3\0' .. '1\0' .. 'K=v'))
+      assert.equals('a.env', preview.mini_pick_item_path('a.env'))
+      assert.equals('b.env', preview.mini_pick_item_path({ path = 'b.env', lnum = 2 }))
+      assert.is_nil(preview.mini_pick_item_path(42))
+      assert.is_nil(preview.mini_pick_item_path(''))
     end)
 
     it('takes the path off an item table too', function()
