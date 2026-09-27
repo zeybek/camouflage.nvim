@@ -200,7 +200,10 @@
           }
         },
         "dockerfile": {
-          "type": "object",
+          "type": [
+            "object",
+            "null"
+          ],
           "description": "Dockerfile parser configuration"
         }
       },
@@ -222,6 +225,61 @@
               "description": "Disable completion in masked buffers"
             }
           }
+        },
+        "picker_results": {
+          "type": "boolean",
+          "description": "Mask the matched line in picker result rows"
+        },
+        "quickfix": {
+          "type": "boolean",
+          "description": "Mask the matched line in quickfix and location list rows"
+        },
+        "diff": {
+          "type": "boolean",
+          "description": "Mask values in diff and commit buffers"
+        },
+        "fzf": {
+          "type": "boolean",
+          "description": "Mask fzf-lua previews and result rows"
+        },
+        "mini_pick": {
+          "type": "boolean",
+          "description": "Mask mini.pick previews, result rows and preview titles"
+        },
+        "blink": {
+          "type": "object",
+          "properties": {
+            "disable_in_masked": {
+              "type": "boolean",
+              "description": "Disable blink.cmp completion in masked buffers"
+            }
+          }
+        }
+      }
+    },
+    "terminal": {
+      "type": "object",
+      "description": "Masking inside :terminal buffers",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Mask KEY=value output in terminal buffers"
+        },
+        "keys": {
+          "type": "string",
+          "enum": [
+            "sensitive",
+            "all"
+          ],
+          "description": "'sensitive' masks keys that look secret, 'all' masks every KEY=value"
+        },
+        "key_patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Lua patterns for keys worth covering, defaults to the weak-secret list"
         }
       }
     },
@@ -574,7 +632,62 @@
         "expiry": {
           "type": "object",
           "description": "JWT expiry hint settings",
-          "additionalProperties": true
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable JWT expiry badges"
+            },
+            "show_threshold_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Show a badge when less than this many seconds are left"
+            },
+            "warn_threshold_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Switch to 'expires in' and the warning color under this many seconds"
+            },
+            "show_provider": {
+              "type": "boolean",
+              "description": "Add the provider named by the iss claim"
+            },
+            "refresh": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "on_buf_enter": {
+                  "type": "boolean",
+                  "description": "Re-check on BufEnter"
+                },
+                "on_save": {
+                  "type": "boolean",
+                  "description": "Re-check on BufWritePost"
+                },
+                "on_change": {
+                  "type": "boolean",
+                  "description": "Re-check on TextChanged"
+                },
+                "auto_interval": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Seconds between background refreshes, 0 turns it off"
+                }
+              }
+            },
+            "hl_valid": {
+              "type": "string",
+              "description": "Highlight while more than the warn threshold is left"
+            },
+            "hl_warning": {
+              "type": "string",
+              "description": "Highlight under the warn threshold"
+            },
+            "hl_expired": {
+              "type": "string",
+              "description": "Highlight once expired"
+            }
+          }
         },
         "weak_secret": {
           "type": "object",
@@ -664,7 +777,26 @@
         "badges": {
           "type": "object",
           "description": "Badge renderer settings",
-          "additionalProperties": true
+          "additionalProperties": false,
+          "properties": {
+            "position": {
+              "type": "string",
+              "enum": [
+                "right_align",
+                "eol",
+                "inline"
+              ],
+              "description": "Where badges are drawn"
+            },
+            "separator": {
+              "type": "string",
+              "description": "Text between two badges on one line"
+            },
+            "separator_hl": {
+              "type": "string",
+              "description": "Highlight for the separator"
+            }
+          }
         }
       }
     },
