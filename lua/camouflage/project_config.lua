@@ -67,6 +67,37 @@ local function parse_scalar(raw)
   return value
 end
 
+-- A quote only opens a quoted scalar where a scalar can start (after `:`, `-`,
+-- `[`, `,`, `{` or at the start of the line), so `don't # x` still loses its comment.
+local QUOTE_OPENERS = { [':'] = true, ['-'] = true, ['['] = true, [','] = true, ['{'] = true }
+
+--- Drop a trailing `# comment`: a `#` outside quotes that follows whitespace.
+---@param line string
+---@return string
+local function strip_comment(line)
+  local quote, prev = nil, nil
+  local i = 1
+  while i <= #line do
+    local c = line:sub(i, i)
+    if quote then
+      if c == '\\' and quote == '"' then
+        i = i + 1
+      elseif c == quote then
+        quote = nil
+      end
+    elseif (c == '"' or c == "'") and (prev == nil or QUOTE_OPENERS[prev]) then
+      quote = c
+    elseif c == '#' and i > 1 and line:sub(i - 1, i - 1):match('%s') then
+      return (line:sub(1, i - 1):gsub('%s+$', ''))
+    end
+    if not c:match('%s') then
+      prev = c
+    end
+    i = i + 1
+  end
+  return line
+end
+
 ---@param content string
 ---@return boolean, table|string
 local function fallback_yaml_decode(content)
@@ -79,7 +110,7 @@ local function fallback_yaml_decode(content)
     end
 
     local indent = #(raw_line:match('^(%s*)') or '')
-    local line = trim(raw_line)
+    local line = trim(strip_comment(raw_line))
 
     -- Pop stack until we find a parent with lower indent
     while #stack > 1 and indent <= stack[#stack].indent do
