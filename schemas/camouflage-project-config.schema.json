@@ -513,6 +513,38 @@
                     }
                   }
                 ]
+              },
+              "style": {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "dotted",
+                  "stars",
+                  "scramble",
+                  "partial"
+                ],
+                "description": "Mask style for this rule's values. 'partial' keeps show_start/show_end characters visible"
+              },
+              "mask_char": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1,
+                "description": "Single character used for the mask"
+              },
+              "mask_length": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Fixed mask width, which hides the value's length"
+              },
+              "show_start": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "With style 'partial': characters kept at the start"
+              },
+              "show_end": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "With style 'partial': characters kept at the end"
               }
             }
           }

@@ -992,6 +992,36 @@ describe('camouflage.project_config', function()
       assert.same({}, unknown)
     end)
 
+    it('describes every field a policy rule can carry', function()
+      -- The fields policy.lua reads from a rule: what it matches on, and how it
+      -- masks what it matched (display_fields).
+      local rule_fields = {
+        'id',
+        'action',
+        'allow_force',
+        'path',
+        'basename',
+        'parser',
+        'key',
+        'nested',
+        'commented',
+        'value_length',
+        'value_shape',
+        'value_prefix',
+        'value_suffix',
+        'style',
+        'mask_char',
+        'mask_length',
+        'show_start',
+        'show_end',
+      }
+      local items = resolve(resolve(schema.properties.policy).properties.rules).items
+      local in_schema = vim.tbl_keys(items.properties)
+      table.sort(rule_fields)
+      table.sort(in_schema)
+      assert.same(rule_fields, in_schema)
+    end)
+
     it('accepts the empty dockerfile section the template writes', function()
       local node = resolve(schema.properties.parsers).properties.dockerfile
       assert.truthy(vim.tbl_contains(node.type, 'null'))
