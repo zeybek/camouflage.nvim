@@ -61,6 +61,29 @@ local function setup_fzf()
   return true
 end
 
+---The file a mini.pick item points at. A string item can carry a position
+---after the path, split by NUL characters ("path\0lnum\0col\0text" for grep),
+---which mini.pick cuts off the same way. A buffer item gives its buffer's name.
+---@param item any
+---@return string|nil
+function M.mini_pick_item_path(item)
+  local path
+  if type(item) == 'table' then
+    path = item.path or item.text
+    local buf = item.bufnr or item.buf_id or item.buf
+    if not path and type(buf) == 'number' and vim.api.nvim_buf_is_valid(buf) then
+      path = vim.api.nvim_buf_get_name(buf)
+    end
+  else
+    path = item
+  end
+  if type(path) ~= 'string' then
+    return nil
+  end
+  path = path:match('^[^%z]*')
+  return path ~= '' and path or nil
+end
+
 ---mini.pick renders every preview through one function.
 ---@return nil
 ---@return boolean installed
@@ -76,8 +99,7 @@ local function setup_mini_pick()
   local original = pick.default_preview
   pick.default_preview = function(buf_id, item, opts)
     local result = original(buf_id, item, opts)
-    local path = type(item) == 'table' and (item.path or item.text) or item
-    M.mask_buffer(buf_id, type(path) == 'string' and path or nil)
+    M.mask_buffer(buf_id, M.mini_pick_item_path(item))
     return result
   end
   wrapped.mini_pick = true
