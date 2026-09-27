@@ -355,9 +355,11 @@ colors ~
     Custom colors for masked text. Overrides `highlight_group` when set.
     Fields:
     - `foreground`: Text color (hex like '#808080' or color name)
-    - `background`: Background color ('transparent' or hex)
+    - `background`: Background color ('transparent', hex or color name)
     - `bold`: Boolean for bold text
     - `italic`: Boolean for italic text
+    Hex colors take six digits. A color Neovim doesn't know (`'#fff'`, a
+    misspelled name) is left out with a warning, and the rest still applies.
 
     Example: >lua
       colors = {

@@ -382,6 +382,20 @@ local function setup_integrations()
 end
 
 ---Define the highlight groups: CamouflageMask from `colors` when it is set, and
+---Whether nvim_set_hl can take the color: a name, a `#rrggbb` hex, `NONE` or a
+---number. `#fff` and misspelled names are not.
+---@param value any
+---@return boolean
+local function usable_color(value)
+  if type(value) == 'number' then
+    return true
+  end
+  if type(value) ~= 'string' then
+    return false
+  end
+  return value:upper() == 'NONE' or vim.api.nvim_get_color_by_name(value) ~= -1
+end
+
 ---CamouflageRevealed as a default a colorscheme or the user can override.
 ---@return nil
 local function define_highlights()
@@ -400,12 +414,29 @@ local function define_highlights()
 
   local hl_opts = {}
 
+  -- A color Neovim can't read would make nvim_set_hl throw, and with it setup()
+  -- (colors can come from a project file too), so it is left out with a warning.
+  local function set_color(field, name, value)
+    if usable_color(value) then
+      hl_opts[field] = value
+    else
+      vim.notify_once(
+        string.format(
+          '[camouflage] ignoring colors.%s = %s: not a color Neovim knows',
+          name,
+          vim.inspect(value)
+        ),
+        vim.log.levels.WARN
+      )
+    end
+  end
+
   if config.colors.foreground then
-    hl_opts.fg = config.colors.foreground
+    set_color('fg', 'foreground', config.colors.foreground)
   end
 
   if config.colors.background and config.colors.background ~= 'transparent' then
-    hl_opts.bg = config.colors.background
+    set_color('bg', 'background', config.colors.background)
   end
 
   if config.colors.bold then
