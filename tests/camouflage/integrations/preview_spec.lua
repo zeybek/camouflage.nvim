@@ -181,6 +181,73 @@ describe('camouflage.integrations.preview', function()
       assert.is_nil(preview.mini_pick_item_path(''))
     end)
 
+    describe('pickers that start with a preview of their own', function()
+      -- A stand-in for the active picker: its source keeps whatever preview it
+      -- was started with, like mini.pick does when it normalizes the source.
+      local picker_opts, set_calls
+
+      local function start_picker(source_preview)
+        picker_opts = { source = { preview = source_preview } }
+        set_calls = 0
+        package.loaded['mini.pick'].get_picker_opts = function()
+          return vim.deepcopy(picker_opts)
+        end
+        package.loaded['mini.pick'].set_picker_opts = function(opts)
+          set_calls = set_calls + 1
+          picker_opts = vim.tbl_deep_extend('force', picker_opts, opts)
+        end
+        vim.api.nvim_exec_autocmds('User', { pattern = 'MiniPickStart' })
+      end
+
+      local function reader(buf_id, item)
+        vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.fn.readfile(item))
+      end
+
+      it('masks a picker started with the plain default preview', function()
+        install_stub()
+        local plain = require('mini.pick').default_preview
+        preview.setup()
+
+        start_picker(plain)
+        local bufnr = scratch({})
+        picker_opts.source.preview(bufnr, envfile)
+
+        assert.equals(1, set_calls)
+        assert.equals(2, masked_marks(bufnr))
+      end)
+
+      it('masks a custom source.preview', function()
+        install_stub()
+        preview.setup()
+
+        start_picker(reader)
+        local bufnr = scratch({})
+        picker_opts.source.preview(bufnr, envfile)
+
+        assert.equals(2, masked_marks(bufnr))
+      end)
+
+      it('leaves a preview that already masks alone', function()
+        install_stub()
+        preview.setup()
+
+        start_picker(require('mini.pick').default_preview)
+
+        assert.equals(0, set_calls)
+      end)
+
+      it('does nothing when the integration is off', function()
+        install_stub()
+        config.set('integrations.mini_pick', false)
+        preview.setup()
+
+        start_picker(reader)
+
+        assert.equals(0, set_calls)
+        config.set('integrations.mini_pick', true)
+      end)
+    end)
+
     it('takes the path off an item table too', function()
       install_stub()
       preview.setup()
