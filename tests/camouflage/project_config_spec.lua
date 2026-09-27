@@ -909,4 +909,92 @@ describe('camouflage.project_config', function()
     assert.equals('return function() end', local_policy.run)
     assert.equals(0, #registry.list())
   end)
+
+  describe('JSON schema', function()
+    local schema = vim.json.decode(
+      table.concat(
+        vim.fn.readfile(plugin_root .. '/schemas/camouflage-project-config.schema.json'),
+        '\n'
+      )
+    )
+
+    local function resolve(node)
+      while type(node) == 'table' and node['$ref'] do
+        local target = schema
+        for part in node['$ref']:gsub('^#/', ''):gmatch('[^/]+') do
+          target = target[part]
+        end
+        node = target
+      end
+      return node
+    end
+
+    local function schema_paths(node, prefix, out)
+      node = resolve(node)
+      for key, child in pairs(node.properties or {}) do
+        local path = prefix and (prefix .. '.' .. key) or key
+        out[path] = true
+        schema_paths(child, path, out)
+      end
+      return out
+    end
+
+    local function default_paths(tbl, prefix, out)
+      for key, value in pairs(tbl) do
+        if type(key) == 'string' then
+          local path = prefix and (prefix .. '.' .. key) or key
+          out[path] = true
+          if type(value) == 'table' and next(value) ~= nil and value[1] == nil then
+            default_paths(value, path, out)
+          end
+        end
+      end
+      return out
+    end
+
+    -- Keys a project file can't set, and keys that aren't in the defaults.
+    local NOT_IN_PROJECT_FILES = { project_config = true, shield = true }
+    local WITHOUT_DEFAULTS = {
+      version = true,
+      mask_length = true,
+      colors = true,
+      ['colors.foreground'] = true,
+      ['colors.background'] = true,
+      ['colors.bold'] = true,
+      ['colors.italic'] = true,
+      ['terminal.key_patterns'] = true,
+      ['checks.weak_secret.line_hl'] = true,
+    }
+
+    it('describes every option a project file can set', function()
+      local in_schema = schema_paths(schema, nil, {})
+      local missing = {}
+      for path in pairs(default_paths(require('camouflage.config').defaults, nil, {})) do
+        if not NOT_IN_PROJECT_FILES[path:match('^[^.]+')] and not in_schema[path] then
+          table.insert(missing, path)
+        end
+      end
+      table.sort(missing)
+      assert.same({}, missing)
+    end)
+
+    it('describes no option the plugin does not have', function()
+      local defaults = default_paths(require('camouflage.config').defaults, nil, {})
+      local unknown = {}
+      for path in pairs(schema_paths(schema, nil, {})) do
+        -- checks.pwned is the same table as the top-level pwned
+        local own = path:gsub('^checks%.pwned', 'pwned')
+        if not defaults[own] and not WITHOUT_DEFAULTS[own] then
+          table.insert(unknown, path)
+        end
+      end
+      table.sort(unknown)
+      assert.same({}, unknown)
+    end)
+
+    it('accepts the empty dockerfile section the template writes', function()
+      local node = resolve(schema.properties.parsers).properties.dockerfile
+      assert.truthy(vim.tbl_contains(node.type, 'null'))
+    end)
+  end)
 end)
