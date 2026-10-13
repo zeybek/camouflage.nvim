@@ -62,8 +62,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Documented floor + a pinned 0.10/0.11 leg + rolling stable/nightly.
-        nvim-version: ['v0.9.5', 'v0.10.4', 'v0.11.7', 'stable', 'nightly']
+        # Documented floor + a pinned 0.10/0.11 leg + rolling stable.
+        # nightly is off until its :helptags works again (#229): it throws E118
+        # from vim/_core/help.lua, which fails doc_spec on every run. Add
+        # 'nightly' back here to turn it on, continue-on-error below still applies.
+        nvim-version: ['v0.9.5', 'v0.10.4', 'v0.11.7', 'stable']
     # nightly tracks an unreleased build and can break for unrelated reasons.
     continue-on-error: ${{ matrix.nvim-version == 'nightly' }}
     steps:
