@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.1](https://github.com/zeybek/camouflage.nvim/compare/v0.18.0...v0.18.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **env:** keep a closed quoted value on its own line ([#228](https://github.com/zeybek/camouflage.nvim/issues/228)) ([60209a8](https://github.com/zeybek/camouflage.nvim/commit/60209a88e1af344ca54ed7d8168cec5ff7596cfc))
+* **env:** skip empty quoted values in env files ([#225](https://github.com/zeybek/camouflage.nvim/issues/225)) ([5504bcf](https://github.com/zeybek/camouflage.nvim/commit/5504bcf9e5638813c0cd4e5b497a0a263c423fdb))
+
 ## [0.18.0](https://github.com/zeybek/camouflage.nvim/compare/v0.17.3...v0.18.0) (2026-09-27)
 
 
