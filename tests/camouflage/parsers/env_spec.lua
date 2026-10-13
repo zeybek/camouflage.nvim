@@ -275,6 +275,38 @@ EMPTY=
       assert.equals('CERT', result[1].key)
     end)
 
+    it('does not extend a value that closes on its line but starts with a quote', function()
+      local cases = {
+        { line = "Q='\"'", value = '"' },
+        { line = 'SEP="\'"', value = "'" },
+        { line = 'DB_PASSWORD="\'p@ss"', value = "'p@ss" },
+        { line = 'CMD="`whoami"', value = '`whoami' },
+      }
+      for _, case in ipairs(cases) do
+        local content = case.line .. '\nAPI_KEY="sk_live_abc"\nNOTE=it\'s fine'
+        local result = env_parser.parse(content)
+
+        assert.equals(3, #result, case.line)
+        assert.equals(case.value, result[1].value, case.line)
+        assert.equals(case.value, slice(content, result[1]), case.line)
+        assert.is_nil(result[1].is_multiline, case.line)
+        assert.equals('API_KEY', result[2].key, case.line)
+        assert.equals('sk_live_abc', slice(content, result[2]), case.line)
+        assert.equals('NOTE', result[3].key, case.line)
+      end
+    end)
+
+    it('still spans an open value whose first character is a quote', function()
+      local content = 'KEY="\'abc\nmore"\nNEXT=after'
+      local result = env_parser.parse(content)
+
+      assert.equals(2, #result)
+      assert.is_true(result[1].is_multiline)
+      assert.equals("'abc\nmore", result[1].value)
+      assert.equals(result[1].value, slice(content, result[1]))
+      assert.equals('NEXT', result[2].key)
+    end)
+
     it('leaves a quote that never closes as a single-line value', function()
       local content = 'BROKEN="no closing quote\nOTHER=value'
       local result = env_parser.parse(content)
