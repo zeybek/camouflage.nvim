@@ -141,6 +141,16 @@ EMPTY=
       assert.equals('SECRET', result[1].key)
     end)
 
+    it('should skip empty quoted values without swallowing the following lines', function()
+      local content = 'A=""\nB=\'\'\n\nSECRET="sbk_asd"\n'
+      local result = env_parser.parse(content)
+
+      assert.equals(1, #result)
+      assert.equals('SECRET', result[1].key)
+      assert.equals('sbk_asd', result[1].value)
+      assert.equals('sbk_asd', content:sub(result[1].start_index + 1, result[1].end_index))
+    end)
+
     it('should parse commented lines when enabled', function()
       local content = '# OLD_KEY=old_value'
       local result = env_parser.parse(content)

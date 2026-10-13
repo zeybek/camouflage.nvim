@@ -169,6 +169,10 @@ function M.parse_line(line, line_num, current_index, parser_config, key_pattern)
     quote_offset = 1
   end
 
+  if #unquoted_value == 0 then
+    return nil
+  end
+
   local eq_pos = line:find('=')
   if not eq_pos then
     return nil
