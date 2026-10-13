@@ -39,9 +39,11 @@ function M.parse(content, _bufnr, filename)
   local line_num = 1
   while line_num <= #lines do
     local line = lines[line_num]
-    local result = M.parse_line(line, line_num, current_index, parser_config, key_pattern)
+    local result, closed = M.parse_line(line, line_num, current_index, parser_config, key_pattern)
     local extra_lines = 0
-    if result and not result.is_commented then
+    -- A value whose quotes close on its own line can't run onto the next one,
+    -- even when it starts with a quote character (KEY="'abc", KEY='"').
+    if result and not result.is_commented and not closed then
       extra_lines = M.extend_multiline(result, lines, line_num, current_index)
     end
     if result then
@@ -126,6 +128,7 @@ end
 ---@param parser_config table
 ---@param key_pattern string|nil Key pattern, shell names by default
 ---@return table|nil
+---@return boolean closed The value was a quoted string closed on this line
 function M.parse_line(line, line_num, current_index, parser_config, key_pattern)
   key_pattern = key_pattern or SHELL_KEY
   local is_commented = false
@@ -191,7 +194,8 @@ function M.parse_line(line, line_num, current_index, parser_config, key_pattern)
     line_number = line_num - 1,
     is_nested = false,
     is_commented = is_commented,
-  }
+  },
+    quote_offset == 1
 end
 
 M.filetypes = { 'sh', 'bash', 'zsh' }
